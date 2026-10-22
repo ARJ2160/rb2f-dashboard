@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.next/
+out/
+coverage/
+*.log
+.env
+.env.local
+.env.*.local
+!.env.example
+.DS_Store
+Thumbs.db
+.turbo/
+*.tsbuildinfo
+next-env.d.ts
+
+# GCS service-account keys
+*service-account*.json
+gcs-*.json

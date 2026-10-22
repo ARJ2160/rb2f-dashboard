@@ -1,0 +1,31 @@
+{
+  "name": "amazon-dashboard",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Amazon Seller/Vendor Central dashboard \u2014 upload raw reports, store by date, view DSR / DUR.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,magenta \"cd apps/api && bun run dev\" \"cd apps/web && bun run dev\"",
+    "dev:api": "cd apps/api && bun run dev",
+    "dev:web": "cd apps/web && bun run dev",
+    "build": "cd apps/api && bun run build && cd ../web && bun run build",
+    "typecheck": "cd packages/shared && bun run typecheck && cd ../../apps/api && bun run typecheck && cd ../web && bun run typecheck",
+    "test": "cd apps/api && bun run test",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:generate": "cd apps/api && bun run db:generate",
+    "db:migrate": "cd apps/api && bun run db:migrate",
+    "format": "prettier --write ."
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "prettier": "^3.8.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,1 @@
+DROP TABLE "daily_asin_ads" CASCADE;

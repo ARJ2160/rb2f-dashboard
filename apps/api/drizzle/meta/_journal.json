@@ -1,0 +1,62 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791557064350,
+      "tag": "0000_cultured_brood",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791725917389,
+      "tag": "0001_vendor_shipped_pricing",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791805066247,
+      "tag": "0002_asin_level_ads",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791809927756,
+      "tag": "0003_views_str_placement_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791829508838,
+      "tag": "0004_drop_old_asin_ads",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791829513205,
+      "tag": "0005_ads_analysis_hourly_dims",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791829812186,
+      "tag": "0006_search_term_classes",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791830412186,
+      "tag": "0007_gcs_objects",
+      "breakpoints": true
+    }
+  ]
+}
