@@ -12,6 +12,7 @@ import { getHourly } from './hourly.service';
 import { getPlacements } from './placements.service';
 import { getSearchTerms } from './search-terms.service';
 import { getStates } from './states.service';
+import { getSummary } from './summary.service';
 
 export const reportsRouter = Router();
 
@@ -41,6 +42,18 @@ reportsRouter.get('/dur', async (req, res) => {
   const q = rangeQuerySchema.parse(req.query);
   const { metric, category } = z.object({ metric: z.enum(['units', 'orders']).default('units'), category: optText }).parse(req.query);
   res.json(await getDur(q.profileId, q.from, q.to, metric, category));
+});
+
+/** GET /api/reports/summary?profileId&asOf&category — MoM / WoW summary (asOf defaults to the latest day with data). */
+reportsRouter.get('/summary', async (req, res) => {
+  const o = z
+    .object({
+      profileId: profileIdSchema,
+      asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'asOf must be YYYY-MM-DD').optional().or(z.literal('').transform(() => undefined)),
+      category: optText,
+    })
+    .parse(req.query);
+  res.json(await withDims(o.profileId, () => getSummary(o.profileId, { asOf: o.asOf, category: o.category })));
 });
 
 /** GET /api/reports/coverage?profileId — uploaded date ranges per source + mapper match rate. */

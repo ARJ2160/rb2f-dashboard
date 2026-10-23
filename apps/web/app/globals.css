@@ -24,6 +24,11 @@
   --color-s6: #008300;
   --color-s7: #6250d6;
   --color-s8: #e34948;
+
+  /* Summary (MoM / WoW) table header — matches the team's sheet */
+  --color-head: #221c54;
+  --color-head-line: #3a3470;
+  --color-head-ink: #ffffff;
 }
 
 html,

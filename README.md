@@ -149,6 +149,8 @@ Only **additive raw numbers** are stored, keyed by day. Every ratio is derived f
 
 ## Views
 
+**MoM / WoW** (default screen) – the team's summary sheet: Sales, Units, AOV, Sessions, CR%, Organic Sales, Ad Sales, Ad Spends, Ad Units, ACOS%, TACOS%, ROAS for **MTD vs PMTD** and **L7D vs P7D**, with Change %. Windows end on the **latest day with data** (the earlier of the latest sales day and latest ads day, so both sides of a comparison cover the same days): data through 21 Oct → MTD 1–21 Oct vs PMTD 1–21 Sep (clamped at month end, e.g. 31 Mar → 1–28 Feb), L7D 15–21 Oct vs P7D 8–14 Oct. Every value uses the same rules as the DSR (ratios recomputed from each period's totals). Sessions = Seller Business Report sessions (Vendor has none); CR% = Units ÷ Sessions. *As of* date and Category filter on the screen; notes flag periods with missing upload days.
+
 **DSR** – one row per date + TOTAL and AVG rows. Sales/Units = Seller + Vendor (§4), Page Views = Seller *Page Views - Total* + Vendor *Glance Views*, ad metrics = rule book Main View sources: SP & SD **Advertised Product** reports + SB **Attributed Purchases** (Ad Sales/Units direct; Spend/Impressions/Clicks prorated from the SB Campaign report by attributed-sales share, §5 — spend on campaign-days with no attributed purchase can't be allocated and is listed in the notes). A day missing the ASIN-level report for a channel falls back to that channel's campaign report (flagged on the channel card), Organic Sales = Sales − Ad Sales. Ratios with a zero denominator show `—`, not 0.
 
 **Category filter on DSR / DUR** – pick a category in the top bar. DSR: Sales/Units/Page Views of that category's ASINs; SP/SD ads of its ASINs; SB ad sales of its ASINs with spend prorated by attributed-sales share; campaign-report fallback days count campaigns of that category. DUR: only that category's ASIN rows.
@@ -191,6 +193,7 @@ Search-term level views (Search Terms; Ads Analysis targeting/branding tables) u
 |---|---|---|
 | POST | `/api/uploads` | multipart: `files[]`, `profileId` |
 | GET | `/api/uploads?profileId=` | upload history |
+| GET | `/api/reports/summary?profileId&asOf&category` | MoM / WoW (asOf defaults to the latest day with data) |
 | GET | `/api/reports/dsr?profileId&from&to&category` | dates `YYYY-MM-DD`, max 367 days |
 | GET | `/api/reports/dur?profileId&from&to&metric=units\|orders&category` | |
 | GET | `/api/reports/coverage?profileId=` | uploaded ranges per source + ASIN-mapper match rate |

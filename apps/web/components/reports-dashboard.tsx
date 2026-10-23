@@ -14,18 +14,20 @@ import { SearchTermsView } from '@/components/views/search-terms-view';
 import { StatesView } from '@/components/views/states-view';
 import { AdsView } from '@/components/views/ads-view';
 import { HourlyView } from '@/components/views/hourly-view';
+import { SummaryView } from '@/components/views/summary-view';
 import { Select, type Period } from '@/components/views/shared';
 
-type Tab = 'dsr' | 'dur' | 'category' | 'search' | 'placement' | 'state' | 'ads' | 'hourly';
+type Tab = 'summary' | 'dsr' | 'dur' | 'category' | 'search' | 'placement' | 'state' | 'ads' | 'hourly';
 
 const TABS: Array<{ id: Tab; label: string; hint: string }> = [
+  { id: 'summary', label: 'MoM / WoW', hint: 'Month-to-date vs last month, last 7 days vs the 7 before — as of the latest data' },
   { id: 'dsr', label: 'DSR', hint: 'Daily Sales Report — one row per date' },
   { id: 'dur', label: 'DUR', hint: 'Daily Units Report — ASIN × date' },
   { id: 'category', label: 'Category', hint: 'DSR columns by ASIN-mapper category' },
+  { id: 'ads', label: 'Ads Analysis', hint: 'Ad types, targeting, Branded / Competitor / Generic' },
   { id: 'search', label: 'Search Terms', hint: 'SP + SB search terms, SD targets' },
   { id: 'placement', label: 'Placements', hint: 'SP + SB by Top of Search / Rest of Search / Product Pages' },
   { id: 'state', label: 'State Wise Data', hint: 'Sales and units by ship-to state' },
-  { id: 'ads', label: 'Ads Analysis', hint: 'Ad types, targeting, Branded / Competitor / Generic' },
   { id: 'hourly', label: 'Hour-wise', hint: 'Ad metrics by hour of day' },
 ];
 
@@ -73,7 +75,7 @@ export function ReportsDashboard({
   /** Shown when the profile has no data at all. */
   emptyState: ReactNode;
 }) {
-  const [tab, setTab] = useState<Tab>('dsr');
+  const [tab, setTab] = useState<Tab>('summary');
   const [coverage, setCoverage] = useState<CoverageResponse | null>(null);
   const [range, setRange] = useState<{ from: string; to: string } | null>(null);
   const [metric, setMetric] = useState<DurMetric>('units');
@@ -113,7 +115,8 @@ export function ReportsDashboard({
   }, [profileId, tab, range, metric, category]);
 
   const hasAnyData = coverage?.sources.some((s) => s.days > 0);
-  const isView = tab !== 'dsr' && tab !== 'dur';
+  const isView = tab !== 'dsr' && tab !== 'dur' && tab !== 'summary';
+  const isSummary = tab === 'summary';
   const compare: Period | null =
     isView && compareOn && compareRange && compareRange.from <= compareRange.to ? compareRange : null;
   const toggleCompare = () => {
@@ -144,7 +147,7 @@ export function ReportsDashboard({
           ))}
         </div>
 
-        {range && (
+        {range && !isSummary && (
           <div className="flex items-center gap-2 text-sm">
             <input
               type="date"
@@ -201,7 +204,7 @@ export function ReportsDashboard({
           </div>
         )}
 
-        {!isView && (
+        {!isView && !isSummary && (
           <Select
             label="Category"
             value={category}
@@ -237,6 +240,7 @@ export function ReportsDashboard({
       {coverage && hasAnyData && <CoverageStrip coverage={coverage} />}
       {error && <ErrorBox message={error} />}
 
+      {isSummary && <SummaryView profileId={profileId} />}
       {tab === 'dsr' && dsr && (
         <>
           <ChannelSplit data={dsr} />

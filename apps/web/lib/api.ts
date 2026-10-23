@@ -12,6 +12,7 @@ import type {
   PlacementResponse,
   SearchTermResponse,
   StateResponse,
+  SummaryResponse,
   UploadLogEntry,
   UploadResponse,
 } from '@dash/shared';
@@ -47,6 +48,10 @@ export async function getDsr(profileId: string, from: string, to: string, catego
 
 export async function getDur(profileId: string, from: string, to: string, metric: DurMetric, category = ''): Promise<DurResponse> {
   return json(await fetch(`${API_URL}/api/reports/dur?${qs({ profileId, from, to, metric, category })}`, { cache: 'no-store' }));
+}
+
+export async function getSummary(profileId: string, f: { asOf?: string; category?: string } = {}): Promise<SummaryResponse> {
+  return json(await fetch(`${API_URL}/api/reports/summary?${qs({ profileId, ...f })}`, { cache: 'no-store' }));
 }
 
 export async function getCoverage(profileId: string): Promise<CoverageResponse> {

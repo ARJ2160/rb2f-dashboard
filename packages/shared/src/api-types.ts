@@ -342,3 +342,47 @@ export interface GcsFileEntry {
   message: string | null;
   syncedAt: string;
 }
+
+// ── MoM / WoW summary (default screen) ──────────────────────────────
+
+export interface SummaryPeriod {
+  from: string;
+  to: string;
+  /** "1-21 Oct" */
+  label: string;
+  /** MTD | PMTD | L7D | P7D */
+  short: string;
+  days: number;
+  missingSalesDays: number;
+  missingAdDays: number;
+}
+
+export interface SummaryRow {
+  key: string;
+  label: string;
+  format: 'money' | 'int' | 'pct' | 'ratio';
+  /** Which direction is good — colours the change %. */
+  better: 'up' | 'down' | 'none';
+  mtd: number | null;
+  pmtd: number | null;
+  /** % change MTD vs PMTD */
+  mom: number | null;
+  l7d: number | null;
+  p7d: number | null;
+  /** % change L7D vs P7D */
+  wow: number | null;
+}
+
+export interface SummaryResponse {
+  profileId: string;
+  /** Date the windows end on (null = no data). */
+  asOf: string | null;
+  /** The automatic "latest update" date, so the UI can offer "back to latest". */
+  autoAsOf: string | null;
+  latest: { sales: string | null; ads: string | null };
+  category: string | null;
+  categories: string[];
+  periods: { mtd: SummaryPeriod; pmtd: SummaryPeriod; l7d: SummaryPeriod; p7d: SummaryPeriod } | null;
+  rows: SummaryRow[];
+  notes: string[];
+}
