@@ -44,7 +44,7 @@ export function detectByHeaders(h: string[]): ReportType | null {
     if (has('Campaigns', 'Campaign Name', 'Campaign') && has('Category', 'Type', 'Branded/Non-Branded')) return 'campaign_mapper';
   }
 
-  // ── Search-query / order / attribution reports (recognised, not yet ingested) ──
+  // ── Search-query / order / attribution reports ──
   if (has('Search Query') && has('Search Query Volume')) return 'search_query_performance';
   if (has('amazon-order-id', 'Order ID') && has('ship-state', 'Ship State')) return 'order_report';
   if (has('Purchased ASIN')) return 'sb_attributed_purchase';

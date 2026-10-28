@@ -11,6 +11,7 @@ import type {
   HourlyResponse,
   PlacementResponse,
   SearchTermResponse,
+  SqpResponse,
   StateResponse,
   SummaryResponse,
   UploadLogEntry,
@@ -96,6 +97,11 @@ export async function getPlacements(profileId: string, from: string, to: string,
 
 export async function getStates(profileId: string, from: string, to: string, f: Filters): Promise<StateResponse> {
   return json(await fetch(`${API_URL}/api/reports/states?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' }));
+}
+
+/** Search Query Performance for one reporting period (newest when periodStart is empty). */
+export async function getSqp(profileId: string, f: Filters): Promise<SqpResponse> {
+  return json(await fetch(`${API_URL}/api/reports/sqp?${qs({ profileId, ...f })}`, { cache: 'no-store' }));
 }
 
 // ── GCS warehouse (read-only) ──

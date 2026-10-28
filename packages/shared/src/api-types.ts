@@ -386,3 +386,90 @@ export interface SummaryResponse {
   rows: SummaryRow[];
   notes: string[];
 }
+
+// ── SQP (Brand Analytics Search Query Performance, Brand View) ─────
+
+/** What a query is currently targeted in (matched on the targeted keyword, never the triggered search term). */
+export type SqpTargeted = 'Not Targeted' | 'SP' | 'SB' | 'SP & SB';
+/** Channels a query is still missing from — null when it's already in both. */
+export type SqpLaunch = 'SP' | 'SB' | 'SP & SB' | null;
+export type SqpView = 'opportunities' | 'report';
+/** How many of CTR / add-to-cart % / purchase % beat the category: 1 = Low, 2 = Medium, 3 = Strong. */
+export type SqpStrength = 'Strong' | 'Medium' | 'Low';
+export type SqpSort =
+  | 'strength'
+  | 'volume'
+  | 'acos'
+  | 'spend'
+  | 'impressionShare'
+  | 'clickShare'
+  | 'cartAddShare'
+  | 'purchaseShare'
+  | 'purchasesBrand';
+
+export interface SqpPeriod {
+  from: string;
+  to: string;
+  /** Queries stored for the period. */
+  queries: number;
+}
+
+export interface SqpRow {
+  query: string;
+  volume: number;
+  brandClicks: number;
+  /** Clicks ÷ impressions (%). null when the denominator is 0. */
+  ctrBrandPct: number | null;
+  ctrCategoryPct: number | null;
+  /** Cart adds ÷ clicks (%). */
+  atcBrandPct: number | null;
+  atcCategoryPct: number | null;
+  /** Purchases ÷ cart adds (%). */
+  purchaseBrandPct: number | null;
+  purchaseCategoryPct: number | null;
+  targeted: SqpTargeted;
+  launchIn: SqpLaunch;
+  /** Spend / ACoS of this query's OWN targeting; null when it isn't targeted. */
+  spend: number | null;
+  acosPct: number | null;
+  acosVsAccount: 'better' | 'worse' | null;
+  isOpportunity: boolean;
+  /** Set for opportunities only. */
+  strength: SqpStrength | null;
+  /** How many of the three rates beat the category (0–3). */
+  wins: number;
+  /** One sentence per clause behind the verdict. */
+  basis: string;
+  // Raw funnel counts (Total = whole category for the query, Brand = this brand) and brand share in %.
+  impressionsTotal: number;
+  impressionsBrand: number;
+  impressionShare: number | null;
+  clicksTotal: number;
+  clicksBrand: number;
+  clickShare: number | null;
+  cartAddsTotal: number;
+  cartAddsBrand: number;
+  cartAddShare: number | null;
+  purchasesTotal: number;
+  purchasesBrand: number;
+  purchaseShare: number | null;
+}
+
+export interface SqpResponse {
+  profileId: string;
+  /** Every period stored for the profile, newest first. */
+  periods: SqpPeriod[];
+  /** The period shown; null when no SQP report has been stored. */
+  period: SqpPeriod | null;
+  /** Blended ACoS of all search-term data in the period — what each query's ACoS is coloured against. */
+  accountAcosPct: number | null;
+  minBrandClicks: number;
+  /** Counted over the whole period, not the filtered list. */
+  kpis: { opportunities: number; strong: number; medium: number; low: number; launchSp: number; launchSb: number; launchBoth: number; queries: number };
+  rows: SqpRow[];
+  /** Rows matching the filters before the row limit. */
+  totalRows: number;
+  truncated: boolean;
+  notes: string[];
+}
+

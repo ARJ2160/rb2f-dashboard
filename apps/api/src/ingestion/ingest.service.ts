@@ -24,6 +24,7 @@ import {
   storePlacements,
   storeSales,
   storeSbAttributed,
+  storeSearchQueryPerformance,
   storeSearchTerms,
   storeStateSales,
 } from './store';
@@ -32,6 +33,7 @@ import { parseSbAttributed } from './parsers/sb-attributed';
 import { parseCampaignMapper } from './parsers/campaign-mapper';
 import { parseOrderReport } from './parsers/order-report';
 import { parsePlacements } from './parsers/placement';
+import { parseSearchQueryPerformance } from './parsers/search-query-performance';
 import { parseSearchTerms } from './parsers/search-term';
 
 /**
@@ -180,6 +182,14 @@ async function ingestSheet(
     case 'order_report': {
       const parsed = parseOrderReport(sheet.rows, ctx);
       return finish(parsed, () => db.transaction((tx) => storeStateSales(tx, profileId, uploadId, 'seller', parsed.records)));
+    }
+    case 'search_query_performance': {
+      const parsed = parseSearchQueryPerformance(sheet.headers, sheet.rows, ctx, [sheet.sheetName, filename]);
+      const period = parsed.period;
+      const res = await finish(parsed, () =>
+        db.transaction((tx) => storeSearchQueryPerformance(tx, profileId, uploadId, period!, parsed.records))
+      );
+      return period && res.status === 'stored' ? { ...res, from: period.from, to: period.to } : res;
     }
     case 'campaign_mapper': {
       const parsed = parseCampaignMapper(sheet.rows);

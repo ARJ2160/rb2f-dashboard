@@ -25,7 +25,7 @@ export const REPORT_TYPES = {
   sb_placement: { label: 'SB Placement', inScope: true },
   hourly: { label: 'Hourly Campaign', inScope: false },
   order_report: { label: 'Order Report', inScope: true },
-  search_query_performance: { label: 'Search Query Performance', inScope: false },
+  search_query_performance: { label: 'Search Query Performance', inScope: true },
 } as const satisfies Record<string, { label: string; inScope: boolean }>;
 
 export type ReportType = keyof typeof REPORT_TYPES;

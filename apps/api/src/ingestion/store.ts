@@ -12,6 +12,7 @@ import {
   dailyStateSales,
   products,
   sbAttributedDaily,
+  searchQueryPerformance,
 } from '../db/schema';
 import { campaignAttrs, dailyHourlyAds } from '../db/schema';
 import type { CampaignAttr } from '../lib/ad-type';
@@ -19,6 +20,7 @@ import { campaignKeyOf, type CampaignMapperRecord } from './parsers/campaign-map
 import type { HourlyRecord } from './parsers/campaign';
 import type { StateRecord } from './parsers/order-report';
 import type { PlacementRecord } from './parsers/placement';
+import type { SqpRecord } from './parsers/search-query-performance';
 import type { SearchTermRecord } from './parsers/search-term';
 import type { AsinAdRecord } from './parsers/advertised-product';
 import type { SbAttributedRecord } from './parsers/sb-attributed';
@@ -202,6 +204,23 @@ export async function storeSearchTerms(
         uploadId,
       }))
     );
+  }
+}
+
+/** Search Query Performance → search_query_performance (re-uploading a period replaces it). */
+export async function storeSearchQueryPerformance(
+  tx: Tx,
+  profileId: string,
+  uploadId: string,
+  period: { from: string; to: string },
+  records: SqpRecord[]
+): Promise<void> {
+  const t = searchQueryPerformance;
+  await tx
+    .delete(t)
+    .where(and(eq(t.profileId, profileId), eq(t.periodStart, period.from), eq(t.periodEnd, period.to)));
+  for (const c of chunks(records)) {
+    await tx.insert(t).values(c.map((r) => ({ ...r, profileId, uploadId })));
   }
 }
 

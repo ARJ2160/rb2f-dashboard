@@ -250,6 +250,41 @@ export const dailySearchTerms = pgTable(
   ]
 );
 
+/**
+ * Brand Analytics "Search Query Performance" (Brand View), per reporting
+ * PERIOD — the one table not keyed on a day: Amazon publishes this report per
+ * week / month / quarter with no daily breakdown, so a range query must pick
+ * whole periods rather than slice one. No category either (the report is keyed
+ * on the customer's phrase, not an ASIN or campaign). Raw counts only; CTR /
+ * add-to-cart / purchase rates are derived at query time.
+ */
+export const searchQueryPerformance = pgTable(
+  'search_query_performance',
+  {
+    profileId: text('profile_id').notNull(),
+    periodStart: date('period_start', { mode: 'string' }).notNull(),
+    periodEnd: date('period_end', { mode: 'string' }).notNull(),
+    /** Lower-cased, whitespace-collapsed — joined to daily_search_terms.target. */
+    searchQuery: text('search_query').notNull(),
+    /** "Search Query Volume". */
+    volume: integer('volume').notNull().default(0),
+    impressionsTotal: integer('impressions_total').notNull().default(0),
+    impressionsBrand: integer('impressions_brand').notNull().default(0),
+    clicksTotal: integer('clicks_total').notNull().default(0),
+    clicksBrand: integer('clicks_brand').notNull().default(0),
+    cartAddsTotal: integer('cart_adds_total').notNull().default(0),
+    cartAddsBrand: integer('cart_adds_brand').notNull().default(0),
+    purchasesTotal: integer('purchases_total').notNull().default(0),
+    purchasesBrand: integer('purchases_brand').notNull().default(0),
+    uploadId: uuid('upload_id'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.profileId, t.periodStart, t.periodEnd, t.searchQuery] }),
+    index('search_query_performance_profile_period_idx').on(t.profileId, t.periodStart, t.periodEnd),
+  ]
+);
+
 /** SP / SB Placement reports, per day per campaign × placement. */
 export const dailyPlacements = pgTable(
   'daily_placements',

@@ -12,13 +12,14 @@ import { fmtDateLong, isoAddDays, isoToday } from '@/lib/format';
 import { CategoryView } from '@/components/views/category-view';
 import { PlacementsView } from '@/components/views/placements-view';
 import { SearchTermsView } from '@/components/views/search-terms-view';
+import { SqpView } from '@/components/views/sqp-view';
 import { StatesView } from '@/components/views/states-view';
 import { AdsView } from '@/components/views/ads-view';
 import { HourlyView } from '@/components/views/hourly-view';
 import { SummaryView } from '@/components/views/summary-view';
 import { Select, type Period } from '@/components/views/shared';
 
-type Tab = 'summary' | 'dsr' | 'dur' | 'category' | 'search' | 'placement' | 'state' | 'ads' | 'hourly';
+type Tab = 'summary' | 'dsr' | 'dur' | 'category' | 'search' | 'sqp' | 'placement' | 'state' | 'ads' | 'hourly';
 
 const TABS: Array<{ id: Tab; label: string; hint: string }> = [
   { id: 'summary', label: 'MoM / WoW', hint: 'Month-to-date vs last month, last 7 days vs the 7 before — as of the latest data' },
@@ -27,6 +28,7 @@ const TABS: Array<{ id: Tab; label: string; hint: string }> = [
   { id: 'category', label: 'Category', hint: 'DSR columns by ASIN-mapper category' },
   { id: 'ads', label: 'Ads Analysis', hint: 'Ad types, targeting, Branded / Competitor / Generic' },
   { id: 'search', label: 'Search Terms', hint: 'SP + SB search terms, SD targets' },
+  { id: 'sqp', label: 'SQP', hint: 'Search Query Performance — queries where the brand beats the category but isn\'t targeted yet' },
   { id: 'placement', label: 'Placements', hint: 'SP + SB by Top of Search / Rest of Search / Product Pages' },
   { id: 'state', label: 'State Wise Data', hint: 'Sales and units by ship-to state' },
   { id: 'hourly', label: 'Hour-wise', hint: 'Ad metrics by hour of day' },
@@ -116,8 +118,9 @@ export function ReportsDashboard({
   }, [profileId, tab, range, metric, category]);
 
   const hasAnyData = coverage?.sources.some((s) => s.days > 0);
-  const isView = tab !== 'dsr' && tab !== 'dur' && tab !== 'summary';
-  const isSummary = tab === 'summary';
+  // MoM / WoW and SQP choose their own periods, so the date range doesn't apply to them.
+  const isSummary = tab === 'summary' || tab === 'sqp';
+  const isView = tab !== 'dsr' && tab !== 'dur' && !isSummary;
   const compare: Period | null =
     isView && compareOn && compareRange && compareRange.from <= compareRange.to ? compareRange : null;
   const toggleCompare = () => {
@@ -202,14 +205,15 @@ export function ReportsDashboard({
         {loading && <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />}
       </div>
 
-      {coverage && !hasAnyData && (
+      {coverage && !hasAnyData && tab !== 'sqp' && (
         <div className="rounded-box border border-line bg-surface px-4 py-6 text-sm shadow-sm">{emptyState}</div>
       )}
 
       {coverage && hasAnyData && <CoverageStrip coverage={coverage} />}
       {error && <ErrorBox message={error} />}
 
-      {isSummary && <SummaryView profileId={profileId} />}
+      {tab === 'summary' && <SummaryView profileId={profileId} />}
+      {tab === 'sqp' && <SqpView profileId={profileId} />}
       {tab === 'dsr' && dsr && (
         <>
           <ChannelSplit data={dsr} />
