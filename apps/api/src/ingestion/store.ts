@@ -201,6 +201,7 @@ export async function storeSearchTerms(
         spend: r.spend,
         adSales: r.adSales,
         adUnits: Math.round(r.adUnits),
+        adOrders: r.adOrders == null ? null : Math.round(r.adOrders),
         uploadId,
       }))
     );

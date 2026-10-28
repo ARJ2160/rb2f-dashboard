@@ -192,6 +192,8 @@ export function toClassicByChannel(
         row['Customer Search Term'] = str(pick(r, ['Search term']));
         // No targeting columns in this export: the targeting type comes from the campaign name (KT/PT/CT/Auto).
         row['Match Type'] = targetingFromCampaignName(campaignName) ?? '';
+        const purchases = pick(r, ['Purchases', 'Orders']);
+        if (purchases !== undefined) row['Total Orders (#)'] = purchases;
       }
     }
     const sheet = byChannel.get(channel) ?? { headers: [], rows: [] };

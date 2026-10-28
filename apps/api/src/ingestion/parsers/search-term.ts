@@ -16,6 +16,8 @@ export interface SearchTermRecord {
   spend: number;
   adSales: number;
   adUnits: number;
+  /** "Total Orders (#)" — null when the export has no orders column. */
+  adOrders: number | null;
 }
 
 const SPEND = ['Spend', 'Spend (₹)', 'Cost'];
@@ -44,6 +46,7 @@ export function parseSearchTerms(
   const warnings: string[] = [];
   const fallbackDate = singleNameDate(ctx);
   const hasUnits = hasColumn(headers, UNITS);
+  const hasOrders = hasColumn(headers, ORDERS);
   if (!hasUnits) warnings.push('No "Total Units" column — Ad Units use "Total Orders (#)" instead.');
 
   const acc = new Map<string, SearchTermRecord>();
@@ -69,12 +72,13 @@ export function parseSearchTerms(
     const key = `${date}|${campaignName}|${target}|${matchType}|${searchTerm}`;
     const cur =
       acc.get(key) ??
-      { date, channel, campaignName, target, matchType, searchTerm, impressions: 0, clicks: 0, spend: 0, adSales: 0, adUnits: 0 };
+      { date, channel, campaignName, target, matchType, searchTerm, impressions: 0, clicks: 0, spend: 0, adSales: 0, adUnits: 0, adOrders: hasOrders ? 0 : null };
     cur.impressions += num(pick(r, ['Impressions']));
     cur.clicks += num(pick(r, ['Clicks']));
     cur.spend += num(pick(r, SPEND));
     cur.adSales += num(pick(r, SALES));
     cur.adUnits += num(pick(r, hasUnits ? UNITS : ORDERS));
+    if (cur.adOrders != null) cur.adOrders += num(pick(r, ORDERS));
     acc.set(key, cur);
   }
   if (undated) warnings.push(`${undated} row(s) skipped: no single-day date (export with Daily time unit).`);

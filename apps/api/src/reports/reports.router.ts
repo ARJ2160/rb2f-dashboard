@@ -8,6 +8,7 @@ import { getCoverage } from './coverage.service';
 import { ensureDims, getBrandTerms, markDimsStale, rebuildCampaignDims, setBrandTerms } from './dims';
 import { getDsr } from './dsr.service';
 import { getDur } from './dur.service';
+import { getHarvest } from './harvest.service';
 import { getHourly } from './hourly.service';
 import { getPlacements } from './placements.service';
 import { getSearchTerms } from './search-terms.service';
@@ -111,6 +112,26 @@ reportsRouter.get('/sqp', async (req, res) => {
     .parse(req.query);
   const { profileId, ...opts } = o;
   res.json(await getSqp(profileId, opts));
+});
+
+/** GET /api/reports/harvest?profileId&days=7|30|60&minOrders&q&harvestInto&performingIn&kind&sort&limit — keyword harvesting. */
+reportsRouter.get('/harvest', async (req, res) => {
+  const ch = z.enum(['SP', 'SB', 'SP & SB']).optional().or(z.literal('').transform(() => undefined));
+  const o = z
+    .object({
+      profileId: profileIdSchema,
+      days: z.coerce.number().pipe(z.union([z.literal(7), z.literal(30), z.literal(60)])).default(30),
+      minOrders: z.coerce.number().int().min(1).max(1000).default(2),
+      q: optText,
+      harvestInto: ch,
+      performingIn: ch,
+      kind: z.enum(['Keyword', 'ASIN']).optional().or(z.literal('').transform(() => undefined)),
+      sort: z.enum(['orders', 'adSales', 'spend', 'acos', 'cvr']).default('orders'),
+      limit: z.coerce.number().int().min(1).max(2000).default(500),
+    })
+    .parse(req.query);
+  const { profileId, ...opts } = o;
+  res.json(await getHarvest(profileId, opts));
 });
 
 /** GET /api/reports/placements?…&channel&category&adType&targeting&branding */

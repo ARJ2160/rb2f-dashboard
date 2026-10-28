@@ -242,6 +242,8 @@ export const dailySearchTerms = pgTable(
     spend: numeric('spend', { precision: 14, scale: 2, mode: 'number' }).notNull().default(0),
     adSales: numeric('ad_sales', { precision: 14, scale: 2, mode: 'number' }).notNull().default(0),
     adUnits: integer('ad_units').notNull().default(0),
+    /** "Total Orders (#)"; null for rows stored before this column existed or exports without it (use ad_units then). */
+    adOrders: integer('ad_orders'),
     uploadId: uuid('upload_id'),
   },
   (t) => [

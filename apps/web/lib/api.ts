@@ -8,6 +8,7 @@ import type {
   GcsFileEntry,
   GcsSyncJob,
   AdsResponse,
+  HarvestResponse,
   HourlyResponse,
   PlacementResponse,
   SearchTermResponse,
@@ -102,6 +103,11 @@ export async function getStates(profileId: string, from: string, to: string, f: 
 /** Search Query Performance for one reporting period (newest when periodStart is empty). */
 export async function getSqp(profileId: string, f: Filters): Promise<SqpResponse> {
   return json(await fetch(`${API_URL}/api/reports/sqp?${qs({ profileId, ...f })}`, { cache: 'no-store' }));
+}
+
+/** Keyword harvesting: SP / SB search terms with orders that aren't manual targets yet. */
+export async function getHarvest(profileId: string, f: Filters): Promise<HarvestResponse> {
+  return json(await fetch(`${API_URL}/api/reports/harvest?${qs({ profileId, ...f })}`, { cache: 'no-store' }));
 }
 
 // ── GCS warehouse (read-only) ──

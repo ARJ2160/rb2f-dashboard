@@ -9,6 +9,7 @@ import {
   periodFromPreamble,
 } from '../src/ingestion/parsers/search-query-performance';
 import { readWorkbook } from '../src/ingestion/sheet-reader';
+import { decideHarvest, isAsinTerm } from '../src/reports/harvest-rules';
 import { compareBy, scoreQuery, type SqpCounts } from '../src/reports/sqp-scoring';
 
 const FLAT_HEADER =
@@ -151,4 +152,15 @@ test('sorting: strength first (Strong → Low), missing values last for metrics'
     scoreQuery({ ...base, searchQuery: 'medium' }, undefined, null),
   ];
   assert.deepEqual([...tiers].sort(compareBy('strength')).map((r) => r.query), ['strong', 'medium', 'low']);
+});
+
+test('harvesting: multiple orders + missing a manual target in SP and/or SB', () => {
+  const t = { orders: 4, spOrders: 4, sbOrders: 0, manualSp: false, manualSb: false, minOrders: 2 };
+  assert.deepEqual(decideHarvest(t), { performingIn: 'SP', harvestInto: 'SP & SB' });
+  assert.deepEqual(decideHarvest({ ...t, manualSp: true }), { performingIn: 'SP', harvestInto: 'SB' });
+  assert.deepEqual(decideHarvest({ ...t, sbOrders: 1, orders: 5, manualSb: true }), { performingIn: 'SP & SB', harvestInto: 'SP' });
+  assert.equal(decideHarvest({ ...t, manualSp: true, manualSb: true }), null, 'already manual in both');
+  assert.equal(decideHarvest({ ...t, orders: 1, spOrders: 1 }), null, 'one order is not multiple');
+  assert.equal(isAsinTerm('b0abc12345'), true);
+  assert.equal(isAsinTerm('shoes for men'), false);
 });
