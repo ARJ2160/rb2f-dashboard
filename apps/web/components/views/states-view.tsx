@@ -72,7 +72,7 @@ export function StatesView(props: RangeProps) {
             </Card>
           </div>
           <div className={TABLE_WRAP}>
-            <table className="w-full border-collapse text-sm">
+            <table className="table table-sm">
               <thead className={THEAD}>
                 <tr className="text-xs text-muted">
                   <th className="px-3 py-2 text-left font-medium">State</th>
@@ -97,7 +97,7 @@ export function StatesView(props: RangeProps) {
                 {data.rows.map((r) => {
                   const p = prevBy.get(r.state);
                   return (
-                    <tr key={r.state} className="border-b border-line/60 hover:bg-canvas">
+                    <tr key={r.state} className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft">
                       <td className="whitespace-nowrap px-3 py-1.5 align-top">{r.state}</td>
                       <MCell v={r.sales} prev={p?.sales} fmt={fmtMoney} comparing={comparing} />
                       <MCell v={r.salesSharePct} prev={p?.salesSharePct} fmt={fmtPct} comparing={comparing} />

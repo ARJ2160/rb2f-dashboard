@@ -1,10 +1,14 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 
 import { Nav } from '@/components/nav';
 import { ProfileProvider } from '@/lib/profile';
 
 import './globals.css';
+
+// Inter: very legible at small sizes, with tabular figures for the number columns.
+const inter = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: 'Amazon Dashboard',
@@ -13,7 +17,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <body className="min-h-screen font-sans antialiased">
         <ProfileProvider>
           <Nav />

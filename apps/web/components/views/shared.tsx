@@ -59,7 +59,7 @@ export function ViewShell({ error, loading, notes, toolbar, children }: {
       {(toolbar || loading) && (
         <div className="flex flex-wrap items-center gap-3">
           {toolbar}
-          {loading && <span className="text-xs text-muted">Loading…</span>}
+          {loading && <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />}
         </div>
       )}
       {error && <ErrorBox message={error} />}
@@ -82,7 +82,7 @@ export function Select({ label, value, onChange, options, allLabel = 'All' }: {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-8 max-w-56 rounded-md border border-line bg-surface px-2 text-sm text-ink"
+        className="select select-sm w-auto max-w-56 text-ink"
       >
         {allLabel !== null && <option value="">{allLabel}</option>}
         {options.map((o) => {
@@ -216,7 +216,7 @@ export const fmtFor = (k: string) => AD_COLUMNS.find((c) => c.key === k)?.fmt ??
 
 export function Card({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
   return (
-    <section className="rounded-md border border-line bg-surface p-4">
+    <section className="card card-border bg-base-100 p-4 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold">{title}</h3>
         {right}
@@ -226,5 +226,5 @@ export function Card({ title, children, right }: { title: string; children: Reac
   );
 }
 
-export const TABLE_WRAP = 'max-h-[70vh] overflow-auto rounded-md border border-line bg-surface';
+export const TABLE_WRAP = 'max-h-[70vh] overflow-auto rounded-box border border-line bg-surface shadow-sm';
 export const THEAD = 'sticky top-0 z-20 bg-surface shadow-[0_1px_0_var(--color-line)]';

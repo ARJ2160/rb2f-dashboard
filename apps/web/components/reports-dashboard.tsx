@@ -4,6 +4,7 @@ import type { CoverageResponse, DsrResponse, DurMetric, DurResponse } from '@das
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { ChannelSplit, DsrTable } from '@/components/dsr-table';
+import { DateRangePicker } from '@/components/date-picker';
 import { DurTable } from '@/components/dur-table';
 import { ErrorBox, Notes } from '@/components/notes';
 import { getCoverage, getDsr, getDur } from '@/lib/api';
@@ -132,7 +133,7 @@ export function ReportsDashboard({
           <p className="text-xs text-muted">{subtitle ?? `Profile: ${profileId}`}</p>
         </div>
 
-        <div className="flex flex-wrap rounded-md border border-line bg-surface p-0.5" role="tablist">
+        <div className="tabs tabs-border basis-full flex-wrap border-b border-line" role="tablist">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -140,7 +141,7 @@ export function ReportsDashboard({
               aria-selected={tab === t.id}
               title={t.hint}
               onClick={() => setTab(t.id)}
-              className={`rounded px-3 py-1.5 text-sm ${tab === t.id ? 'bg-ink text-white' : 'text-muted hover:text-ink'}`}
+              className={`tab ${tab === t.id ? 'tab-active font-medium text-accent' : 'text-muted'}`}
             >
               {t.label}
             </button>
@@ -148,53 +149,21 @@ export function ReportsDashboard({
         </div>
 
         {range && !isSummary && (
-          <div className="flex items-center gap-2 text-sm">
-            <input
-              type="date"
-              value={range.from}
-              max={range.to}
-              onChange={(e) => e.target.value && setRange({ ...range, from: e.target.value })}
-              className="h-8 rounded-md border border-line bg-surface px-2"
-            />
-            <span className="text-muted">→</span>
-            <input
-              type="date"
-              value={range.to}
-              min={range.from}
-              onChange={(e) => e.target.value && setRange({ ...range, to: e.target.value })}
-              className="h-8 rounded-md border border-line bg-surface px-2"
-            />
-          </div>
+          <DateRangePicker value={range} onChange={setRange} />
         )}
 
         {range && isView && (
           <div className="flex items-center gap-2 text-sm">
             <label className="flex items-center gap-1.5 text-xs text-muted">
-              <input type="checkbox" checked={compareOn} onChange={toggleCompare} />
+              <input type="checkbox" className="checkbox checkbox-xs checkbox-primary" checked={compareOn} onChange={toggleCompare} />
               Compare with
             </label>
             {compareOn && compareRange && (
               <>
-                <input
-                  type="date"
-                  value={compareRange.from}
-                  max={compareRange.to}
-                  onChange={(e) =>
-                    e.target.value && setCompareRange({ ...compareRange, from: e.target.value })
-                  }
-                  className="h-8 rounded-md border border-line bg-surface px-2"
-                />
-                <span className="text-muted">→</span>
-                <input
-                  type="date"
-                  value={compareRange.to}
-                  min={compareRange.from}
-                  onChange={(e) => e.target.value && setCompareRange({ ...compareRange, to: e.target.value })}
-                  className="h-8 rounded-md border border-line bg-surface px-2"
-                />
+                <DateRangePicker value={compareRange} onChange={setCompareRange} />
                 <button
                   onClick={() => setCompareRange(previousPeriod(range))}
-                  className="text-xs text-accent underline"
+                  className="btn btn-link btn-xs px-0"
                   title="Equal-length period just before the selected range"
                 >
                   Previous period
@@ -216,12 +185,12 @@ export function ReportsDashboard({
         {tab === 'dur' && (
           <div className="flex items-center gap-2 text-sm">
             <span className="text-xs text-muted">Values</span>
-            <div className="flex rounded-md border border-line bg-surface p-0.5">
+            <div className="join">
               {(['units', 'orders'] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => setMetric(m)}
-                  className={`rounded px-3 py-1 ${metric === m ? 'bg-accent-soft font-medium text-accent' : 'text-muted hover:text-ink'}`}
+                  className={`btn btn-sm join-item ${metric === m ? 'btn-primary' : 'font-normal'}`}
                 >
                   {m === 'units' ? 'Units sold' : 'Orders'}
                 </button>
@@ -230,11 +199,11 @@ export function ReportsDashboard({
           </div>
         )}
 
-        {loading && <span className="text-xs text-muted">Loading…</span>}
+        {loading && <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />}
       </div>
 
       {coverage && !hasAnyData && (
-        <div className="rounded-md border border-line bg-surface px-4 py-6 text-sm">{emptyState}</div>
+        <div className="rounded-box border border-line bg-surface px-4 py-6 text-sm shadow-sm">{emptyState}</div>
       )}
 
       {coverage && hasAnyData && <CoverageStrip coverage={coverage} />}

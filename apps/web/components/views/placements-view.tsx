@@ -82,7 +82,7 @@ export function PlacementsView(props: RangeProps) {
             </Card>
           </div>
           <div className={TABLE_WRAP}>
-            <table className="w-full border-collapse text-sm">
+            <table className="table table-sm">
               <thead className={THEAD}>
                 <tr className="text-xs text-muted">
                   <th className="px-3 py-2 text-left font-medium">Channel</th>
@@ -101,7 +101,7 @@ export function PlacementsView(props: RangeProps) {
               </thead>
               <tbody>
                 {data.rows.map((r) => (
-                  <tr key={key(r)} className="border-b border-line/60 align-top hover:bg-canvas">
+                  <tr key={key(r)} className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft">
                     <td className="px-3 py-1.5 text-xs font-semibold">{r.channel.toUpperCase()}</td>
                     <td className="whitespace-nowrap px-3 py-1.5">{NAMES[r.placement] ?? r.placement}</td>
                     <td className="num px-3 py-1.5 text-right">{fmtInt(r.campaigns)}</td>

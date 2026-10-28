@@ -19,7 +19,7 @@ export function Nav() {
   useEffect(() => setDraft(profileId), [profileId]);
 
   return (
-    <header className="border-b border-line bg-surface">
+    <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-6 px-4 sm:px-6">
         <span className="text-sm font-semibold tracking-tight">Amazon Dashboard</span>
         <nav className="flex gap-1">
@@ -29,7 +29,7 @@ export function Nav() {
               <Link
                 key={l.href}
                 href={l.href}
-                className={`rounded-md px-3 py-1.5 text-sm ${active ? 'bg-accent-soft font-medium text-accent' : 'text-muted hover:text-ink'}`}
+                className={`btn btn-sm ${active ? 'btn-soft btn-primary' : 'btn-ghost font-normal text-muted'}`}
               >
                 {l.label}
               </Link>
@@ -53,7 +53,7 @@ export function Nav() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onBlur={() => setProfileId(draft)}
-              className="h-8 w-40 rounded-md border border-line bg-surface px-2 text-sm outline-none focus:border-accent"
+              className="input input-sm w-40"
             />
           </form>
         )}

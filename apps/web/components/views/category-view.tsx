@@ -92,10 +92,10 @@ export function CategoryView(props: RangeProps) {
           </div>
 
           <div className={TABLE_WRAP}>
-            <table className="w-full border-collapse text-sm">
+            <table className="table table-sm">
               <thead className={THEAD}>
                 <tr className="text-xs text-muted">
-                  <th className="sticky left-0 z-30 bg-surface px-3 py-2 text-left font-medium">Category</th>
+                  <th className="sticky left-0 z-30 bg-base-200 px-3 py-2 text-left font-medium">Category</th>
                   <th className="px-3 py-2 text-right font-medium">ASINs</th>
                   <th className="px-3 py-2 text-right font-medium">Sales share</th>
                   {COLUMNS.map((c) => (
@@ -116,7 +116,7 @@ export function CategoryView(props: RangeProps) {
                   <tr
                     key={r.category}
                     onClick={() => setCategory(r.category === category ? '' : r.category)}
-                    className={`cursor-pointer border-b border-line/60 hover:bg-canvas ${r.category === category ? 'bg-accent-soft/50' : ''}`}
+                    className={`cursor-pointer border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft ${r.category === category ? 'bg-accent-soft!' : ''}`}
                     title="Click to show this category's ASINs below"
                   >
                     <td className={`sticky left-0 z-10 whitespace-nowrap bg-surface px-3 py-1.5 align-top ${r.category === 'Unmapped' || r.category.startsWith('(') ? 'text-warn' : ''}`}>
@@ -139,10 +139,10 @@ export function CategoryView(props: RangeProps) {
             </span>
           </h3>
           <div className={TABLE_WRAP}>
-            <table className="w-full border-collapse text-sm">
+            <table className="table table-sm">
               <thead className={THEAD}>
                 <tr className="text-xs text-muted">
-                  <th className="sticky left-0 z-30 w-32 min-w-32 bg-surface px-3 py-2 text-left font-medium">ASIN</th>
+                  <th className="sticky left-0 z-30 w-32 min-w-32 bg-base-200 px-3 py-2 text-left font-medium">ASIN</th>
                   <th className="min-w-64 px-3 py-2 text-left font-medium">Item-name</th>
                   <th className="px-3 py-2 text-left font-medium">Category</th>
                   {COLUMNS.map((c) => (
@@ -154,8 +154,8 @@ export function CategoryView(props: RangeProps) {
               </thead>
               <tbody>
                 {data.asinRows.map((r) => (
-                  <tr key={r.asin || '__missing'} className="border-b border-line/60 hover:bg-canvas">
-                    <td className="sticky left-0 z-10 w-32 min-w-32 bg-surface px-3 py-1.5 align-top font-mono text-xs">{r.asin || 'null'}</td>
+                  <tr key={r.asin || '__missing'} className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft">
+                    <td className="sticky left-0 z-10 w-32 min-w-32 bg-inherit px-3 py-1.5 align-top font-mono text-xs">{r.asin || 'null'}</td>
                     <td className="max-w-80 px-3 py-1.5 align-top">
                       <div className="truncate" title={r.title ?? ''}>
                         {r.title ?? '—'}

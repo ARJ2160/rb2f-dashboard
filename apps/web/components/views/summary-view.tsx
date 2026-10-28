@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 
 import { ErrorBox, Notes } from '@/components/notes';
 import { getSummary } from '@/lib/api';
+import { DatePicker } from '@/components/date-picker';
 import { fmtDateLong } from '@/lib/format';
 
 import { Select } from './shared';
@@ -71,31 +72,25 @@ export function SummaryView({ profileId }: { profileId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-1.5 text-xs text-muted">
+        <div className="flex items-center gap-1.5 text-xs text-muted">
           As of
-          <input
-            type="date"
-            value={asOf || data?.asOf || ''}
-            max={data?.autoAsOf ?? undefined}
-            onChange={(e) => setAsOf(e.target.value)}
-            className="h-8 rounded-md border border-line bg-surface px-2 text-sm text-ink"
-          />
-        </label>
+          <DatePicker value={asOf || data?.asOf || ''} max={data?.autoAsOf} onChange={setAsOf} />
+        </div>
         {asOf && data?.autoAsOf && asOf !== data.autoAsOf && (
-          <button onClick={() => setAsOf('')} className="text-xs text-accent underline">
+          <button onClick={() => setAsOf('')} className="btn btn-link btn-xs px-0">
             Back to latest ({fmtDateLong(data.autoAsOf)})
           </button>
         )}
         <Select label="Category" value={category} onChange={setCategory} options={data?.categories ?? (category ? [category] : [])} />
         {data?.asOf && !asOf && <span className="text-xs text-muted">Latest data: {fmtDateLong(data.asOf)}</span>}
-        {loading && <span className="text-xs text-muted">Loading…</span>}
+        {loading && <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />}
       </div>
 
       {error && <ErrorBox message={error} />}
 
       {data && p && (
         <div className="overflow-x-auto">
-          <table className="min-w-[760px] border-collapse bg-surface text-sm">
+          <table className="table table-sm w-auto min-w-[760px] bg-surface">
             <thead>
               <tr className="text-[15px] font-semibold">
                 <th className={`${head} py-2`} />
@@ -118,7 +113,7 @@ export function SummaryView({ profileId }: { profileId: string }) {
             </thead>
             <tbody>
               {data.rows.map((r) => (
-                <tr key={r.key} className="hover:bg-canvas">
+                <tr key={r.key} className="hover:bg-accent-soft">
                   <th className={`${head} whitespace-nowrap py-1.5 text-left font-semibold`}>{r.label}</th>
                   <td className={cell}>{fmtValue(r.mtd, r.format)}</td>
                   <td className={cell}>{fmtValue(r.pmtd, r.format)}</td>

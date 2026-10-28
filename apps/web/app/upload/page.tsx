@@ -15,9 +15,9 @@ const IN_SCOPE = Object.values(REPORT_TYPES)
   .map((t) => t.label);
 
 const STATUS_STYLE: Record<string, string> = {
-  stored: 'bg-good/10 text-good',
-  skipped: 'bg-canvas text-muted',
-  error: 'bg-bad/10 text-bad',
+  stored: 'badge-success',
+  skipped: 'badge-ghost',
+  error: 'badge-error',
 };
 
 export default function UploadPage() {
@@ -88,7 +88,7 @@ export default function UploadPage() {
             addFiles(e.dataTransfer.files);
           }}
           onClick={() => inputRef.current?.click()}
-          className={`cursor-pointer rounded-lg border-2 border-dashed px-6 py-12 text-center transition-colors ${
+          className={`cursor-pointer rounded-box border-2 border-dashed px-6 py-12 text-center transition-colors ${
             dragging ? 'border-accent bg-accent-soft' : 'border-line bg-surface hover:border-accent/50'
           }`}
         >
@@ -108,14 +108,14 @@ export default function UploadPage() {
         </div>
 
         {files.length > 0 && (
-          <div className="rounded-md border border-line bg-surface">
+          <div className="rounded-box border border-line bg-surface shadow-sm">
             <ul className="divide-y divide-line text-sm">
               {files.map((f) => (
                 <li key={f.name} className="flex items-center justify-between px-4 py-2">
                   <span className="truncate">{f.name}</span>
                   <span className="ml-4 flex items-center gap-3 text-xs text-muted">
                     {(f.size / 1024).toFixed(0)} KB
-                    <button onClick={() => setFiles(files.filter((x) => x !== f))} className="text-bad hover:underline">
+                    <button onClick={() => setFiles(files.filter((x) => x !== f))} className="btn btn-ghost btn-xs text-bad">
                       remove
                     </button>
                   </span>
@@ -126,7 +126,7 @@ export default function UploadPage() {
               <button
                 onClick={submit}
                 disabled={busy}
-                className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                className="btn btn-neutral"
               >
                 {busy ? 'Processing…' : `Upload ${files.length} file${files.length > 1 ? 's' : ''}`}
               </button>
@@ -136,7 +136,7 @@ export default function UploadPage() {
 
         {error && <ErrorBox message={error} />}
         {dimsError && (
-          <div className="rounded-md border border-bad/40 bg-surface px-4 py-3 text-sm text-bad">
+          <div role="alert" className="alert alert-error alert-soft block text-sm">
             Data was stored, but rebuilding the campaign filters / Branded-Competitor-Generic classes failed: {dimsError}. The reports will retry automatically; if this keeps happening, send me the API log.
           </div>
         )}
@@ -148,14 +148,14 @@ export default function UploadPage() {
         {history.length === 0 ? (
           <p className="text-xs text-muted">Nothing uploaded for this profile yet.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-md border border-line bg-surface text-xs">
+          <ul className="divide-y divide-line rounded-box border border-line bg-surface shadow-sm text-xs">
             {history.map((h) => (
               <li key={h.id} className="space-y-0.5 px-3 py-2">
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate font-medium" title={h.filename}>
                     {h.filename}
                   </span>
-                  <span className={`shrink-0 rounded px-1.5 py-0.5 ${STATUS_STYLE[h.status] ?? ''}`}>{h.status}</span>
+                  <span className={`badge badge-sm badge-soft shrink-0 ${STATUS_STYLE[h.status] ?? ''}`}>{h.status}</span>
                 </div>
                 <div className="text-muted">
                   {h.reportType ? (REPORT_TYPES[h.reportType as keyof typeof REPORT_TYPES]?.label ?? h.reportType) : 'unknown'}
@@ -173,9 +173,9 @@ export default function UploadPage() {
 
 function ResultsTable({ results }: { results: FileUploadResult[] }) {
   return (
-    <div className="overflow-x-auto rounded-md border border-line bg-surface">
-      <table className="w-full text-sm">
-        <thead className="border-b border-line text-left text-xs text-muted">
+    <div className="overflow-x-auto rounded-box border border-line bg-surface shadow-sm">
+      <table className="table table-sm">
+        <thead className="bg-base-200 text-left text-xs text-muted">
           <tr>
             <th className="px-3 py-2 font-medium">File / sheet</th>
             <th className="px-3 py-2 font-medium">Detected as</th>
@@ -186,7 +186,7 @@ function ResultsTable({ results }: { results: FileUploadResult[] }) {
         </thead>
         <tbody className="divide-y divide-line">
           {results.map((r, i) => (
-            <tr key={`${r.filename}-${i}`} className="align-top">
+            <tr key={`${r.filename}-${i}`} className="align-top hover:bg-base-200">
               <td className="px-3 py-2">
                 <div className="font-medium">{r.filename}</div>
                 {r.message && <div className="mt-0.5 text-xs text-muted">{r.message}</div>}
@@ -207,7 +207,7 @@ function ResultsTable({ results }: { results: FileUploadResult[] }) {
                 {r.status === 'stored' ? `${r.rowsStored ?? 0}/${r.rowsRead ?? 0}` : '—'}
               </td>
               <td className="px-3 py-2">
-                <span className={`rounded px-1.5 py-0.5 text-xs ${STATUS_STYLE[r.status] ?? ''}`}>{r.status}</span>
+                <span className={`badge badge-sm badge-soft ${STATUS_STYLE[r.status] ?? ''}`}>{r.status}</span>
               </td>
             </tr>
           ))}

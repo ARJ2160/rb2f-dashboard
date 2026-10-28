@@ -85,7 +85,7 @@ export function HourlyView(props: RangeProps) {
             />
           </Card>
           <div className={TABLE_WRAP}>
-            <table className="w-full border-collapse text-sm">
+            <table className="table table-sm">
               <thead className={THEAD}>
                 <tr className="text-xs text-muted">
                   <th className="px-3 py-2 text-left font-medium">Hour</th>
@@ -102,7 +102,7 @@ export function HourlyView(props: RangeProps) {
                 {data.rows.map((r) => {
                   const p = prevBy.get(r.hour);
                   return (
-                    <tr key={r.hour} className="border-b border-line/60 hover:bg-canvas">
+                    <tr key={r.hour} className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft">
                       <td className="num whitespace-nowrap px-3 py-1.5 align-top">{hourLabel(r.hour)}</td>
                       <MCell v={r.spendSharePct} prev={p?.spendSharePct} fmt={fmtPct} comparing={comparing} />
                       <AdCells m={r} prev={p} comparing={comparing} />
