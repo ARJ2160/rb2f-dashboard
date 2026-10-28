@@ -17,7 +17,7 @@ test('search terms: ad groups summed, Excel apostrophe stripped, target kept sep
   ];
   const r = parseSearchTerms('sp', headers, rows, ctx);
   assert.deepEqual(r.records, [
-    { date: '2026-09-14', channel: 'sp', campaignName: 'C1', target: 'close-match', matchType: '-', searchTerm: 'shoes for men', impressions: 10, clicks: 3, spend: 14.68, adSales: 2299, adUnits: 1 },
+    { date: '2026-09-14', channel: 'sp', campaignName: 'C1', target: 'close-match', matchType: '-', searchTerm: 'shoes for men', impressions: 10, clicks: 3, spend: 14.68, adSales: 2299, adUnits: 1, adOrders: null },
   ]);
 });
 

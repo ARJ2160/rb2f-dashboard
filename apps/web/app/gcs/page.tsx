@@ -13,10 +13,10 @@ import { fmtDateLong } from '@/lib/format';
 const BRAND_KEY = 'dash.gcsBrand';
 
 const STATUS_STYLE: Record<string, string> = {
-  stored: 'bg-good/10 text-good',
-  unchanged: 'bg-accent-soft text-accent',
-  skipped: 'bg-canvas text-muted',
-  error: 'bg-bad/10 text-bad',
+  stored: 'badge-success',
+  unchanged: 'badge-primary',
+  skipped: 'badge-ghost',
+  error: 'badge-error',
 };
 
 const reportLabel = (t: string) => REPORT_TYPES[t as keyof typeof REPORT_TYPES]?.label ?? t;
@@ -128,7 +128,7 @@ export default function GcsPage() {
 
   if (info && !info.configured) {
     return (
-      <div className="max-w-2xl space-y-3 rounded-md border border-line bg-surface px-5 py-4 text-sm">
+      <div className="max-w-2xl space-y-3 rounded-box border border-line bg-surface shadow-sm px-5 py-4 text-sm">
         <h1 className="text-base font-semibold">Connect the GCS warehouse</h1>
         <p className="text-muted">{info.error}</p>
         <ol className="list-decimal space-y-1 pl-5 text-muted">
@@ -151,7 +151,7 @@ export default function GcsPage() {
 
   return (
     <div className="space-y-5">
-      <section className="space-y-3 rounded-md border border-line bg-surface px-4 py-3">
+      <section className="space-y-3 rounded-box border border-line bg-surface shadow-sm px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="mr-auto">
             <h1 className="text-base font-semibold tracking-tight">GCS warehouse</h1>
@@ -172,7 +172,7 @@ export default function GcsPage() {
           )}
           <button
             onClick={() => void load(true)}
-            className="text-xs text-muted underline hover:text-ink"
+            className="btn btn-ghost btn-xs font-normal text-muted"
             title="Re-read the brand folders from the bucket"
           >
             Refresh brands
@@ -183,7 +183,7 @@ export default function GcsPage() {
               <button
                 onClick={() => void sync(false)}
                 disabled={running}
-                className="h-8 rounded-md bg-ink px-3 text-sm font-medium text-white disabled:opacity-50"
+                className="btn btn-sm btn-neutral"
                 title="Pull new or changed files from GCS"
               >
                 {running ? 'Syncing…' : 'Sync now'}
@@ -191,7 +191,7 @@ export default function GcsPage() {
               <button
                 onClick={() => void sync(true)}
                 disabled={running}
-                className="h-8 rounded-md border border-line px-3 text-sm text-muted hover:text-ink disabled:opacity-50"
+                className="btn btn-sm btn-outline border-line font-normal"
                 title="Re-ingest every file, even ones that haven't changed"
               >
                 Re-ingest all
@@ -205,7 +205,7 @@ export default function GcsPage() {
         {error && <ErrorBox message={error} />}
 
         {current && (current.filesSynced > 0 || job) && (
-          <button onClick={() => setShowFiles(!showFiles)} className="text-xs font-medium text-accent">
+          <button onClick={() => setShowFiles(!showFiles)} className="btn btn-link btn-xs self-start px-0">
             {showFiles ? 'Hide files' : `Show files (${current.filesSynced || job?.filesTotal || 0})`}
           </button>
         )}
@@ -219,7 +219,7 @@ export default function GcsPage() {
       </section>
 
       {info && info.brands.length === 0 && !info.error && (
-        <div className="rounded-md border border-line bg-surface px-4 py-6 text-sm text-muted">
+        <div className="rounded-box border border-line bg-surface shadow-sm px-4 py-6 text-sm text-muted">
           No brand folders found in gs://{info.bucket}.
         </div>
       )}
@@ -323,8 +323,8 @@ function FilesTable({
 
   return (
     <div className="overflow-x-auto rounded-md border border-line">
-      <table className="w-full text-sm">
-        <thead className="border-b border-line text-left text-xs text-muted">
+      <table className="table table-sm">
+        <thead className="bg-base-200 text-left text-xs text-muted">
           <tr>
             <th className="px-3 py-2 font-medium">File</th>
             <th className="px-3 py-2 font-medium">Detected as</th>
@@ -338,7 +338,7 @@ function FilesTable({
           {rows.map((r) => {
             const status = lastRun.get(r.file) === 'unchanged' ? 'unchanged' : r.status;
             return (
-              <tr key={r.objectName} className="align-top">
+              <tr key={r.objectName} className="align-top hover:bg-base-200">
                 <td className="px-3 py-2">
                   <div className="font-mono text-xs">{r.file}</div>
                   {r.message && <div className="mt-0.5 max-w-xl text-xs text-muted">{r.message}</div>}
@@ -350,7 +350,7 @@ function FilesTable({
                 <td className="num px-3 py-2 text-right text-xs">{r.rowsStored || '—'}</td>
                 <td className="whitespace-nowrap px-3 py-2 text-xs text-muted">{fmtWhen(r.updated)}</td>
                 <td className="px-3 py-2">
-                  <span className={`rounded px-1.5 py-0.5 text-xs ${STATUS_STYLE[status] ?? ''}`}>
+                  <span className={`badge badge-sm badge-soft ${STATUS_STYLE[status] ?? ''}`}>
                     {status}
                   </span>
                 </td>

@@ -4,6 +4,7 @@ import type { CoverageResponse, DsrResponse, DurMetric, DurResponse } from '@das
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { ChannelSplit, DsrTable } from '@/components/dsr-table';
+import { DateRangePicker } from '@/components/date-picker';
 import { DurTable } from '@/components/dur-table';
 import { ErrorBox, Notes } from '@/components/notes';
 import { getCoverage, getDsr, getDur } from '@/lib/api';
@@ -11,13 +12,15 @@ import { fmtDateLong, isoAddDays, isoToday } from '@/lib/format';
 import { CategoryView } from '@/components/views/category-view';
 import { PlacementsView } from '@/components/views/placements-view';
 import { SearchTermsView } from '@/components/views/search-terms-view';
+import { SqpView } from '@/components/views/sqp-view';
+import { HarvestView } from '@/components/views/harvest-view';
 import { StatesView } from '@/components/views/states-view';
 import { AdsView } from '@/components/views/ads-view';
 import { HourlyView } from '@/components/views/hourly-view';
 import { SummaryView } from '@/components/views/summary-view';
 import { Select, type Period } from '@/components/views/shared';
 
-type Tab = 'summary' | 'dsr' | 'dur' | 'category' | 'search' | 'placement' | 'state' | 'ads' | 'hourly';
+type Tab = 'summary' | 'dsr' | 'dur' | 'category' | 'search' | 'sqp' | 'harvest' | 'placement' | 'state' | 'ads' | 'hourly';
 
 const TABS: Array<{ id: Tab; label: string; hint: string }> = [
   { id: 'summary', label: 'MoM / WoW', hint: 'Month-to-date vs last month, last 7 days vs the 7 before — as of the latest data' },
@@ -26,6 +29,8 @@ const TABS: Array<{ id: Tab; label: string; hint: string }> = [
   { id: 'category', label: 'Category', hint: 'DSR columns by ASIN-mapper category' },
   { id: 'ads', label: 'Ads Analysis', hint: 'Ad types, targeting, Branded / Competitor / Generic' },
   { id: 'search', label: 'Search Terms', hint: 'SP + SB search terms, SD targets' },
+  { id: 'harvest', label: 'Keyword Harvesting', hint: 'SP / SB search terms with multiple orders that are not manual targets yet' },
+  { id: 'sqp', label: 'SQP', hint: 'Search Query Performance — queries where the brand beats the category but isn\'t targeted yet' },
   { id: 'placement', label: 'Placements', hint: 'SP + SB by Top of Search / Rest of Search / Product Pages' },
   { id: 'state', label: 'State Wise Data', hint: 'Sales and units by ship-to state' },
   { id: 'hourly', label: 'Hour-wise', hint: 'Ad metrics by hour of day' },
@@ -115,8 +120,9 @@ export function ReportsDashboard({
   }, [profileId, tab, range, metric, category]);
 
   const hasAnyData = coverage?.sources.some((s) => s.days > 0);
-  const isView = tab !== 'dsr' && tab !== 'dur' && tab !== 'summary';
-  const isSummary = tab === 'summary';
+  // MoM / WoW, SQP and Keyword Harvesting choose their own periods, so the date range doesn't apply to them.
+  const isSummary = tab === 'summary' || tab === 'sqp' || tab === 'harvest';
+  const isView = tab !== 'dsr' && tab !== 'dur' && !isSummary;
   const compare: Period | null =
     isView && compareOn && compareRange && compareRange.from <= compareRange.to ? compareRange : null;
   const toggleCompare = () => {
@@ -132,7 +138,7 @@ export function ReportsDashboard({
           <p className="text-xs text-muted">{subtitle ?? `Profile: ${profileId}`}</p>
         </div>
 
-        <div className="flex flex-wrap rounded-md border border-line bg-surface p-0.5" role="tablist">
+        <div className="tabs tabs-border basis-full flex-wrap border-b border-line" role="tablist">
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -140,7 +146,7 @@ export function ReportsDashboard({
               aria-selected={tab === t.id}
               title={t.hint}
               onClick={() => setTab(t.id)}
-              className={`rounded px-3 py-1.5 text-sm ${tab === t.id ? 'bg-ink text-white' : 'text-muted hover:text-ink'}`}
+              className={`tab ${tab === t.id ? 'tab-active font-medium text-accent' : 'text-muted'}`}
             >
               {t.label}
             </button>
@@ -148,53 +154,21 @@ export function ReportsDashboard({
         </div>
 
         {range && !isSummary && (
-          <div className="flex items-center gap-2 text-sm">
-            <input
-              type="date"
-              value={range.from}
-              max={range.to}
-              onChange={(e) => e.target.value && setRange({ ...range, from: e.target.value })}
-              className="h-8 rounded-md border border-line bg-surface px-2"
-            />
-            <span className="text-muted">→</span>
-            <input
-              type="date"
-              value={range.to}
-              min={range.from}
-              onChange={(e) => e.target.value && setRange({ ...range, to: e.target.value })}
-              className="h-8 rounded-md border border-line bg-surface px-2"
-            />
-          </div>
+          <DateRangePicker value={range} onChange={setRange} />
         )}
 
         {range && isView && (
           <div className="flex items-center gap-2 text-sm">
             <label className="flex items-center gap-1.5 text-xs text-muted">
-              <input type="checkbox" checked={compareOn} onChange={toggleCompare} />
+              <input type="checkbox" className="checkbox checkbox-xs checkbox-primary" checked={compareOn} onChange={toggleCompare} />
               Compare with
             </label>
             {compareOn && compareRange && (
               <>
-                <input
-                  type="date"
-                  value={compareRange.from}
-                  max={compareRange.to}
-                  onChange={(e) =>
-                    e.target.value && setCompareRange({ ...compareRange, from: e.target.value })
-                  }
-                  className="h-8 rounded-md border border-line bg-surface px-2"
-                />
-                <span className="text-muted">→</span>
-                <input
-                  type="date"
-                  value={compareRange.to}
-                  min={compareRange.from}
-                  onChange={(e) => e.target.value && setCompareRange({ ...compareRange, to: e.target.value })}
-                  className="h-8 rounded-md border border-line bg-surface px-2"
-                />
+                <DateRangePicker value={compareRange} onChange={setCompareRange} />
                 <button
                   onClick={() => setCompareRange(previousPeriod(range))}
-                  className="text-xs text-accent underline"
+                  className="btn btn-link btn-xs px-0"
                   title="Equal-length period just before the selected range"
                 >
                   Previous period
@@ -216,12 +190,12 @@ export function ReportsDashboard({
         {tab === 'dur' && (
           <div className="flex items-center gap-2 text-sm">
             <span className="text-xs text-muted">Values</span>
-            <div className="flex rounded-md border border-line bg-surface p-0.5">
+            <div className="join">
               {(['units', 'orders'] as const).map((m) => (
                 <button
                   key={m}
                   onClick={() => setMetric(m)}
-                  className={`rounded px-3 py-1 ${metric === m ? 'bg-accent-soft font-medium text-accent' : 'text-muted hover:text-ink'}`}
+                  className={`btn btn-sm join-item ${metric === m ? 'btn-primary' : 'font-normal'}`}
                 >
                   {m === 'units' ? 'Units sold' : 'Orders'}
                 </button>
@@ -230,17 +204,19 @@ export function ReportsDashboard({
           </div>
         )}
 
-        {loading && <span className="text-xs text-muted">Loading…</span>}
+        {loading && <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />}
       </div>
 
-      {coverage && !hasAnyData && (
-        <div className="rounded-md border border-line bg-surface px-4 py-6 text-sm">{emptyState}</div>
+      {coverage && !hasAnyData && tab !== 'sqp' && (
+        <div className="rounded-box border border-line bg-surface px-4 py-6 text-sm shadow-sm">{emptyState}</div>
       )}
 
       {coverage && hasAnyData && <CoverageStrip coverage={coverage} />}
       {error && <ErrorBox message={error} />}
 
-      {isSummary && <SummaryView profileId={profileId} />}
+      {tab === 'summary' && <SummaryView profileId={profileId} />}
+      {tab === 'sqp' && <SqpView profileId={profileId} />}
+      {tab === 'harvest' && <HarvestView profileId={profileId} />}
       {tab === 'dsr' && dsr && (
         <>
           <ChannelSplit data={dsr} />

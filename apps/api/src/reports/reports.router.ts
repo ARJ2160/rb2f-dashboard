@@ -8,9 +8,12 @@ import { getCoverage } from './coverage.service';
 import { ensureDims, getBrandTerms, markDimsStale, rebuildCampaignDims, setBrandTerms } from './dims';
 import { getDsr } from './dsr.service';
 import { getDur } from './dur.service';
+import { getHarvest } from './harvest.service';
 import { getHourly } from './hourly.service';
 import { getPlacements } from './placements.service';
 import { getSearchTerms } from './search-terms.service';
+import { getSqp } from './sqp.service';
+import { DEFAULT_MIN_BRAND_CLICKS } from './sqp-scoring';
 import { getStates } from './states.service';
 import { getSummary } from './summary.service';
 
@@ -81,6 +84,54 @@ reportsRouter.get('/search-terms', async (req, res) => {
     })
     .parse(req.query);
   res.json(await withDims(q.profileId, () => getSearchTerms(q.profileId, q.from, q.to, o)));
+});
+
+/**
+ * GET /api/reports/sqp?profileId&periodStart&periodEnd&view=opportunities|report&q&launchIn&targeted&strength&sort&minClicks&limit
+ * Search Query Performance by whole reporting period (newest when none given).
+ */
+reportsRouter.get('/sqp', async (req, res) => {
+  const isoOpt = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('').transform(() => undefined));
+  const o = z
+    .object({
+      profileId: profileIdSchema,
+      periodStart: isoOpt,
+      periodEnd: isoOpt,
+      view: z.enum(['opportunities', 'report']).default('opportunities'),
+      q: optText,
+      launchIn: z.enum(['SP', 'SB', 'SP & SB']).optional().or(z.literal('').transform(() => undefined)),
+      targeted: z.enum(['Not Targeted', 'SP', 'SB', 'SP & SB']).optional().or(z.literal('').transform(() => undefined)),
+      strength: z.enum(['Strong', 'Medium', 'Low']).optional().or(z.literal('').transform(() => undefined)),
+      sort: z
+        .enum(['strength', 'volume', 'acos', 'spend', 'impressionShare', 'clickShare', 'cartAddShare', 'purchaseShare', 'purchasesBrand'])
+        .default('strength'),
+      // Clamped: 0 would turn every one-click fluke into an "opportunity".
+      minClicks: z.coerce.number().int().min(1).max(500).default(DEFAULT_MIN_BRAND_CLICKS),
+      limit: z.coerce.number().int().min(1).max(2000).default(500),
+    })
+    .parse(req.query);
+  const { profileId, ...opts } = o;
+  res.json(await getSqp(profileId, opts));
+});
+
+/** GET /api/reports/harvest?profileId&days=7|30|60&minOrders&q&harvestInto&performingIn&kind&sort&limit — keyword harvesting. */
+reportsRouter.get('/harvest', async (req, res) => {
+  const ch = z.enum(['SP', 'SB', 'SP & SB']).optional().or(z.literal('').transform(() => undefined));
+  const o = z
+    .object({
+      profileId: profileIdSchema,
+      days: z.coerce.number().pipe(z.union([z.literal(7), z.literal(30), z.literal(60)])).default(30),
+      minOrders: z.coerce.number().int().min(1).max(1000).default(2),
+      q: optText,
+      harvestInto: ch,
+      performingIn: ch,
+      kind: z.enum(['Keyword', 'ASIN']).optional().or(z.literal('').transform(() => undefined)),
+      sort: z.enum(['orders', 'adSales', 'spend', 'acos', 'cvr']).default('orders'),
+      limit: z.coerce.number().int().min(1).max(2000).default(500),
+    })
+    .parse(req.query);
+  const { profileId, ...opts } = o;
+  res.json(await getHarvest(profileId, opts));
 });
 
 /** GET /api/reports/placements?…&channel&category&adType&targeting&branding */

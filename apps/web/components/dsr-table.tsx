@@ -39,22 +39,22 @@ const CHANNEL_LABEL = { sp: 'SP', sb: 'SB', sd: 'SD' } as const;
 export function ChannelSplit({ data }: { data: DsrResponse }) {
   const total = data.byChannel.reduce((a, c) => a + c.spend, 0);
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="stats stats-vertical w-full border border-line bg-base-100 shadow-sm sm:stats-horizontal">
       {data.byChannel.map((c) => (
-        <div key={c.channel} className="min-w-44 rounded-md border border-line bg-surface px-3 py-2">
-          <div className="flex items-baseline justify-between gap-3">
-            <span className="text-xs font-semibold">{CHANNEL_LABEL[c.channel]}</span>
-            <span className={`text-xs ${c.days ? 'text-muted' : 'text-warn'}`}>
-              {c.days ? `${c.days}/${data.days} days` : 'no data'}
-            </span>
+        <div key={c.channel} className="stat px-4 py-3">
+          <div className="stat-title flex items-baseline justify-between gap-3 text-xs">
+            <span className="font-semibold text-ink">{CHANNEL_LABEL[c.channel]}</span>
+            <span className={c.days ? 'text-muted' : 'text-warn'}>{c.days ? `${c.days}/${data.days} days` : 'no data'}</span>
           </div>
-          <div className="num mt-0.5 text-sm">
-            Spend {fmtMoney(c.spend)}
-            <span className="text-muted"> · {total ? fmtPct((c.spend / total) * 100) : '—'}</span>
+          <div className="stat-value num text-xl">
+            {fmtMoney(c.spend)}
+            <span className="ml-1.5 text-sm font-normal text-muted">{total ? fmtPct((c.spend / total) * 100) : '—'} of spend</span>
           </div>
-          <div className="num text-xs text-muted">Ad Sales {fmtMoney(c.adSales)} · ACoS {c.adSales ? fmtPct((c.spend / c.adSales) * 100) : '—'}</div>
+          <div className="stat-desc num">
+            Ad Sales {fmtMoney(c.adSales)} · ACoS {c.adSales ? fmtPct((c.spend / c.adSales) * 100) : '—'}
+          </div>
           {c.days > 0 && (
-            <div className={`text-xs ${c.campaignDays ? 'text-warn' : 'text-muted'}`}>
+            <div className={`stat-desc ${c.campaignDays ? 'text-warn' : ''}`}>
               {c.campaignDays === 0
                 ? c.channel === 'sb'
                   ? 'Source: SB Attributed Purchases (spend prorated)'
@@ -70,11 +70,11 @@ export function ChannelSplit({ data }: { data: DsrResponse }) {
 
 export function DsrTable({ data }: { data: DsrResponse }) {
   return (
-    <div className="max-h-[70vh] overflow-auto rounded-md border border-line bg-surface">
-      <table className="w-full border-collapse text-sm">
-        <thead className="sticky top-0 z-20 bg-surface shadow-[0_1px_0_var(--color-line)]">
+    <div className="max-h-[70vh] overflow-auto rounded-box border border-line bg-surface shadow-sm">
+      <table className="table table-sm">
+        <thead className="sticky top-0 z-20 bg-base-200 shadow-[0_1px_0_var(--color-line)]">
           <tr className="text-xs text-muted">
-            <th className="sticky left-0 z-30 bg-surface px-3 py-2 text-left font-medium">Date</th>
+            <th className="sticky left-0 z-30 bg-base-200 px-3 py-2 text-left font-medium">Date</th>
             {COLUMNS.map((c) => (
               <th key={c.key} className="whitespace-nowrap px-3 py-2 text-right font-medium">
                 {c.label}
@@ -92,8 +92,8 @@ export function DsrTable({ data }: { data: DsrResponse }) {
         </thead>
         <tbody>
           {data.rows.map((r) => (
-            <tr key={r.date} className="border-b border-line/60 hover:bg-canvas">
-              <td className="sticky left-0 z-10 whitespace-nowrap bg-surface px-3 py-1.5">{fmtDateLong(r.date)}</td>
+            <tr key={r.date} className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft">
+              <td className="sticky left-0 z-10 whitespace-nowrap bg-inherit px-3 py-1.5">{fmtDateLong(r.date)}</td>
               <Cells m={r} />
             </tr>
           ))}

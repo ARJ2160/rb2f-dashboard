@@ -128,7 +128,7 @@ function Section({ title, keyLabel, countLabel, order, group, prev, metric, comp
           />
         </div>
         <div className="overflow-auto">
-          <table className="w-full border-collapse text-sm">
+          <table className="table table-sm">
             <thead className={THEAD}>
               <tr className="text-xs text-muted">
                 <th className="px-3 py-2 text-left font-medium">{keyLabel}</th>
@@ -148,7 +148,7 @@ function Section({ title, keyLabel, countLabel, order, group, prev, metric, comp
               {rows.map((r) => {
                 const p = prevBy.get(r.key);
                 return (
-                  <tr key={r.key} className="border-b border-line/60 hover:bg-canvas">
+                  <tr key={r.key} className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft">
                     <td className="whitespace-nowrap px-3 py-1.5 align-top font-medium">{r.key}</td>
                     <MCell v={r.count} prev={p?.count} fmt={fmtInt} comparing={comparing} />
                     <MCell v={r.spendSharePct} prev={p?.spendSharePct} fmt={fmtPct} comparing={comparing} />
@@ -184,7 +184,7 @@ function BrandTerms({ profileId, onSaved }: { profileId: string; onSaved: () => 
   }, [profileId]);
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="text-xs text-accent underline">
+      <button onClick={() => setOpen(true)} className="btn btn-link btn-xs px-0">
         Brand terms: {text || '—'}
       </button>
     );
@@ -210,12 +210,12 @@ function BrandTerms({ profileId, onSaved }: { profileId: string; onSaved: () => 
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="cult, avant"
-        className="h-8 w-56 rounded-md border border-line bg-surface px-2 text-sm"
+        className="input input-sm w-56"
       />
-      <button disabled={busy} onClick={save} className="h-8 rounded-md bg-ink px-3 text-white disabled:opacity-50">
+      <button disabled={busy} onClick={save} className="btn btn-sm btn-neutral">
         {busy ? 'Reclassifying…' : 'Save'}
       </button>
-      <button onClick={() => setOpen(false)} className="text-muted">
+      <button onClick={() => setOpen(false)} className="btn btn-ghost btn-sm">
         Cancel
       </button>
       {msg && <span className="text-bad">{msg}</span>}

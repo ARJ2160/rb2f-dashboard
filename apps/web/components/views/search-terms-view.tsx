@@ -87,7 +87,7 @@ export function SearchTermsView(props: RangeProps) {
             value={qDraft}
             onChange={(e) => setQDraft(e.target.value)}
             placeholder="Search terms…"
-            className="h-8 w-52 rounded-md border border-line bg-surface px-2 text-sm"
+            className="input input-sm w-52"
           />
           <Select label="Channel" value={channel} onChange={setChannel} options={CHANNELS} />
           <AdFilterBar value={filters} onChange={setFilters} options={data?.filterOptions} />
@@ -113,10 +113,10 @@ export function SearchTermsView(props: RangeProps) {
             </Card>
           </div>
           <div className={TABLE_WRAP}>
-            <table className="w-full border-collapse text-sm">
+            <table className="table table-sm">
               <thead className={THEAD}>
                 <tr className="text-xs text-muted">
-                  <th className="sticky left-0 z-30 min-w-64 bg-surface px-3 py-2 text-left font-medium">Search term</th>
+                  <th className="sticky left-0 z-30 min-w-64 bg-base-200 px-3 py-2 text-left font-medium">Search term</th>
                   <th className="px-3 py-2 text-left font-medium">Channel</th>
                   <th className="px-3 py-2 text-left font-medium">Branding</th>
                   <th className="min-w-56 px-3 py-2 text-left font-medium">Targeting</th>
@@ -131,8 +131,8 @@ export function SearchTermsView(props: RangeProps) {
               </thead>
               <tbody>
                 {data.rows.map((r) => (
-                  <tr key={r.searchTerm} className="border-b border-line/60 align-top hover:bg-canvas">
-                    <td className="sticky left-0 z-10 max-w-80 bg-surface px-3 py-1.5">
+                  <tr key={r.searchTerm} className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft">
+                    <td className="sticky left-0 z-10 max-w-80 bg-inherit px-3 py-1.5">
                       <div className="truncate" title={r.searchTerm}>
                         {r.searchTerm}
                       </div>
