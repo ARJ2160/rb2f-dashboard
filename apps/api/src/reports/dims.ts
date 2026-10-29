@@ -1,6 +1,7 @@
 import { sql, type SQL } from 'drizzle-orm';
 
 import { db } from '../db/client';
+import { log } from '../lib/logger';
 
 /** Campaign join key used everywhere (matches campaignKeyOf in the mapper parser). */
 export const ck = (col: string) => sql.raw(`lower(regexp_replace(btrim(${col}), '\\s+', ' ', 'g'))`);
@@ -249,12 +250,12 @@ export function ensureDims(profileId: string): Promise<string | null> {
       if (seeded || r?.missing_terms || r?.missing_dims) {
         const t0 = Date.now();
         const n = await rebuildCampaignDims(profileId);
-        console.log(`[dims] rebuilt ${n} campaign(s) for "${profileId}" in ${Date.now() - t0} ms`);
+        log.info(`Rebuilt ${n} campaign dimension(s)`, { profileId, ms: Date.now() - t0 });
       }
       fresh.add(profileId);
       return null;
     } catch (err) {
-      console.error('[dims] rebuild failed', err);
+      log.error('Campaign dims rebuild failed', { err, profileId });
       return err instanceof Error ? err.message : String(err);
     } finally {
       inflight.delete(profileId);

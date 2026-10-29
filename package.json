@@ -11,7 +11,7 @@
     "dev": "concurrently -n api,web -c blue,magenta \"cd apps/api && bun run dev\" \"cd apps/web && bun run dev\"",
     "dev:api": "cd apps/api && bun run dev",
     "dev:web": "cd apps/web && bun run dev",
-    "build": "cd apps/api && bun run build && cd ../web && bun run build",
+    "build": "cd apps/web && bun run build",
     "typecheck": "cd packages/shared && bun run typecheck && cd ../../apps/api && bun run typecheck && cd ../web && bun run typecheck",
     "test": "cd apps/api && bun run test",
     "db:up": "docker compose up -d db",

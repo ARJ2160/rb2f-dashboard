@@ -4,15 +4,16 @@ Upload raw Amazon **Seller Central / Vendor Central / Ads** exports → the API 
 
 Business logic follows `GCP_Dashboard_Rule_Book.md` (§3 categorisation, §4 Seller + Vendor combination, §7 metric formulas, §9 cleaning, §10 DSR/DUR).
 
-## Layout (npm workspaces monorepo)
+## Layout (Bun workspaces monorepo)
 
 ```
 apps/
-  api/        Express 5 + TypeScript + Drizzle ORM (Postgres)   → http://localhost:4000
-  web/        Next.js 16 (App Router) + Tailwind 4              → http://localhost:3000
+  api/        Express 5 + TypeScript on Bun + Drizzle ORM (Postgres)   → http://localhost:4000
+  web/        Next.js 16 (App Router) + Tailwind 4                     → http://localhost:3000
 packages/
   shared/     Types + metric formulas used by both (ships TS source, no build step)
 docker-compose.yml   local Postgres 16
+apps/*/Dockerfile    production images (Cloud Run); cloudbuild.yaml deploys them
 ```
 
 ```
@@ -28,10 +29,12 @@ apps/api/src
     ingest.service.ts        file → sheets → detect → parse → store, per-sheet results
     uploads.router.ts        POST/GET /api/uploads
   gcs/
-    gcs-client.ts            read-only GCS JSON API client (service-account JWT, no Google SDK)
+    gcs-client.ts            read-only GCS JSON API client (key-file JWT locally, metadata server on Cloud Run; no Google SDK)
     paths.ts                 bucket layout → brands / files (pure, unit-tested)
     gcs-sync.service.ts      bucket files → the same ingest pipeline, per brand profile
     gcs.router.ts            /api/gcs/*
+  lib/limits.ts              rate limiter, semaphore, cooldowns (in memory — one API instance)
+  middleware/rate-limit.ts   per-user limits on /api, uploads and syncs
   reports/
     dsr.service.ts           GET /api/reports/dsr
     dur.service.ts           GET /api/reports/dur
@@ -45,6 +48,7 @@ apps/web
   app/upload/page.tsx        drag-and-drop upload + per-sheet results + history
   app/reports/page.tsx       report tabs for the profile in the top bar (uploaded data)
   app/gcs/page.tsx           same report tabs for a brand synced from the GCS warehouse
+  app/api/[...path]/route.ts every browser /api/* call is forwarded to the API (lib/api-proxy.ts)
   components/reports-dashboard.tsx  the shared report tabs used by both pages
   components/blinkit/        Blinkit report tabs (shown on /gcs when "Blinkit" is selected)
   lib/blinkit-api.ts         /api/blinkit/* client
@@ -53,22 +57,36 @@ packages/shared/src/blinkit  Blinkit types, metric formulas, city rule, DOC math
 
 ## Getting started
 
-Requirements: **Node 22+**, and Docker (for Postgres) — or any Postgres 14+ and a `DATABASE_URL`.
+Requirements: **Bun 1.3+**, **Node 22+** (Next.js runs on it), and Docker (for Postgres) — or any Postgres 14+ and a `DATABASE_URL`.
 
 ```bash
-npm install
-npm run db:up                         # starts Postgres on :5432 (user/pass/db = dash)
+bun install
+bun run db:up                         # starts Postgres on :5432 (see docker-compose.yml)
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
-npm run db:migrate                    # creates the tables
-npm run dev                           # api :4000 + web :3000
+bun run db:migrate                    # creates the tables
+bun run dev                           # api :4000 + web :3000
 ```
+
+The browser only talks to the web app: `/api/*` on :3000 is forwarded to the API (`API_INTERNAL_URL`), locally and in production.
 
 Open http://localhost:3000 → **Upload** → drop your exports → **Reports**.
 
-**Upgrading an existing install:** `npm install` (new web dependency `@svg-maps/india`) → `npm run db:migrate` (0004–0006 recreate the Advertised Product table and add the campaign-dimension tables) → re-upload the SP/SD Advertised Product, campaign, search-term and placement exports so the per-campaign dimensions are rebuilt.
+**Upgrading an existing install:** `bun install` (new web dependency `@svg-maps/india`) → `bun run db:migrate` (0004–0006 recreate the Advertised Product table and add the campaign-dimension tables) → re-upload the SP/SD Advertised Product, campaign, search-term and placement exports so the per-campaign dimensions are rebuilt.
 
-Other scripts: `npm run typecheck`, `npm test`, `npm run build`, `npm run db:generate` (after editing `apps/api/src/db/schema.ts`), `cd apps/api && npm run db:studio`. Works the same with `bun run` in place of `npm run`.
+Other scripts: `bun run typecheck`, `bun run test`, `bun run build` (web), `bun run db:generate` (after editing `apps/api/src/db/schema.ts`), `cd apps/api && bun run db:studio`. The API needs no build: Bun runs its TypeScript directly.
+
+## Production
+
+Runs on Google Cloud: two Cloud Run services (web behind IAP sign-in, private API as one always-on instance), Cloud SQL Postgres 16, a Cloud Run job for migrations, deployed by `cloudbuild.yaml` on every push to `master`. Step-by-step setup is in the go-live runbook.
+
+Safeguards built in:
+
+- **Sync**: one job per brand (clicking again joins it), at most `SYNC_MAX_CONCURRENT` (2) syncs at once, *Sync now* cools down `SYNC_COOLDOWN_SEC` (120 s) after a sync, *Re-ingest all* runs at most once per `REINGEST_COOLDOWN_MIN` (30 min) per brand and asks for confirmation. The buttons show the countdown.
+- **Rate limits per signed-in user**: 600 API requests / min, 30 uploads / 10 min, 20 sync requests / 10 min (429 + `Retry-After`).
+- **Uploads**: per-file size and count limits, content must be a real spreadsheet / CSV, filenames sanitised; at most `INGEST_CONCURRENCY` (2) files are parsed at once across uploads and syncs, so memory stays bounded.
+- **Security**: IAP sign-in (the proxy verifies IAP's signed JWT before trusting the email), the API accepts only the web service's identity, an allowlist of headers crosses the proxy, security headers + CSP on every page, helmet on the API, no key files in production (GCS uses the API's service account).
+- **Operations**: JSON logs for Cloud Logging / Error Reporting (uploads and syncs logged with the user), `/health` and `/health/db`, DB pool limits + statement timeout, graceful shutdown on SIGTERM, migrations and per-brand syncs behind Postgres advisory locks (safe while two revisions overlap during a deploy).
 
 ## Upload flow
 
@@ -132,9 +150,9 @@ The page has an **Amazon | Blinkit** switch next to the brand picker (remembered
 
 1. Service account with **Storage Object Viewer** on the bucket → download its JSON key (e.g. `apps/api/gcs-service-account.json` — `*service-account*.json` is git-ignored).
 2. `apps/api/.env`: `GCS_CREDENTIALS_FILE=./gcs-service-account.json` (or `GOOGLE_APPLICATION_CREDENTIALS`), optionally `GCS_BUCKET`, `GCS_MARKETPLACE_FOLDER`, `GCS_BLINKIT_FOLDER`, `GCS_SYNC_INTERVAL_MIN` (syncs Amazon and Blinkit), `GCS_MAX_FILE_MB`.
-3. `npm run db:migrate` (adds `gcs_objects`, migration 0007) → restart the API → open **GCS**.
+3. `bun run db:migrate` (adds `gcs_objects`, migration 0007) → restart the API → open **GCS**.
 
-No new npm packages: the client signs the service-account JWT with `node:crypto` and calls the GCS JSON API with `fetch`, using the read-only scope.
+On Cloud Run no key is used: the API authenticates as its own service account through the metadata server (grant that account Storage Object Viewer on the bucket). No Google SDK: the client signs the key-file JWT with `node:crypto` and calls the GCS JSON API with `fetch`.
 
 ## Vendor Central rules
 
@@ -218,7 +236,7 @@ Search-term level views (Search Terms; Ads Analysis targeting/branding tables) u
 | GET / PUT | `/api/reports/brand-terms?profileId` | PUT `{ "terms": ["cult", "avant"] }` reclassifies |
 | GET | `/api/reports/states?profileId&from&to&source&category` | State Wise Data |
 | GET | `/api/gcs/brands?refresh=1&marketplace=amazon\|blinkit` | brand folders in the bucket, last sync, running job |
-| POST | `/api/gcs/sync` | `{ "brand": "eatopia", "force": false, "marketplace": "blinkit" }` → 202 + job (runs in background) |
+| POST | `/api/gcs/sync` | `{ "brand": "eatopia", "force": false, "marketplace": "blinkit" }` → 202 + job (runs in background); 429 during a cooldown or when too many syncs run |
 | GET | `/api/gcs/files?brand=&marketplace=` | synced objects for a brand (ledger) |
 | GET | `/api/blinkit/meta?profileId` | ranges, categories, campaigns + their geography, unmapped items / campaigns, snapshots |
 | GET | `/api/blinkit/mom?profileId&asOf&category` | MoM / WoW (same shape as `/api/reports/summary`) |
@@ -231,7 +249,8 @@ Search-term level views (Search Terms; Ads Analysis targeting/branding tables) u
 | GET | `/api/blinkit/inventory?profileId&snapshot&category` | run rate + days of cover per item × feeder |
 | GET | `/api/blinkit/inventory/trend?profileId&category&itemId&facilityId` | DOC across daily snapshots |
 | POST | `/api/blinkit/uploads` | multipart `files`, `profileId` — Blinkit files for a non-GCS profile |
-| GET | `/health` | |
+| GET | `/health` | liveness |
+| GET | `/health/db` | readiness — 503 when the database doesn't answer |
 
 ## Blinkit
 
@@ -267,5 +286,5 @@ Setup: `bun install` (no new packages) → `bun run db:migrate` (0010) → put f
 
 1. Add/flip it in `packages/shared/src/report-types.ts` (`inScope: true`).
 2. Write a pure parser in `apps/api/src/ingestion/parsers/` + a test in `apps/api/test/`.
-3. Add a table in `db/schema.ts` → `npm run db:generate` → `npm run db:migrate`.
+3. Add a table in `db/schema.ts` → `bun run db:generate` → `bun run db:migrate`.
 4. Wire it in `ingest.service.ts` and `store.ts`.

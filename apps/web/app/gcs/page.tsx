@@ -40,6 +40,28 @@ function fmtWhen(iso: string | null): string {
   });
 }
 
+/** Milliseconds until an ISO time (0 when it has passed or is unset). */
+function msUntil(iso: string | null | undefined, now: number): number {
+  return iso ? Math.max(0, Date.parse(iso) - now) : 0;
+}
+
+function fmtWait(ms: number): string {
+  const s = Math.ceil(ms / 1000);
+  return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
+}
+
+/** Current time, re-read every second while `active` (drives the cooldown countdowns). */
+function useNow(active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return undefined;
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [active]);
+  return now;
+}
+
 function range(from?: string | null, to?: string | null) {
   if (!from) return '—';
   return `${fmtDateLong(from)}${to && to !== from ? ` – ${fmtDateLong(to)}` : ''}`;
@@ -58,6 +80,8 @@ export default function GcsPage() {
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   const [showFiles, setShowFiles] = useState(false);
+  /** A sync request is in flight — blocks double clicks. */
+  const [requesting, setRequesting] = useState(false);
   const autoStarted = useRef(new Set<string>());
   const lastFinished = useRef<string | null | undefined>(undefined);
 
@@ -130,18 +154,36 @@ export default function GcsPage() {
   const job = current?.job ?? null;
   const running = job?.state === 'running';
 
+  // Cooldowns from the API: after a sync, "Sync now" waits a couple of minutes and "Re-ingest all" longer.
+  const now = useNow(Boolean(current?.syncAvailableAt || current?.reingestAvailableAt));
+  const syncWait = msUntil(current?.syncAvailableAt, now);
+  const reingestWait = msUntil(current?.reingestAvailableAt, now);
+  const reingestEvery = info?.limits?.reingestCooldownMin;
+
   const sync = useCallback(
     async (force = false) => {
-      if (!brand) return;
+      if (!brand || requesting) return;
+      if (
+        force &&
+        !window.confirm(
+          `Re-ingest every ${marketplace === 'blinkit' ? 'Blinkit' : 'Amazon'} file for ${brand}?\n\n` +
+            'This re-processes the whole folder and can take several minutes' +
+            (reingestEvery ? `; it can run once every ${reingestEvery} minutes per brand.` : '.')
+        )
+      )
+        return;
       setError(null);
+      setRequesting(true);
       try {
         await startGcsSync(brand, force, marketplace ?? 'amazon');
-        await load();
       } catch (e) {
         setError((e as Error).message);
+      } finally {
+        await load();
+        setRequesting(false);
       }
     },
-    [brand, load, marketplace]
+    [brand, load, marketplace, requesting, reingestEvery]
   );
 
   // Poll while a sync runs…
@@ -238,19 +280,23 @@ export default function GcsPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => void sync(false)}
-                disabled={running}
+                disabled={running || requesting || syncWait > 0}
                 className="btn btn-sm btn-neutral"
-                title="Pull new or changed files from GCS"
+                title={syncWait > 0 ? 'Just synced — available again shortly' : 'Pull new or changed files from GCS'}
               >
-                {running ? 'Syncing…' : 'Sync now'}
+                {running ? 'Syncing…' : syncWait > 0 ? `Sync again in ${fmtWait(syncWait)}` : 'Sync now'}
               </button>
               <button
                 onClick={() => void sync(true)}
-                disabled={running}
+                disabled={running || requesting || reingestWait > 0}
                 className="btn btn-sm btn-outline border-line font-normal"
-                title="Re-ingest every file, even ones that haven't changed"
+                title={
+                  reingestWait > 0
+                    ? `Re-ingest is available again in ${fmtWait(reingestWait)}`
+                    : "Re-ingest every file, even ones that haven't changed"
+                }
               >
-                Re-ingest all
+                {reingestWait > 0 ? `Re-ingest in ${fmtWait(reingestWait)}` : 'Re-ingest all'}
               </button>
             </div>
           )}
@@ -357,6 +403,7 @@ function SyncStatus({ brand }: { brand: GcsBrand }) {
         <p className="text-xs text-muted">
           {job.filesTotal ? `${job.filesDone} / ${job.filesTotal} files` : 'Listing files…'}
           {job.current && <span className="font-mono"> · {job.current}</span>}
+          {job.startedBy?.includes('@') && <> · started by {job.startedBy}</>}
         </p>
       </div>
     );

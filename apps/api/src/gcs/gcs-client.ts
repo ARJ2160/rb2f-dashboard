@@ -3,15 +3,22 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 /**
- * Minimal, read-only Google Cloud Storage client (JSON API + service-account
- * auth) built on `fetch` and `node:crypto`, so no Google SDK is needed.
+ * Minimal, read-only Google Cloud Storage client (JSON API) built on `fetch`
+ * and `node:crypto`, so no Google SDK is needed. Two ways to authenticate:
  *
- * Scope is `devstorage.read_only`: this module can list and download objects,
- * never write or delete them.
+ *   - a service-account JSON key (local development) — signed JWT, scope
+ *     `devstorage.read_only`;
+ *   - the metadata server (Cloud Run) — the service account attached to the
+ *     service, no key file anywhere. Its IAM role on the bucket (Storage
+ *     Object Viewer) is what limits it to reading.
+ *
+ * This module can only list and download objects, never write or delete them.
  */
 
 const STORAGE_API = 'https://storage.googleapis.com/storage/v1';
 const READ_ONLY_SCOPE = 'https://www.googleapis.com/auth/devstorage.read_only';
+const METADATA_TOKEN_URL =
+  'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token';
 
 interface ServiceAccountKey {
   type?: string;
@@ -80,24 +87,58 @@ export class GcsClient {
 
   constructor(
     readonly bucket: string,
-    private readonly key: ServiceAccountKey,
+    /** Service-account key, or null to use the metadata server (Cloud Run). */
+    private readonly key: ServiceAccountKey | null,
     /** Overridable for tests. */
-    private readonly apiBase = STORAGE_API
+    private readonly apiBase = STORAGE_API,
+    private readonly metadataTokenUrl = METADATA_TOKEN_URL
   ) {}
 
   static fromKeyFile(bucket: string, file: string): GcsClient {
     return new GcsClient(bucket, loadServiceAccount(file));
   }
 
+  /** Cloud Run: authenticate as the service account attached to the service. */
+  static fromMetadataServer(bucket: string): GcsClient {
+    return new GcsClient(bucket, null);
+  }
+
+  private get principal(): string {
+    return this.key?.client_email ?? "the API's service account";
+  }
+
   private async accessToken(): Promise<string> {
     if (this.token && Date.now() < this.token.expiresAt - 60_000) return this.token.value;
-    const tokenUri = this.key.token_uri ?? 'https://oauth2.googleapis.com/token';
+    this.token = this.key ? await this.keyToken(this.key) : await this.metadataToken();
+    return this.token.value;
+  }
+
+  private async metadataToken(): Promise<{ value: string; expiresAt: number }> {
+    let res: Response;
+    try {
+      res = await fetch(this.metadataTokenUrl, {
+        headers: { 'Metadata-Flavor': 'Google' },
+        signal: AbortSignal.timeout(15_000),
+      });
+    } catch (err) {
+      throw new GcsError(`GCS auth failed: metadata server unreachable (${(err as Error).message})`);
+    }
+    const body = (await res.json().catch(() => ({}))) as { access_token?: string; expires_in?: number };
+    if (!res.ok || !body.access_token) {
+      throw new GcsError(`GCS auth failed (${res.status}): the metadata server returned no access token`, res.status);
+    }
+    return { value: body.access_token, expiresAt: Date.now() + (body.expires_in ?? 3600) * 1000 };
+  }
+
+  private async keyToken(key: ServiceAccountKey): Promise<{ value: string; expiresAt: number }> {
+    const tokenUri = key.token_uri ?? 'https://oauth2.googleapis.com/token';
     const res = await fetch(tokenUri, {
       method: 'POST',
+      signal: AbortSignal.timeout(15_000),
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-        assertion: signJwt(this.key, Math.floor(Date.now() / 1000)),
+        assertion: signJwt(key, Math.floor(Date.now() / 1000)),
       }),
     });
     const body = (await res.json().catch(() => ({}))) as {
@@ -112,13 +153,27 @@ export class GcsClient {
         res.status
       );
     }
-    this.token = { value: body.access_token, expiresAt: Date.now() + (body.expires_in ?? 3600) * 1000 };
-    return this.token.value;
+    return { value: body.access_token, expiresAt: Date.now() + (body.expires_in ?? 3600) * 1000 };
   }
 
-  private async get(url: string): Promise<Response> {
+  /** GET with retries; `timeoutMs` bounds each attempt so a stalled connection can't hang a sync. */
+  private async get(url: string, timeoutMs = 60_000): Promise<Response> {
     for (let attempt = 0; ; attempt++) {
-      const res = await fetch(url, { headers: { authorization: `Bearer ${await this.accessToken()}` } });
+      let res: Response;
+      try {
+        res = await fetch(url, {
+          headers: { authorization: `Bearer ${await this.accessToken()}` },
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      } catch (err) {
+        if (err instanceof GcsError) throw err;
+        if (attempt < 3) {
+          await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+          continue;
+        }
+        const timedOut = (err as Error).name === 'TimeoutError';
+        throw new GcsError(`GCS request ${timedOut ? 'timed out' : `failed: ${(err as Error).message}`}`);
+      }
       if (res.ok) return res;
       if (res.status === 401 && attempt === 0) {
         this.token = null; // expired / revoked — fetch a new one once
@@ -137,7 +192,7 @@ export class GcsClient {
       }
       const hint =
         res.status === 403
-          ? ` — give ${this.key.client_email} "Storage Object Viewer" on gs://${this.bucket}`
+          ? ` — give ${this.principal} "Storage Object Viewer" on gs://${this.bucket}`
           : '';
       throw new GcsError(`GCS request failed (${res.status}): ${msg}${hint}`, res.status);
     }
@@ -213,7 +268,7 @@ export class GcsClient {
         ...(generation ? { generation } : {}),
       }
     )}`;
-    const res = await this.get(url);
+    const res = await this.get(url, 5 * 60_000);
     return Buffer.from(await res.arrayBuffer());
   }
 }

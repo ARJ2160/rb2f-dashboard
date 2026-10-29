@@ -1,0 +1,87 @@
+# Cloud Build: on every push to the deploy branch (master) — test, build both images, migrate, then deploy API and web.
+# A failing test or migration stops the build before anything new is deployed.
+# Service-level settings (env vars, secrets, scaling, IAP) are set once with `gcloud run deploy`
+# (see the go-live runbook); deploys here only change the image.
+substitutions:
+  _REGION: asia-south1
+  _REPO: amz-dash
+  _BUN_VERSION: '1.3'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  dynamicSubstitutions: true
+
+steps:
+  # API typecheck + unit tests. (The web app is type-checked by `next build` in build-web.)
+  - id: test
+    name: oven/bun:${_BUN_VERSION}
+    entrypoint: bash
+    env: ['DATABASE_URL=postgres://ci:ci@127.0.0.1:5432/ci']
+    args:
+      - -c
+      - bun install --frozen-lockfile && cd apps/api && bun run typecheck && bun test
+    waitFor: ['-']
+
+  - id: build-api
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --build-arg=BUN_VERSION=${_BUN_VERSION}
+      - -f
+      - apps/api/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/api:${SHORT_SHA}
+      - .
+    waitFor: ['-']
+
+  - id: build-web
+    name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - --build-arg=BUN_VERSION=${_BUN_VERSION}
+      - -f
+      - apps/web/Dockerfile
+      - -t
+      - ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/web:${SHORT_SHA}
+      - .
+    waitFor: ['-']
+
+  - id: push
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/api:${SHORT_SHA} &&
+        docker push ${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/web:${SHORT_SHA}
+    waitFor: [test, build-api, build-web]
+
+  - id: migrate
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        gcloud run jobs update amz-dash-migrate --region=${_REGION} \
+          --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/api:${SHORT_SHA} &&
+        gcloud run jobs execute amz-dash-migrate --region=${_REGION} --wait
+
+  - id: deploy-api
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    args:
+      - gcloud
+      - run
+      - deploy
+      - amz-dash-api
+      - --region=${_REGION}
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/api:${SHORT_SHA}
+
+  - id: deploy-web
+    name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    args:
+      - gcloud
+      - run
+      - deploy
+      - amz-dash-web
+      - --region=${_REGION}
+      - --image=${_REGION}-docker.pkg.dev/${PROJECT_ID}/${_REPO}/web:${SHORT_SHA}

@@ -4,6 +4,7 @@ import { REPORT_TYPES, type FileUploadResult } from '@dash/shared';
 
 import { db } from '../db/client';
 import { uploads } from '../db/schema';
+import { log as logger } from '../lib/logger';
 import { datesFromFilename } from '../lib/dates';
 import { detectAdChannel, detectReportType } from './detect-report';
 
@@ -253,6 +254,6 @@ export async function log(
       message: [r.message, ...(r.warnings ?? [])].filter(Boolean).join(' | ') || null,
     });
   } catch (err) {
-    console.error('[uploads] failed to write log entry', err);
+    logger.error('Failed to write the upload log entry', { err, profileId, filename: r.filename });
   }
 }

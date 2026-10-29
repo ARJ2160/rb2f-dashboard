@@ -291,6 +291,8 @@ export interface GcsSyncJob {
   marketplace?: 'amazon' | 'blinkit';
   profileId: string;
   state: 'running' | 'done' | 'error';
+  /** Email of the person who started it ("scheduled" for the auto-sync). */
+  startedBy?: string;
   /** true = re-ingest every file, even unchanged ones. */
   force: boolean;
   startedAt: string;
@@ -318,6 +320,10 @@ export interface GcsBrand {
   lastSyncedAt: string | null;
   filesSynced: number;
   job: GcsSyncJob | null;
+  /** When "Sync now" is available again after the last sync (null = now). */
+  syncAvailableAt?: string | null;
+  /** When "Re-ingest all" is available again (null = now). */
+  reingestAvailableAt?: string | null;
 }
 
 export interface GcsBrandsResponse {
@@ -327,6 +333,8 @@ export interface GcsBrandsResponse {
   brands: GcsBrand[];
   /** Why the brand list could not be read (not configured, auth, permissions…). */
   error?: string;
+  /** Cooldowns between syncs of the same brand. */
+  limits?: { syncCooldownSec: number; reingestCooldownMin: number };
 }
 
 /** A synced object as recorded in the ledger. */

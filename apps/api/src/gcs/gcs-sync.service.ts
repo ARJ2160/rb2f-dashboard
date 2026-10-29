@@ -9,8 +9,11 @@ import type {
 import { and, eq, sql } from 'drizzle-orm';
 
 import { env } from '../config/env';
-import { db } from '../db/client';
+import { db, sqlClient } from '../db/client';
 import { gcsObjects } from '../db/schema';
+import { ingestSlots } from '../lib/ingest-slots';
+import { Cooldowns, formatWait } from '../lib/limits';
+import { log } from '../lib/logger';
 import { markDimsStale, rebuildCampaignDims } from '../reports/dims';
 import { ingestBlinkitFile } from '../blinkit/ingestion/ingest';
 import { GcsClient, GcsError, type GcsObject } from './gcs-client';
@@ -40,6 +43,15 @@ import {
  * Both keep their ledger rows in gcs_objects (object names include the folder).
  *
  * The bucket is only ever read.
+ *
+ * Guard rails (a sync downloads and parses every new file of a brand):
+ *   - one job per brand + marketplace — clicking Sync again joins the running job;
+ *   - at most SYNC_MAX_CONCURRENT syncs at once across all brands;
+ *   - after a sync finishes, "Sync now" for that brand waits SYNC_COOLDOWN_SEC and
+ *     "Re-ingest all" waits REINGEST_COOLDOWN_MIN;
+ *   - every file parse shares the ingest slots with manual uploads;
+ *   - a Postgres advisory lock per brand + marketplace, so two API instances (old and new revision
+ *     overlap for a moment on every deploy) never sync the same brand at once.
  */
 
 let client: GcsClient | null = null;
@@ -48,17 +60,28 @@ let client: GcsClient | null = null;
 export const marketplaceFolder = (m: Marketplace) => (m === 'blinkit' ? env.GCS_BLINKIT_FOLDER : env.GCS_MARKETPLACE_FOLDER);
 
 export function gcsConfigError(): string | null {
-  if (!env.gcsCredentialsFile) {
-    return 'GCS is not configured: set GCS_CREDENTIALS_FILE in apps/api/.env to the path of a service-account JSON key, then restart the API.';
-  }
-  return null;
+  // On Cloud Run the API authenticates as its own service account; locally a JSON key is needed.
+  if (env.gcsCredentialsFile || env.onCloudRun) return null;
+  return 'GCS is not configured: set GCS_CREDENTIALS_FILE in apps/api/.env to the path of a service-account JSON key, then restart the API.';
 }
 
 function gcs(): GcsClient {
   const err = gcsConfigError();
   if (err) throw new GcsError(err);
-  client ??= GcsClient.fromKeyFile(env.GCS_BUCKET, env.gcsCredentialsFile!);
+  client ??= env.gcsCredentialsFile
+    ? GcsClient.fromKeyFile(env.GCS_BUCKET, env.gcsCredentialsFile)
+    : GcsClient.fromMetadataServer(env.GCS_BUCKET);
   return client;
+}
+
+/** A sync that may not start right now (cooldown or too many running) — the router answers 429. */
+export class SyncRefusedError extends GcsError {
+  constructor(
+    message: string,
+    readonly retryAfterMs: number
+  ) {
+    super(message, 429);
+  }
 }
 
 // ── Brand folders (cached briefly — the UI polls while a sync runs) ──
@@ -84,6 +107,15 @@ async function findBrand(brand: string): Promise<BrandFolder> {
 
 const jobs = new Map<string, GcsSyncJob>();
 const jobKey = (m: Marketplace, brand: string) => `${m}:${brand}`;
+const syncCooldown = new Cooldowns();
+const reingestCooldown = new Cooldowns();
+const runningJobs = () => [...jobs.values()].filter((j) => j.state === 'running');
+let stopping = false;
+
+/** Called on shutdown: running syncs stop after the file they are on (the next sync resumes from the ledger). */
+export function stopSyncs(): void {
+  stopping = true;
+}
 
 export async function getBrands(refresh = false, marketplace: Marketplace = 'amazon'): Promise<GcsBrandsResponse> {
   const mFolder = marketplaceFolder(marketplace);
@@ -112,45 +144,155 @@ export async function getBrands(refresh = false, marketplace: Marketplace = 'ama
 
   const brands: GcsBrand[] = folders.map((f) => {
     const s = byProfile.get(f.profileId);
+    const key = jobKey(marketplace, f.brand);
     return {
       ...f,
       lastSyncedAt: s?.lastSyncedAt ? new Date(s.lastSyncedAt).toISOString() : null,
       filesSynced: s?.files ?? 0,
-      job: jobs.get(jobKey(marketplace, f.brand)) ?? null,
+      job: jobs.get(key) ?? null,
+      syncAvailableAt: syncCooldown.availableAt(key),
+      reingestAvailableAt: reingestCooldown.availableAt(key),
     };
   });
-  return { ...base, configured: true, brands };
+  return {
+    ...base,
+    configured: true,
+    brands,
+    limits: { syncCooldownSec: env.SYNC_COOLDOWN_SEC, reingestCooldownMin: env.REINGEST_COOLDOWN_MIN },
+  };
 }
 
-/** Start a sync in the background; returns the running job (an already-running one is returned as-is). */
-export async function startSync(brand: string, force = false, marketplace: Marketplace = 'amazon'): Promise<GcsSyncJob> {
-  const running = jobs.get(jobKey(marketplace, brand));
+/**
+ * Start a sync in the background; returns the running job (an already-running one is returned as-is).
+ * Throws SyncRefusedError while the brand is cooling down or too many syncs are running.
+ */
+export async function startSync(
+  brand: string,
+  force = false,
+  marketplace: Marketplace = 'amazon',
+  startedBy = 'system'
+): Promise<GcsSyncJob> {
+  const key = jobKey(marketplace, brand);
+  const running = jobs.get(key);
   if (running?.state === 'running') return running;
+
+  // Re-ingest is the heavier action: it waits for both cooldowns.
+  const wait = force
+    ? Math.max(reingestCooldown.remainingMs(key), syncCooldown.remainingMs(key))
+    : syncCooldown.remainingMs(key);
+  if (wait > 0) {
+    throw new SyncRefusedError(
+      force
+        ? `"Re-ingest all" ran for ${brand} recently — it is available again in ${formatWait(wait)}.`
+        : `${brand} was just synced — you can sync it again in ${formatWait(wait)}.`,
+      wait
+    );
+  }
+  refuseIfBusy();
+
   const folder = await findBrand(brand);
-  const job = newJob(folder, force, marketplace);
-  jobs.set(jobKey(marketplace, brand), job);
-  void runSync(job, folder, marketplace).catch((err) => finishWithError(job, err));
+  // Another request may have started this brand while the folder was looked up.
+  const again = jobs.get(key);
+  if (again?.state === 'running') return again;
+  refuseIfBusy();
+
+  const job = newJob(folder, force, marketplace, startedBy);
+  jobs.set(key, job);
+  void execute(job, folder, marketplace);
   return job;
+}
+
+function refuseIfBusy(): void {
+  const busy = runningJobs();
+  if (busy.length < env.SYNC_MAX_CONCURRENT) return;
+  const names = busy.map((j) => j.brand).join(', ');
+  throw new SyncRefusedError(
+    `${busy.length} sync${busy.length === 1 ? ' is' : 's are'} already running (${names}). Try again when ${busy.length === 1 ? 'it finishes' : 'one finishes'}.`,
+    30_000
+  );
+}
+
+/**
+ * Session-level advisory lock on a reserved connection, held for the whole job. Released on finish,
+ * and by Postgres itself if the instance dies. Returns null when another instance holds it.
+ */
+async function lockBrand(key: string): Promise<(() => Promise<void>) | null> {
+  const conn = await sqlClient.reserve();
+  try {
+    const [row] = await conn<{ ok: boolean }[]>`select pg_try_advisory_lock(hashtext(${`gcs-sync:${key}`})) as ok`;
+    if (row?.ok) {
+      return async () => {
+        await conn`select pg_advisory_unlock(hashtext(${`gcs-sync:${key}`}))`.catch(() => {});
+        conn.release();
+      };
+    }
+  } catch (err) {
+    conn.release();
+    throw err;
+  }
+  conn.release();
+  return null;
+}
+
+/** Run a job to the end (never throws), log it, and start the brand's cooldowns. */
+async function execute(job: GcsSyncJob, folder: BrandFolder, marketplace: Marketplace): Promise<void> {
+  const t0 = Date.now();
+  const key = jobKey(marketplace, job.brand);
+  log.info('GCS sync started', { brand: job.brand, marketplace, force: job.force, user: job.startedBy });
+  let unlock: (() => Promise<void>) | null = null;
+  try {
+    unlock = await lockBrand(key);
+    if (!unlock) {
+      throw new Error(`Another server instance is syncing ${job.brand} right now (a deploy is probably rolling out). Try again in a few minutes.`);
+    }
+    await runSync(job, folder, marketplace);
+  } catch (err) {
+    finishWithError(job, err);
+  } finally {
+    await unlock?.();
+  }
+  // Cooldowns start after failures too, so a failing sync can't be re-run in a tight loop.
+  syncCooldown.start(key, env.SYNC_COOLDOWN_SEC * 1000);
+  if (job.force && job.state === 'done') reingestCooldown.start(key, env.REINGEST_COOLDOWN_MIN * 60_000);
+  log.info('GCS sync finished', {
+    brand: job.brand,
+    marketplace,
+    force: job.force,
+    user: job.startedBy,
+    state: job.state,
+    seconds: Math.round((Date.now() - t0) / 1000),
+    files: job.filesTotal,
+    stored: job.stored,
+    unchanged: job.unchanged,
+    skipped: job.skipped,
+    failed: job.failed,
+  });
 }
 
 /** Sync every brand and marketplace, one after another (used by the optional interval). */
 export async function syncAllBrands(): Promise<void> {
   for (const marketplace of ['amazon', 'blinkit'] as const) {
     for (const folder of await listBrandFolders(true)) {
+      // Wait for a free slot rather than competing with syncs people started.
+      while (!stopping && runningJobs().length >= env.SYNC_MAX_CONCURRENT) {
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+      if (stopping) return;
       if (jobs.get(jobKey(marketplace, folder.brand))?.state === 'running') continue;
-      const job = newJob(folder, false, marketplace);
+      const job = newJob(folder, false, marketplace, 'scheduled');
       jobs.set(jobKey(marketplace, folder.brand), job);
-      await runSync(job, folder, marketplace).catch((err) => finishWithError(job, err));
+      await execute(job, folder, marketplace);
     }
   }
 }
 
-function newJob(folder: BrandFolder, force: boolean, marketplace: Marketplace): GcsSyncJob {
+function newJob(folder: BrandFolder, force: boolean, marketplace: Marketplace, startedBy: string): GcsSyncJob {
   return {
     brand: folder.brand,
     marketplace,
     profileId: folder.profileId,
     state: 'running',
+    startedBy,
     force,
     startedAt: new Date().toISOString(),
     finishedAt: null,
@@ -167,7 +309,7 @@ function newJob(folder: BrandFolder, force: boolean, marketplace: Marketplace): 
 }
 
 function finishWithError(job: GcsSyncJob, err: unknown) {
-  console.error(`[gcs] ${job.marketplace ?? 'amazon'} sync of ${job.brand} failed`, err);
+  log.error(`GCS ${job.marketplace ?? 'amazon'} sync of ${job.brand} failed`, { err });
   job.state = 'error';
   job.message = err instanceof Error ? err.message : String(err);
   job.current = null;
@@ -193,6 +335,7 @@ async function runSync(job: GcsSyncJob, folder: BrandFolder, marketplace: Market
   let anyStored = false;
 
   for (const obj of objects) {
+    if (stopping) throw new Error('The server restarted during the sync. Run Sync again to finish — finished files are kept.');
     const file = relativeName(obj.name, prefix);
     job.current = file;
     const prev = ledger.get(obj.name);
@@ -238,7 +381,7 @@ async function runSync(job: GcsSyncJob, folder: BrandFolder, marketplace: Market
     try {
       await rebuildCampaignDims(folder.profileId);
     } catch (err) {
-      console.error('[gcs] campaign dims rebuild failed', err);
+      log.error('Campaign dims rebuild after GCS sync failed', { err, profileId: folder.profileId });
       job.message = `Data stored, but rebuilding campaign filters failed: ${(err as Error).message}. Reports will retry automatically.`;
     }
   }
@@ -259,7 +402,9 @@ async function ingestObject(profileId: string, obj: GcsObject, file: string, mar
       message: `Download failed: ${(err as Error).message}`,
     };
   }
-  const sheets = marketplace === 'blinkit' ? await ingestBlinkitFile(profileId, file, buffer) : await ingestWarehouseFile(profileId, file, buffer);
+  const sheets = await ingestSlots.run<SheetResult[]>(() =>
+    marketplace === 'blinkit' ? ingestBlinkitFile(profileId, file, buffer) : ingestWarehouseFile(profileId, file, buffer)
+  );
   return summarize(file, sheets);
 }
 
@@ -307,7 +452,7 @@ async function record(profileId: string, obj: GcsObject, r: GcsFileResult): Prom
       .values({ profileId, objectName: obj.name, ...values })
       .onConflictDoUpdate({ target: [gcsObjects.profileId, gcsObjects.objectName], set: values });
   } catch (err) {
-    console.error('[gcs] failed to record object', obj.name, err);
+    log.error('Failed to record a GCS object in the ledger', { err, object: obj.name });
   }
 }
 
@@ -347,14 +492,20 @@ export function startAutoSync(): (() => void) | null {
     try {
       await syncAllBrands();
     } catch (err) {
-      console.error('[gcs] scheduled sync failed', err);
+      log.error('Scheduled GCS sync failed', { err });
     } finally {
       busy = false;
     }
   };
   const timer = setInterval(tick, minutes * 60_000);
   timer.unref();
-  console.log(`[gcs] auto-sync every ${minutes} min from gs://${env.GCS_BUCKET}`);
-  void tick();
-  return () => clearInterval(timer);
+  // First run a few minutes after start-up, not at once: on a deploy the old instance is still
+  // finishing its work, and restarts shouldn't each trigger a full sync.
+  const first = setTimeout(tick, Math.min(5, minutes) * 60_000);
+  first.unref();
+  log.info(`GCS auto-sync every ${minutes} min from gs://${env.GCS_BUCKET}`);
+  return () => {
+    clearTimeout(first);
+    clearInterval(timer);
+  };
 }

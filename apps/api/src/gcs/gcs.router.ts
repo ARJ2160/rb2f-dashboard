@@ -1,9 +1,10 @@
-import { Router } from 'express';
+import { type Response, Router } from 'express';
 import { z } from 'zod';
 
 import { HttpError } from '../middleware/error-handler';
+import { requestUser } from '../middleware/rate-limit';
 import { GcsError } from './gcs-client';
-import { gcsConfigError, getBrands, listSyncedFiles, startSync } from './gcs-sync.service';
+import { gcsConfigError, getBrands, listSyncedFiles, startSync, SyncRefusedError } from './gcs-sync.service';
 import { MARKETPLACES } from './paths';
 
 /**
@@ -21,10 +22,14 @@ const brandSchema = z
 const marketplaceSchema = z.enum(MARKETPLACES).default('amazon');
 
 /** Map GCS / config failures to clean HTTP errors. */
-async function guard<T>(fn: () => Promise<T>): Promise<T> {
+async function guard<T>(fn: () => Promise<T>, res?: Response): Promise<T> {
   try {
     return await fn();
   } catch (err) {
+    if (err instanceof SyncRefusedError) {
+      res?.setHeader('Retry-After', String(Math.max(1, Math.ceil(err.retryAfterMs / 1000))));
+      throw new HttpError(429, err.message);
+    }
     if (err instanceof GcsError) {
       const status = err.status === 404 ? 404 : gcsConfigError() ? 503 : 502;
       throw new HttpError(status, err.message);
@@ -45,7 +50,7 @@ gcsRouter.post('/sync', async (req, res) => {
   const body = z
     .object({ brand: brandSchema, force: z.boolean().default(false), marketplace: marketplaceSchema })
     .parse(req.body ?? {});
-  const job = await guard(() => startSync(body.brand, body.force, body.marketplace));
+  const job = await guard(() => startSync(body.brand, body.force, body.marketplace, requestUser(req)), res);
   res.status(202).json(job);
 });
 

@@ -1,12 +1,14 @@
 import { Router } from 'express';
-import multer from 'multer';
 import { z } from 'zod';
 
-import { env } from '../config/env';
 import { isGcsProfile } from '../gcs/paths';
+import { ingestSlots } from '../lib/ingest-slots';
+import { log } from '../lib/logger';
 import { profileIdSchema, rangeQuerySchema } from '../lib/params';
+import { cleanFilename, looksLikeSpreadsheet, receiveFiles } from '../lib/upload-files';
 import { HttpError } from '../middleware/error-handler';
-import { ingestBlinkitFile } from './ingestion/ingest';
+import { requestUser } from '../middleware/rate-limit';
+import { type BkFileResult, ingestBlinkitFile } from './ingestion/ingest';
 import { cityAds } from './reports/city-ads.service';
 import { invalidateDims } from './reports/dims';
 import { inventory, inventoryTrend } from './reports/inventory.service';
@@ -125,20 +127,28 @@ blinkitRouter.post('/rebuild-dims', async (req, res) => {
 
 // ── Manual upload (same pipeline as the GCS sync) ──
 
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: env.MAX_UPLOAD_MB * 1024 * 1024, files: 50 },
-  fileFilter: (_req, file, cb) => cb(null, /\.(xlsx|xls|csv)$/i.test(file.originalname)),
-});
-
 /** POST /uploads (multipart: files[], profileId) — Blinkit exports for a non-GCS profile. Mappers are processed first. */
-blinkitRouter.post('/uploads', upload.array('files', 50), async (req, res) => {
+blinkitRouter.post('/uploads', receiveFiles, async (req, res) => {
   const profileId = profileIdSchema.parse(req.body?.profileId ?? undefined);
   if (isGcsProfile(profileId)) throw new HttpError(400, `"${profileId}" is fed only by the GCS warehouse — use Sync on the GCS page.`);
   const files = ((req.files as Express.Multer.File[] | undefined) ?? [])
-    .slice()
-    .sort((a, b) => Number(!/mapper/i.test(a.originalname)) - Number(!/mapper/i.test(b.originalname)));
-  const results = [];
-  for (const f of files) results.push(...(await ingestBlinkitFile(profileId, f.originalname, f.buffer)));
+    .map((f) => ({ name: cleanFilename(f.originalname), buffer: f.buffer }))
+    .sort((a, b) => Number(!/mapper/i.test(a.name)) - Number(!/mapper/i.test(b.name)));
+  if (files.length === 0) throw new HttpError(400, 'Attach at least one .xlsx, .xls or .csv file in the "files" field.');
+  const results: BkFileResult[] = [];
+  for (const f of files) {
+    if (!looksLikeSpreadsheet(f.buffer)) {
+      results.push({ filename: f.name, status: 'error', message: 'Not a spreadsheet or CSV file — nothing was stored.' });
+      continue;
+    }
+    results.push(...(await ingestSlots.run(() => ingestBlinkitFile(profileId, f.name, f.buffer))));
+  }
+  log.info('Blinkit upload processed', {
+    user: requestUser(req),
+    profileId,
+    files: files.length,
+    stored: results.filter((r) => r.status === 'stored').length,
+    errors: results.filter((r) => r.status === 'error').length,
+  });
   res.json({ profileId, files: results });
 });

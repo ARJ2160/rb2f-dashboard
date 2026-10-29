@@ -19,7 +19,8 @@ import type {
   UploadResponse,
 } from '@dash/shared';
 
-export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(/\/$/, '');
+/** Same origin: this app forwards /api/* to the API service (app/api/[...path]/route.ts). */
+export const API_URL = '';
 
 async function json<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => ({}));
