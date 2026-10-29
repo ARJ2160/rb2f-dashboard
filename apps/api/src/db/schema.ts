@@ -425,3 +425,6 @@ export const gcsObjects = pgTable(
   },
   (t) => [primaryKey({ columns: [t.profileId, t.objectName] })]
 );
+
+// ── Blinkit (bk_* tables) ──
+export * from '../blinkit/schema';

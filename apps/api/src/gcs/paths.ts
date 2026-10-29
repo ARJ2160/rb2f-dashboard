@@ -96,3 +96,28 @@ export function syncOrder<T extends ObjectMeta>(objects: T[], prefix: string): T
     (a, b) => rank(a) - rank(b) || a.updated.localeCompare(b.updated) || a.name.localeCompare(b.name)
   );
 }
+
+// ── Marketplaces ──────────────────────────────────────────────────────
+
+/** Marketplace folders under each brand that the sync understands. */
+export type Marketplace = 'amazon' | 'blinkit';
+export const MARKETPLACES: readonly Marketplace[] = ['amazon', 'blinkit'];
+
+/**
+ * Blinkit ingest order: mappers first (SKU / campaign → category, city), then
+ * ads, sales and inventory snapshots; oldest → newest inside each group so a
+ * newer export of the same dates (or the same snapshot day) wins.
+ */
+export function blinkitSyncOrder<T extends ObjectMeta>(objects: T[], prefix: string): T[] {
+  const rank = (o: T) => {
+    const rel = relativeName(o.name, prefix).toLowerCase();
+    if (rel.includes('mapper')) return 0;
+    if (/(^|\/)ads?\/|advert|listing|recommendation|campaign/.test(rel)) return 1;
+    if (/(^|\/)sales\/|sales/.test(rel)) return 2;
+    if (/inventory|stock|soh/.test(rel)) return 3;
+    return 4;
+  };
+  return [...objects].sort(
+    (a, b) => rank(a) - rank(b) || a.updated.localeCompare(b.updated) || a.name.localeCompare(b.name)
+  );
+}

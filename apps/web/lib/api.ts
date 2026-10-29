@@ -112,20 +112,25 @@ export async function getHarvest(profileId: string, f: Filters): Promise<Harvest
 
 // ── GCS warehouse (read-only) ──
 
-export async function getGcsBrands(refresh = false): Promise<GcsBrandsResponse> {
-  return json(await fetch(`${API_URL}/api/gcs/brands?${qs({ refresh: refresh ? '1' : undefined })}`, { cache: 'no-store' }));
+/** Marketplace folder synced from GCS: `<brand>/amazon/` (default) or `<brand>/blinkit/`. */
+export type Marketplace = 'amazon' | 'blinkit';
+
+export async function getGcsBrands(refresh = false, marketplace: Marketplace = 'amazon'): Promise<GcsBrandsResponse> {
+  return json(
+    await fetch(`${API_URL}/api/gcs/brands?${qs({ refresh: refresh ? '1' : undefined, marketplace })}`, { cache: 'no-store' })
+  );
 }
 
-export async function startGcsSync(brand: string, force = false): Promise<GcsSyncJob> {
+export async function startGcsSync(brand: string, force = false, marketplace: Marketplace = 'amazon'): Promise<GcsSyncJob> {
   return json(
     await fetch(`${API_URL}/api/gcs/sync`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ brand, force }),
+      body: JSON.stringify({ brand, force, marketplace }),
     })
   );
 }
 
-export async function getGcsFiles(brand: string): Promise<GcsFileEntry[]> {
-  return json(await fetch(`${API_URL}/api/gcs/files?${qs({ brand })}`, { cache: 'no-store' }));
+export async function getGcsFiles(brand: string, marketplace: Marketplace = 'amazon'): Promise<GcsFileEntry[]> {
+  return json(await fetch(`${API_URL}/api/gcs/files?${qs({ brand, marketplace })}`, { cache: 'no-store' }));
 }

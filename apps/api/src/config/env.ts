@@ -23,10 +23,20 @@ const EnvSchema = z.object({
   GOOGLE_APPLICATION_CREDENTIALS: z.string().trim().optional(),
   /** Marketplace folder under each brand that is synced. */
   GCS_MARKETPLACE_FOLDER: z.string().trim().default('amazon'),
+  /** Blinkit folder under each brand (`<brand>/blinkit/…`), synced from the GCS page's Blinkit view. */
+  GCS_BLINKIT_FOLDER: z.string().trim().default('blinkit'),
   /** Re-sync every brand every N minutes (0 = only when "Sync" is clicked). */
   GCS_SYNC_INTERVAL_MIN: z.coerce.number().min(0).default(0),
   /** Files larger than this are skipped. */
   GCS_MAX_FILE_MB: z.coerce.number().positive().default(200),
+
+  // ── Blinkit ──
+  /** JSON object of extra category aliases, e.g. {"gift box":"Gift Hamper"}. */
+  BK_CATEGORY_ALIASES: z.string().trim().optional(),
+  /** JSON object of extra SKU aliases, e.g. {"farmers honey":"Harvest Honey"}. */
+  BK_SKU_ALIASES: z.string().trim().optional(),
+  /** Days-of-cover bands: critical,low,excess (default 7,15,45). */
+  BK_DOC_BANDS: z.string().trim().optional(),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

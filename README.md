@@ -36,11 +36,19 @@ apps/api/src
     dsr.service.ts           GET /api/reports/dsr
     dur.service.ts           GET /api/reports/dur
     coverage.service.ts      GET /api/reports/coverage
+  blinkit/                   Blinkit marketplace (see "Blinkit" below)
+    schema.ts                bk_* tables (re-exported from db/schema.ts)
+    ingestion/               sheet reader, detect-by-columns, pure parsers, replace-by-date store, ingest.ts
+    reports/                 dims (mappers), MoM/WoW, DSR, DUR, category/SKU, geo, city ads, keywords, inventory DOC
+    blinkit.router.ts        /api/blinkit/*
 apps/web
   app/upload/page.tsx        drag-and-drop upload + per-sheet results + history
   app/reports/page.tsx       report tabs for the profile in the top bar (uploaded data)
   app/gcs/page.tsx           same report tabs for a brand synced from the GCS warehouse
   components/reports-dashboard.tsx  the shared report tabs used by both pages
+  components/blinkit/        Blinkit report tabs (shown on /gcs when "Blinkit" is selected)
+  lib/blinkit-api.ts         /api/blinkit/* client
+packages/shared/src/blinkit  Blinkit types, metric formulas, city rule, DOC maths — import from `@dash/shared/blinkit`
 ```
 
 ## Getting started
@@ -93,12 +101,16 @@ The **GCS** tab shows data that comes only from the `rb2f-warehouse-dropzone` bu
 ```
 gs://rb2f-warehouse-dropzone/<brand>/amazon/<report folder>/<file>.csv
   e.g. eatopia/amazon/{advertised, asin_mapper, campaign, campaign_mapper, placement, seller_central, sqp, str}/…
+gs://rb2f-warehouse-dropzone/<brand>/blinkit/<report folder>/<file>.(csv|xlsx|xls)
+  e.g. eatopia/blinkit/{ads_sales/{banner_listing, product_listing, product_recommendation}, campaign_mapper, sku_mapper, total_sales, inventory}/…
 ```
 
+The page has an **Amazon | Blinkit** switch next to the brand picker (remembered per browser). Brand list, *Sync now*, *Re-ingest all*, *Show files* and the report tabs below all follow it; the API takes `marketplace=amazon|blinkit` (default `amazon`, so existing calls are unchanged).
+
 - **Brands** = the bucket's top-level folders (names are trimmed and lower-cased; folders starting with `_`, like `_tmp/`, are ignored). Each brand's data is stored under its own profile **`gcs_<brand>`**, so it never mixes with uploaded profiles. Manual uploads into a `gcs_…` profile are refused.
-- **Only the `amazon/` folder** is read (`GCS_MARKETPLACE_FOLDER`). Every `.csv/.xlsx/.xls` below it, at any depth, goes through the exact upload pipeline (detect by columns → parse → replace-by-date), so the reports are identical to uploading the same files. The report folder stays in the file name (`campaign_mapper/eatopia_campaign_mapper.csv`) and is used by the name fallback of detection.
+- **Amazon** reads only the `amazon/` folder (`GCS_MARKETPLACE_FOLDER`); **Blinkit** reads only `blinkit/` (`GCS_BLINKIT_FOLDER`) through the Blinkit pipeline (see "Blinkit"). Every `.csv/.xlsx/.xls` below it, at any depth, goes through the exact upload pipeline (detect by columns → parse → replace-by-date), so the reports are identical to uploading the same files. The report folder stays in the file name (`campaign_mapper/eatopia_campaign_mapper.csv`) and is used by the name fallback of detection.
 - **Sync**: picking a brand that was never synced pulls it automatically; *Sync now* pulls new or changed files (by GCS generation), *Re-ingest all* re-reads everything. Mapper files go first, then oldest → newest, so a newer export of the same dates wins. Campaign filters are rebuilt once per sync. Optional background sync: `GCS_SYNC_INTERVAL_MIN`.
-- **Ledger**: `gcs_objects` records every object synced (generation, status, report type, dates, rows); *Show files* on the page lists it. Each file is also in the normal upload log of the `gcs_<brand>` profile.
+- **Ledger**: `gcs_objects` records every object synced (both marketplaces; object names carry the folder, so counts are kept apart) (generation, status, report type, dates, rows); *Show files* on the page lists it. Each file is also in the normal upload log of the `gcs_<brand>` profile.
 - Files deleted from the bucket keep their data in the dashboard (same as an upload); re-ingest a corrected file to replace those dates.
 - **Warehouse formats** (`apps/api/src/gcs/warehouse.ts`, GCS route only). The warehouse holds the *new Amazon Ads console* exports, which the upload parsers don't read directly; each sheet is rewritten into the classic columns and then parsed / stored exactly like an upload:
 
@@ -119,7 +131,7 @@ gs://rb2f-warehouse-dropzone/<brand>/amazon/<report folder>/<file>.csv
 **Setup**
 
 1. Service account with **Storage Object Viewer** on the bucket → download its JSON key (e.g. `apps/api/gcs-service-account.json` — `*service-account*.json` is git-ignored).
-2. `apps/api/.env`: `GCS_CREDENTIALS_FILE=./gcs-service-account.json` (or `GOOGLE_APPLICATION_CREDENTIALS`), optionally `GCS_BUCKET`, `GCS_MARKETPLACE_FOLDER`, `GCS_SYNC_INTERVAL_MIN`, `GCS_MAX_FILE_MB`.
+2. `apps/api/.env`: `GCS_CREDENTIALS_FILE=./gcs-service-account.json` (or `GOOGLE_APPLICATION_CREDENTIALS`), optionally `GCS_BUCKET`, `GCS_MARKETPLACE_FOLDER`, `GCS_BLINKIT_FOLDER`, `GCS_SYNC_INTERVAL_MIN` (syncs Amazon and Blinkit), `GCS_MAX_FILE_MB`.
 3. `npm run db:migrate` (adds `gcs_objects`, migration 0007) → restart the API → open **GCS**.
 
 No new npm packages: the client signs the service-account JWT with `node:crypto` and calls the GCS JSON API with `fetch`, using the read-only scope.
@@ -205,10 +217,51 @@ Search-term level views (Search Terms; Ads Analysis targeting/branding tables) u
 | POST | `/api/reports/rebuild-dims?profileId` | rebuild campaign filters + Branded/Competitor/Generic |
 | GET / PUT | `/api/reports/brand-terms?profileId` | PUT `{ "terms": ["cult", "avant"] }` reclassifies |
 | GET | `/api/reports/states?profileId&from&to&source&category` | State Wise Data |
-| GET | `/api/gcs/brands?refresh=1` | brand folders in the bucket, last sync, running job |
-| POST | `/api/gcs/sync` | `{ "brand": "eatopia", "force": false }` → 202 + job (runs in background) |
-| GET | `/api/gcs/files?brand=` | synced objects for a brand (ledger) |
+| GET | `/api/gcs/brands?refresh=1&marketplace=amazon\|blinkit` | brand folders in the bucket, last sync, running job |
+| POST | `/api/gcs/sync` | `{ "brand": "eatopia", "force": false, "marketplace": "blinkit" }` → 202 + job (runs in background) |
+| GET | `/api/gcs/files?brand=&marketplace=` | synced objects for a brand (ledger) |
+| GET | `/api/blinkit/meta?profileId` | ranges, categories, campaigns + their geography, unmapped items / campaigns, snapshots |
+| GET | `/api/blinkit/mom?profileId&asOf&category` | MoM / WoW (same shape as `/api/reports/summary`) |
+| GET | `/api/blinkit/dsr?profileId&from&to&category` | raw sums per day + PL / PR / BL spend split |
+| GET | `/api/blinkit/dur?profileId&from&to&metric=units\|orders\|revenue&category` | item × date (same shape as `/api/reports/dur`) |
+| GET | `/api/blinkit/groups?profileId&from&to&category&groupBy=category\|sku` | Category view |
+| GET | `/api/blinkit/geo?profileId&from&to&category` | sales by customer state / city |
+| GET | `/api/blinkit/city-ads?profileId&from&to&category` | ads of exact-city campaigns only + not-attributable total |
+| GET | `/api/blinkit/keywords?profileId&from&to&category&geo&campaignId&adType&grain&q&minImpr&sort&limit` | |
+| GET | `/api/blinkit/inventory?profileId&snapshot&category` | run rate + days of cover per item × feeder |
+| GET | `/api/blinkit/inventory/trend?profileId&category&itemId&facilityId` | DOC across daily snapshots |
+| POST | `/api/blinkit/uploads` | multipart `files`, `profileId` — Blinkit files for a non-GCS profile |
 | GET | `/health` | |
+
+## Blinkit
+
+Blinkit runs on the same flow (GCS `<brand>/blinkit/` → detect by columns → parse → replace-by-date → reports) in its own module: `apps/api/src/blinkit`, `bk_*` tables (migration `0010_blinkit`), `@dash/shared/blinkit`, `apps/web/components/blinkit`. Nothing in the Amazon pipeline changed except the marketplace switch on the GCS sync.
+
+| File | Recognised by | Stored as | Date |
+|---|---|---|---|
+| Sales (Sales Summary) | `Order Id` + `Item Id` + `Total Gross Bill Amount` | `bk_sales_lines` (order line; orders = distinct Order Id) | `Order Date` |
+| Ads — `PRODUCT_LISTING` / `PRODUCT_RECOMMENDATION` / `BANNER_LISTING` tabs | `Campaign ID` + `Estimated Budget Consumed` + (`Targeting Value` / `Direct ATC` / `Reach`) | `bk_daily_ads` ad_type PL / PR / BL | `Date` (dd-mm-yyyy) |
+| Inventory (Stock On Hand, daily) | `Item ID` + `Warehouse Facility ID` + `Total sellable` | `bk_inventory`, one snapshot per day | "This sheet was generated at …", else `InventoryData - YYYY-MM-DD…` in the file name; else rejected |
+| SKU mapper | `Product Name` / `Item ID` + `SKU` (+ `Category`, `Price`) | `bk_sku_map` (replaces previous) | — |
+| Campaign mapper | `Campaign Name` / `Campaign ID` + `Category` / `SKU` / **`City`** (also side-by-side ID blocks) | `bk_campaign_map` (per sheet / file source) | — |
+
+Warehouse layout (as the bucket has it): `ads_sales/banner_listing`, `ads_sales/product_listing`, `ads_sales/product_recommendation` (one CSV per ad type, e.g. `eatopia_product_listing_20260201_20260228.csv`), `campaign_mapper`, `sku_mapper`, `total_sales`; daily inventory files can go in `inventory/`. Folder names don't matter for detection (columns decide), only for sync order.
+
+Sync order: mappers → ads → sales → inventory, oldest → newest. Cancelled / returned lines are dropped; duplicate order lines (overlapping exports) count once — but when `S.No.` is present, two lines of the same Order Id × Item Id with different S.No. are both kept (quantities summed).
+
+**Dates.** Day/month order is inferred per file and column: a value > 12 in the first part means D/M, in the second part M/D; when every value is ambiguous, the `_YYYYMMDD_YYYYMMDD` range in the file name decides. The warehouse `total_sales` export uses `M/D/YYYY` (`2/13/2026`), the ads exports `DD-MM-YYYY`.
+
+**Warehouse campaign mapper.** Several side-by-side blocks headed `Campaign Name` (some with an unlabelled category column right after the name — read as that block's Category). It has no `SKU` or `City` column, so ads by SKU show "<Category> (no SKU)" and city comes from the campaign name: full names, common aliases and 3-letter codes (`Hyd`, `Ahm`, `PNQ`, `BLR`, `GGN`, `Mum`…). "Top 5 cities" / "oth-top cities" are never city-level. Add `SKU` / `City` columns to the mapper to override. Revenue = Total Gross Bill Amount; Ad Sales / Ad Units / ATC = direct + indirect; Spend = Estimated Budget Consumed; Most Viewed Position is impression-weighted.
+
+**Tabs** (GCS page → Blinkit): **MoM / WoW** (same table as Amazon, plus Blinkit ad rows), **DSR** (one row per date, TOTAL + AVG, PL / PR / BL spend cards), **DUR** (Item ID × date; units / orders / sales), **Category** (category or SKU table with *Compare with*, share donut, TACoS bars, daily trend), **City Wise Data**, **Keywords**, **Inventory · DOC**.
+
+**City-level ads — exact targeting only.** Blinkit ad reports carry no city. A campaign's spend is shown at city level only when its targeting is one city or cities inside one metro (Delhi NCR, Mumbai MMR, Chandigarh Tricity), from the campaign mapper's `City` column, else an unambiguous city in the campaign name. Several metros → a group row, never split. Top City / ROC / Pan-India / no city → excluded and reported as one *not city-attributable* total (attributable + not attributable = total spend). Nothing is allocated by revenue share. The Keywords city filter follows the same rule. Blinkit's Sales report books Noida / Greater Noida orders under customer city *Ghaziabad* (UP-NCR), so a Noida campaign is matched to Ghaziabad sales (`SALES_CITY_OF` in `geo.ts`).
+
+**Inventory · DOC** (per item × feeder warehouse): run rate = `Last 7 days` ÷ 7 (per facility, from the report itself); DOC = `Total sellable` ÷ run rate; *DOC incl. incoming* adds `Incoming scheduled inventory`. Status: stock-out · critical < 7 d · low < 15 d · healthy · excess > 45 d · no sales L7D · inactive (`BK_DOC_BANDS`). Views: SKU × feeder matrix, by SKU (feeders at risk), detail; trend once ≥ 2 snapshots exist. Feeder → city from the facility name (Kundli / Farukhnagar / Faridabad → Delhi NCR).
+
+**Label aliases.** The SKU mapper and campaign mapper don't share labels (`NPD-NCS` vs `NCS`, `Farmer's Honey` vs `Harvest Honey`, `Gift Box` vs `Gift hamper`); `packages/shared/src/blinkit/categories.ts` normalises them — extend per brand with `BK_CATEGORY_ALIASES` / `BK_SKU_ALIASES` (JSON).
+
+Setup: `bun install` (no new packages) → `bun run db:migrate` (0010) → put files under `<brand>/blinkit/…` → GCS page → **Blinkit** → *Sync now*.
 
 ## Adding the next report type
 

@@ -2,15 +2,23 @@
 
 import type { GcsBrand, GcsBrandsResponse, GcsFileEntry, GcsFileResult } from '@dash/shared';
 import { REPORT_TYPES } from '@dash/shared';
+import { BK_REPORT_LABEL } from '@dash/shared/blinkit';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ErrorBox } from '@/components/notes';
+import { BlinkitDashboard } from '@/components/blinkit/blinkit-dashboard';
 import { ReportsDashboard } from '@/components/reports-dashboard';
 import { Select } from '@/components/views/shared';
-import { getGcsBrands, getGcsFiles, startGcsSync } from '@/lib/api';
+import { getGcsBrands, getGcsFiles, startGcsSync, type Marketplace } from '@/lib/api';
 import { fmtDateLong } from '@/lib/format';
 
 const BRAND_KEY = 'dash.gcsBrand';
+const MARKETPLACE_KEY = 'dash.gcsMarketplace';
+
+const MARKETPLACES: Array<{ id: Marketplace; label: string }> = [
+  { id: 'amazon', label: 'Amazon' },
+  { id: 'blinkit', label: 'Blinkit' },
+];
 
 const STATUS_STYLE: Record<string, string> = {
   stored: 'badge-success',
@@ -19,7 +27,8 @@ const STATUS_STYLE: Record<string, string> = {
   error: 'badge-error',
 };
 
-const reportLabel = (t: string) => REPORT_TYPES[t as keyof typeof REPORT_TYPES]?.label ?? t;
+const reportLabel = (t: string) =>
+  REPORT_TYPES[t as keyof typeof REPORT_TYPES]?.label ?? BK_REPORT_LABEL[t as keyof typeof BK_REPORT_LABEL] ?? t;
 
 function fmtWhen(iso: string | null): string {
   if (!iso) return 'never';
@@ -37,31 +46,62 @@ function range(from?: string | null, to?: string | null) {
 }
 
 /**
- * GCS warehouse view: brands come from the bucket's top-level folders, their
- * `amazon/` files are synced into a separate `gcs_<brand>` profile, and the
- * normal report tabs are shown for that profile. Nothing here writes to GCS.
+ * GCS warehouse view: brands come from the bucket's top-level folders. Pick a
+ * marketplace — the brand's `amazon/` or `blinkit/` files are synced into its
+ * `gcs_<brand>` profile and that marketplace's report tabs are shown below.
+ * Nothing here writes to GCS.
  */
 export default function GcsPage() {
   const [info, setInfo] = useState<GcsBrandsResponse | null>(null);
   const [brand, setBrandState] = useState<string>('');
+  const [marketplace, setMarketplaceState] = useState<Marketplace | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   const [showFiles, setShowFiles] = useState(false);
   const autoStarted = useRef(new Set<string>());
   const lastFinished = useRef<string | null | undefined>(undefined);
 
-  const load = useCallback(async (refresh = false) => {
+  // Remembered marketplace (Amazon unless Blinkit was picked last time).
+  useEffect(() => {
+    let saved: string | null = null;
     try {
-      const r = await getGcsBrands(refresh);
-      setInfo(r);
-      return r;
-    } catch (e) {
-      setError((e as Error).message);
-      return null;
+      saved = localStorage.getItem(MARKETPLACE_KEY);
+    } catch {
+      /* storage unavailable */
     }
+    setMarketplaceState(saved === 'blinkit' ? 'blinkit' : 'amazon');
   }, []);
 
-  // First load: brand list + remembered brand.
+  const load = useCallback(
+    async (refresh = false) => {
+      if (!marketplace) return null;
+      try {
+        const r = await getGcsBrands(refresh, marketplace);
+        setInfo(r);
+        return r;
+      } catch (e) {
+        setError((e as Error).message);
+        return null;
+      }
+    },
+    [marketplace]
+  );
+
+  const setMarketplace = (m: Marketplace) => {
+    if (m === marketplace) return;
+    setInfo(null);
+    setShowFiles(false);
+    setError(null);
+    lastFinished.current = undefined;
+    setMarketplaceState(m);
+    try {
+      localStorage.setItem(MARKETPLACE_KEY, m);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // First load (and on marketplace change): brand list + remembered brand.
   useEffect(() => {
     void load().then((r) => {
       if (!r) return;
@@ -95,13 +135,13 @@ export default function GcsPage() {
       if (!brand) return;
       setError(null);
       try {
-        await startGcsSync(brand, force);
+        await startGcsSync(brand, force, marketplace ?? 'amazon');
         await load();
       } catch (e) {
         setError((e as Error).message);
       }
     },
-    [brand, load]
+    [brand, load, marketplace]
   );
 
   // Poll while a sync runs…
@@ -119,12 +159,13 @@ export default function GcsPage() {
     lastFinished.current = finishedAt;
   }, [finishedAt]);
 
-  // A brand that has never been synced is pulled automatically on first open.
+  // A brand that has never been synced is pulled automatically on first open (per marketplace).
   useEffect(() => {
-    if (!current || current.job || current.filesSynced > 0 || autoStarted.current.has(current.brand)) return;
-    autoStarted.current.add(current.brand);
+    const key = `${marketplace}:${current?.brand}`;
+    if (!current || current.job || current.filesSynced > 0 || autoStarted.current.has(key)) return;
+    autoStarted.current.add(key);
     void sync(false);
-  }, [current, sync]);
+  }, [current, sync, marketplace]);
 
   if (info && !info.configured) {
     return (
@@ -159,6 +200,21 @@ export default function GcsPage() {
               gs://{info?.bucket ?? '…'}/{current?.folder ?? '<brand>'}/{info?.marketplace ?? 'amazon'}/ ·
               read-only
             </p>
+          </div>
+
+          <div className="join" role="radiogroup" aria-label="Marketplace">
+            {MARKETPLACES.map((m) => (
+              <button
+                key={m.id}
+                role="radio"
+                aria-checked={marketplace === m.id}
+                onClick={() => setMarketplace(m.id)}
+                className={`btn btn-sm join-item ${marketplace === m.id ? 'btn-primary' : 'font-normal'}`}
+                title={`Sync and view each brand's ${m.id}/ folder`}
+              >
+                {m.label}
+              </button>
+            ))}
           </div>
 
           {info && info.brands.length > 0 && (
@@ -213,6 +269,7 @@ export default function GcsPage() {
           <FilesTable
             brand={current.brand}
             version={version}
+            marketplace={marketplace ?? 'amazon'}
             job={job?.state === 'done' ? job.results : null}
           />
         )}
@@ -224,7 +281,32 @@ export default function GcsPage() {
         </div>
       )}
 
-      {current && (
+      {current && marketplace === 'blinkit' && (
+        <BlinkitDashboard
+          key={`bk:${current.profileId}:${version}`}
+          profileId={current.profileId}
+          title={current.brand}
+          subtitle={`Blinkit data from GCS · last synced ${fmtWhen(current.lastSyncedAt)}`}
+          emptyState={
+            running ? (
+              <>Pulling {current.brand}&apos;s Blinkit files from GCS — the reports appear as soon as the sync finishes.</>
+            ) : (
+              <>
+                No Blinkit data synced for {current.brand} yet — expected under{' '}
+                <code className="font-mono text-xs">
+                  gs://{info?.bucket}/{current.folder}/{info?.marketplace}/
+                </code>{' '}
+                (sales, ads, inventory, sku_mapper, campaign_mapper).{' '}
+                <button onClick={() => void sync(false)} className="font-medium text-accent underline">
+                  Sync now
+                </button>
+              </>
+            )
+          }
+        />
+      )}
+
+      {current && marketplace === 'amazon' && (
         <ReportsDashboard
           key={`${current.profileId}:${version}`}
           profileId={current.profileId}
@@ -299,23 +381,25 @@ function SyncStatus({ brand }: { brand: GcsBrand }) {
 function FilesTable({
   brand,
   version,
+  marketplace,
   job,
 }: {
   brand: string;
   version: number;
+  marketplace: Marketplace;
   job: GcsFileResult[] | null;
 }) {
   const [rows, setRows] = useState<GcsFileEntry[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let alive = true;
-    getGcsFiles(brand)
+    getGcsFiles(brand, marketplace)
       .then((r) => alive && setRows(r))
       .catch((e: Error) => alive && setError(e.message));
     return () => {
       alive = false;
     };
-  }, [brand, version]);
+  }, [brand, version, marketplace]);
 
   if (error) return <ErrorBox message={error} />;
   if (!rows) return <p className="text-xs text-muted">Loading…</p>;

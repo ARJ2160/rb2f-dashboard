@@ -287,6 +287,8 @@ export interface GcsFileResult {
 
 export interface GcsSyncJob {
   brand: string;
+  /** 'amazon' (default) or 'blinkit' — which `<brand>/<marketplace>/` folder is being synced. */
+  marketplace?: 'amazon' | 'blinkit';
   profileId: string;
   state: 'running' | 'done' | 'error';
   /** true = re-ingest every file, even unchanged ones. */

@@ -2,17 +2,17 @@ import type { DurResponse } from '@dash/shared';
 
 import { DASH, fmtAvg, fmtDay, fmtInt } from '@/lib/format';
 
-export function DurTable({ data }: { data: DurResponse }) {
+export function DurTable({ data, idLabel = 'ASIN', nameLabel = 'Item-name' }: { data: DurResponse; idLabel?: string; nameLabel?: string }) {
   if (data.rows.length === 0) {
-    return <p className="rounded-box border border-line bg-surface shadow-sm px-4 py-8 text-center text-sm text-muted">No ASIN sales in this range.</p>;
+    return <p className="rounded-box border border-line bg-surface shadow-sm px-4 py-8 text-center text-sm text-muted">No {idLabel === 'ASIN' ? 'ASIN' : 'item'} sales in this range.</p>;
   }
   return (
     <div className="max-h-[70vh] overflow-auto rounded-box border border-line bg-surface shadow-sm">
       <table className="table table-sm w-auto">
         <thead className="sticky top-0 z-20 bg-base-200 shadow-[0_1px_0_var(--color-line)]">
           <tr className="text-xs text-muted">
-            <th className="sticky left-0 z-30 w-32 min-w-32 bg-base-200 px-3 py-2 text-left font-medium">ASIN</th>
-            <th className="sticky left-32 z-30 w-72 min-w-72 bg-base-200 px-3 py-2 text-left font-medium">Item-name</th>
+            <th className="sticky left-0 z-30 w-32 min-w-32 bg-base-200 px-3 py-2 text-left font-medium">{idLabel}</th>
+            <th className="sticky left-32 z-30 w-72 min-w-72 bg-base-200 px-3 py-2 text-left font-medium">{nameLabel}</th>
             <th className="px-3 py-2 text-left font-medium">Category</th>
             <th className="bg-accent-soft px-3 py-2 text-right font-semibold text-ink">Totals</th>
             <th className="bg-canvas px-3 py-2 text-right font-medium text-ink">Avg</th>

@@ -3,6 +3,7 @@ import express from 'express';
 import helmet from 'helmet';
 
 import { env } from './config/env';
+import { blinkitRouter } from './blinkit/blinkit.router';
 import { gcsRouter } from './gcs/gcs.router';
 import { uploadsRouter } from './ingestion/uploads.router';
 import { errorHandler, notFound } from './middleware/error-handler';
@@ -23,6 +24,7 @@ export function createApp() {
   app.use('/api/uploads', uploadsRouter);
   app.use('/api/reports', reportsRouter);
   app.use('/api/gcs', gcsRouter);
+  app.use('/api/blinkit', blinkitRouter);
 
   app.use(notFound);
   app.use(errorHandler);

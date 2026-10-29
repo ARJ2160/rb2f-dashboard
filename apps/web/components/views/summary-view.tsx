@@ -42,7 +42,14 @@ function Change({ v, better }: { v: number | null; better: SummaryRow['better'] 
  * MoM / WoW summary — the default screen. MTD vs the same days last month and
  * the last 7 days vs the 7 before, all ending on the latest day with data.
  */
-export function SummaryView({ profileId }: { profileId: string }) {
+export function SummaryView({
+  profileId,
+  load = getSummary,
+}: {
+  profileId: string;
+  /** Data source — defaults to the Amazon summary; the Blinkit view passes its own loader (same response shape). */
+  load?: (profileId: string, f: { asOf?: string; category?: string }) => Promise<SummaryResponse>;
+}) {
   const [asOf, setAsOf] = useState('');
   const [category, setCategory] = useState('');
   const [data, setData] = useState<SummaryResponse | null>(null);
@@ -53,14 +60,14 @@ export function SummaryView({ profileId }: { profileId: string }) {
     let alive = true;
     setLoading(true);
     setError(null);
-    getSummary(profileId, { asOf, category })
+    load(profileId, { asOf, category })
       .then((d) => alive && setData(d))
       .catch((e: Error) => alive && setError(e.message))
       .finally(() => alive && setLoading(false));
     return () => {
       alive = false;
     };
-  }, [profileId, asOf, category]);
+  }, [profileId, asOf, category, load]);
 
   // Reset the manual date when switching profile.
   useEffect(() => setAsOf(''), [profileId]);
