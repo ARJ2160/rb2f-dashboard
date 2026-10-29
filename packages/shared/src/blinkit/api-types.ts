@@ -66,7 +66,7 @@ export interface BkDailyResponse {
   series: Sums[];
   total: Sums;
   /** Spend split by ad type (PL / PR / BL) — the DSR rows combine all three. */
-  byAdType: { adType: string; spend: number; asales: number; impr: number; days: number }[];
+  byAdType: { adType: string; spend: number; asales: number; impr: number; atc: number; aunits: number; days: number }[];
   notes: string[];
 }
 

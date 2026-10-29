@@ -34,11 +34,11 @@ function Popup({ label, open, setOpen, children }: {
   }, [open, setOpen]);
   return (
     <div ref={ref} className="relative">
-      <button type="button" onClick={() => setOpen(!open)} className="input input-sm w-auto cursor-pointer gap-2 text-ink">
+      <button type="button" onClick={() => setOpen(!open)} className="field cursor-pointer">
         <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-muted" aria-hidden>
           <path d="M6 2a1 1 0 0 1 1 1v1h6V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Zm10 6H4v8h12V8Z" />
         </svg>
-        <span className="num whitespace-nowrap">{label}</span>
+        <span className="num whitespace-nowrap font-medium">{label}</span>
       </button>
       {open && (
         <div className="absolute left-0 top-full z-50 mt-1 rounded-box border border-line bg-base-100 p-2 shadow-lg">

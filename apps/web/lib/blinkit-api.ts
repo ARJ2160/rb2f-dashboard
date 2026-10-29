@@ -30,6 +30,8 @@ export interface BkRange {
   from: string;
   to: string;
   category?: string | undefined;
+  /** PL / PR / BL — filters the ads side of /dsr */
+  adType?: string | undefined;
 }
 
 export const bkMeta = (profileId: string) => get<BkMetaResponse>('/meta', { profileId });

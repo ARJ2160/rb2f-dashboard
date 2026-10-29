@@ -108,9 +108,12 @@ export async function groups(a: RangeArgs & { groupBy: 'category' | 'sku' }): Pr
 /* --------------------------------------------------------------------- DSR */
 
 /** One row of raw sums per date (DSR + trend chart). */
-export async function daily(a: RangeArgs): Promise<BkDailyResponse> {
+export async function daily(a: RangeArgs & { adType?: string | undefined }): Promise<BkDailyResponse> {
   const { items, camps } = await scope(a.profileId, a.category);
   const P = [a.profileId, a.from, a.to];
+  // Optional campaign-type filter (PL / PR / BL) — ads only; sales are never split by ad type.
+  const typeSql = a.adType ? ` and ad_type = $${camps ? 5 : 4}` : '';
+  const adP = [...P, ...(camps ? [camps] : []), ...(a.adType ? [a.adType] : [])];
   const [sales, ads, byType] = await Promise.all([
     q(
       `select date::text d, sum(revenue) rev, sum(quantity) units, count(distinct order_id) orders
@@ -119,13 +122,14 @@ export async function daily(a: RangeArgs): Promise<BkDailyResponse> {
     ),
     q(
       `select date::text d, ${ADS_SUMS} from bk_daily_ads
-       where profile_id = $1 and date between $2 and $3 ${inList('campaign_id', 4, camps)} group by 1`,
-      [...P, ...(camps ? [camps] : [])]
+       where profile_id = $1 and date between $2 and $3 ${inList('campaign_id', 4, camps)}${typeSql} group by 1`,
+      adP
     ),
     q(
-      `select ad_type, sum(spend) spend, sum(direct_sales + indirect_sales) asales, sum(impressions) impr, count(distinct date) days
-       from bk_daily_ads where profile_id = $1 and date between $2 and $3 ${inList('campaign_id', 4, camps)} group by 1`,
-      [...P, ...(camps ? [camps] : [])]
+      `select ad_type, sum(spend) spend, sum(direct_sales + indirect_sales) asales, sum(impressions) impr,
+              sum(direct_atc + indirect_atc) atc, sum(direct_qty + indirect_qty) aunits, count(distinct date) days
+       from bk_daily_ads where profile_id = $1 and date between $2 and $3 ${inList('campaign_id', 4, camps)}${typeSql} group by 1`,
+      adP
     ),
   ]);
   const dates = enumerateDates(a.from, a.to);
@@ -154,7 +158,10 @@ export async function daily(a: RangeArgs): Promise<BkDailyResponse> {
   const order = ['PL', 'PR', 'BL'];
   const byAdType = order.map((t) => {
     const r = byType.find((x) => x.ad_type === t);
-    return { adType: t, spend: Number(r?.spend ?? 0), asales: Number(r?.asales ?? 0), impr: Number(r?.impr ?? 0), days: Number(r?.days ?? 0) };
+    return {
+      adType: t, spend: Number(r?.spend ?? 0), asales: Number(r?.asales ?? 0), impr: Number(r?.impr ?? 0),
+      atc: Number(r?.atc ?? 0), aunits: Number(r?.aunits ?? 0), days: Number(r?.days ?? 0),
+    };
   });
   return { from: a.from, to: a.to, dates, series, total, byAdType, notes };
 }

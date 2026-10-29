@@ -296,7 +296,7 @@ export default function GcsPage() {
                 <code className="font-mono text-xs">
                   gs://{info?.bucket}/{current.folder}/{info?.marketplace}/
                 </code>{' '}
-                (sales, ads, inventory, sku_mapper, campaign_mapper).{' '}
+                (ads_sales/…, total_sales, sku_mapper, campaign_mapper, inventory).{' '}
                 <button onClick={() => void sync(false)} className="font-medium text-accent underline">
                   Sync now
                 </button>

@@ -48,9 +48,10 @@ blinkitRouter.get('/mom', async (req, res) => {
   res.json(await momWow({ ...profile(req.query), asOf }));
 });
 
-/** GET /dsr?profileId&from&to&category — raw sums per day. */
+/** GET /dsr?profileId&from&to&category&adType=PL|PR|BL — raw sums per day (adType filters the ads side only). */
 blinkitRouter.get('/dsr', async (req, res) => {
-  res.json(await daily(range(req.query)));
+  const { adType } = z.object({ adType: z.enum(['PL', 'PR', 'BL']).optional().or(z.literal('').transform(() => undefined)) }).parse(req.query);
+  res.json(await daily({ ...range(req.query), adType }));
 });
 
 /** GET /dur?profileId&from&to&metric=units|orders|revenue&category — item × date (Amazon DurResponse shape). */

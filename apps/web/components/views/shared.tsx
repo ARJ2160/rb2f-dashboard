@@ -77,12 +77,12 @@ export function Select({ label, value, onChange, options, allLabel = 'All' }: {
   allLabel?: string | null;
 }) {
   return (
-    <label className="flex items-center gap-1.5 text-xs text-muted">
-      {label}
+    <label className="field cursor-pointer">
+      <span className="text-xs text-muted">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="select select-sm w-auto max-w-56 text-ink"
+        className="max-w-56 cursor-pointer bg-transparent pr-1 font-medium text-ink outline-none"
       >
         {allLabel !== null && <option value="">{allLabel}</option>}
         {options.map((o) => {
@@ -216,9 +216,9 @@ export const fmtFor = (k: string) => AD_COLUMNS.find((c) => c.key === k)?.fmt ??
 
 export function Card({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {
   return (
-    <section className="card card-border bg-base-100 p-4 shadow-sm">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold">{title}</h3>
+    <section className="rounded-xl border border-line bg-surface p-5">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h3 className="text-[16px] font-semibold tracking-tight">{title}</h3>
         {right}
       </div>
       {children}
@@ -226,5 +226,5 @@ export function Card({ title, children, right }: { title: string; children: Reac
   );
 }
 
-export const TABLE_WRAP = 'max-h-[70vh] overflow-auto rounded-box border border-line bg-surface shadow-sm';
-export const THEAD = 'sticky top-0 z-20 bg-surface shadow-[0_1px_0_var(--color-line)]';
+export const TABLE_WRAP = 'max-h-[70vh] overflow-auto rounded-xl border border-line bg-surface';
+export const THEAD = 'sticky top-0 z-20 bg-side text-muted shadow-[0_1px_0_var(--color-line)]';

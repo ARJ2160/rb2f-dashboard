@@ -29,3 +29,10 @@ export function isoAddDays(iso: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+/** ₹ amount, whole rupees, Indian grouping (₹16,73,952) — for headline cards. */
+const rupeeFmt = new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 });
+export const fmtRupee = (v: number | null | undefined) => (v == null ? DASH : `${v < 0 ? '-' : ''}₹${rupeeFmt.format(Math.abs(v))}`);
+/** ₹ with paise (CPM / CPC). */
+const rupee2Fmt = new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const fmtRupee2 = (v: number | null | undefined) => (v == null ? DASH : `₹${rupee2Fmt.format(v)}`);
