@@ -15,6 +15,12 @@ import type {
   SqpResponse,
   StateResponse,
   SummaryResponse,
+  SummaryCompareResponse,
+  NegationsResponse,
+  TermRulesResponse,
+  TermActionGrain,
+  TermRule,
+  BidActionsResponse,
   UploadLogEntry,
   UploadResponse,
 } from '@dash/shared';
@@ -73,6 +79,29 @@ export async function getAds(profileId: string, from: string, to: string, f: Fil
 
 export async function getHourly(profileId: string, from: string, to: string, f: Filters): Promise<HourlyResponse> {
   return json(await fetch(`${API_URL}/api/reports/hourly?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' }));
+}
+
+export async function getNegations(profileId: string, from: string, to: string, f: Filters = {}): Promise<NegationsResponse> {
+  return json(await fetch(`${API_URL}/api/reports/negations?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' }));
+}
+
+export async function getTermRules(
+  profileId: string,
+  from: string,
+  to: string,
+  grain: TermActionGrain,
+  rules: TermRule[],
+  f: Filters = {}
+): Promise<TermRulesResponse> {
+  return json(
+    await fetch(`${API_URL}/api/reports/term-rules?${qs({ profileId, from, to, grain, rules: JSON.stringify(rules), ...f })}`, {
+      cache: 'no-store',
+    })
+  );
+}
+
+export async function getBidActions(profileId: string, from: string, to: string, f: Filters = {}): Promise<BidActionsResponse> {
+  return json(await fetch(`${API_URL}/api/reports/bid-actions?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' }));
 }
 
 export async function getBrandTerms(profileId: string): Promise<{ terms: string[] }> {

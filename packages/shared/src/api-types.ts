@@ -183,6 +183,99 @@ export interface SearchTermResponse {
   notes: string[];
 }
 
+// ── Search-term / target actions (negations, rules, bid moves) ──────
+
+/** A search term or a targeting expression with its ad metrics, orders and ROAS. */
+export interface TermActionRow extends AdMetrics {
+  /** The customer search term (grain "term") or the targeting expression (grain "target"). */
+  key: string;
+  /** Targets only: Keyword / Product / Category / Auto / Audience / Other. */
+  targetType?: string;
+  /** Targets only: EXACT / PHRASE / BROAD / … */
+  matchType?: string;
+  /** "SP", "SB & SD", … */
+  channels: string;
+  /** Branded / Competitor / Generic. */
+  branding?: string;
+  /** Total Orders (ad_orders; ad_units where the orders column is absent). */
+  orders: number;
+  /** adSales ÷ spend. */
+  roas: number | null;
+  /** Distinct campaigns the row appeared in. */
+  campaigns: number;
+  /** Negations only: which rule flagged the row. */
+  reason?: 'zero-orders' | 'high-acos';
+}
+
+export type TermActionGrain = 'term' | 'target';
+
+export interface NegationsResponse {
+  profileId: string;
+  from: string;
+  to: string;
+  /** Whole-account ACoS for the range (all ads); the high-ACoS rule compares against a multiple of this. */
+  accountAcosPct: number | null;
+  thresholds: { minClicks: number; acosMultiple: number; maxOrders: number };
+  rows: TermActionRow[];
+  totalMatched: number;
+  truncated: boolean;
+  filterOptions: AdFilterOptions;
+  notes: string[];
+}
+
+/** Metrics a rule can test. */
+export type RuleMetric =
+  | 'impressions'
+  | 'clicks'
+  | 'spend'
+  | 'adSales'
+  | 'adUnits'
+  | 'orders'
+  | 'ctrPct'
+  | 'cpc'
+  | 'crPct'
+  | 'acosPct'
+  | 'roas';
+
+export interface TermRule {
+  metric: RuleMetric;
+  op: 'gte' | 'lte';
+  value: number;
+}
+
+export interface TermRulesResponse {
+  profileId: string;
+  from: string;
+  to: string;
+  grain: TermActionGrain;
+  rules: TermRule[];
+  rows: TermActionRow[];
+  totalMatched: number;
+  truncated: boolean;
+  filterOptions: AdFilterOptions;
+  notes: string[];
+}
+
+export interface BidActionGroup {
+  thresholds: Record<string, number>;
+  rows: TermActionRow[];
+  totalMatched: number;
+  truncated: boolean;
+}
+
+export interface BidActionsResponse {
+  profileId: string;
+  from: string;
+  to: string;
+  accountAcosPct: number | null;
+  /** True when the selected range is longer than 3 days (required for bid moves). */
+  rangeOk: boolean;
+  reduce: BidActionGroup;
+  scaleUp: BidActionGroup;
+  filterOptions: AdFilterOptions;
+  notes: string[];
+}
+
 // ── Placements ──────────────────────────────────────────────────────
 
 export interface PlacementRow extends AdMetrics {

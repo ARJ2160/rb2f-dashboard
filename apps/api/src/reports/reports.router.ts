@@ -15,12 +15,26 @@ import { getSearchTerms } from './search-terms.service';
 import { getSqp } from './sqp.service';
 import { DEFAULT_MIN_BRAND_CLICKS } from './sqp-scoring';
 import { getStates } from './states.service';
-import { getSummary } from './summary.service';
+import { getSummary, getSummaryCompare } from './summary.service';
+import { getBidActions, getNegations, getTermRules } from './targeting.service';
 
 export const reportsRouter = Router();
 
 const optText = z.string().trim().max(200).optional().transform((v) => (v ? v : undefined));
 const adFilters = z.object({ category: optText, adType: optText, targeting: optText, branding: optText });
+
+const ruleMetric = z.enum(['impressions', 'clicks', 'spend', 'adSales', 'adUnits', 'orders', 'ctrPct', 'cpc', 'crPct', 'acosPct', 'roas']);
+const ruleSchema = z.object({ metric: ruleMetric, op: z.enum(['gte', 'lte']), value: z.number().finite() });
+/** `rules` arrives as a JSON array string on the query; parse then validate (empty / malformed → []). */
+function parseRules(raw: string | undefined) {
+  if (!raw) return [];
+  try {
+    return z.array(ruleSchema).max(20).parse(JSON.parse(raw));
+  } catch {
+    return [];
+  }
+}
+const num = (def: number, min: number, max: number) => z.coerce.number().min(min).max(max).default(def);
 
 /**
  * Build campaign filters / search-term classes if they're missing, then run
@@ -145,6 +159,44 @@ reportsRouter.get('/placements', async (req, res) => {
 reportsRouter.get('/ads', async (req, res) => {
   const q = rangeQuerySchema.parse(req.query);
   res.json(await withDims(q.profileId, () => getAds(q.profileId, q.from, q.to, adFilters.parse(req.query))));
+});
+
+/** GET /api/reports/negations?…&minClicks&acosMultiple&maxOrders&limit — search terms that spend without converting. */
+reportsRouter.get('/negations', async (req, res) => {
+  const q = rangeQuerySchema.parse(req.query);
+  const o = adFilters
+    .extend({
+      minClicks: num(20, 0, 100000),
+      acosMultiple: num(2.5, 0, 100),
+      maxOrders: num(3, 0, 100000),
+      limit: num(1000, 1, 5000),
+    })
+    .parse(req.query);
+  res.json(await withDims(q.profileId, () => getNegations(q.profileId, q.from, q.to, o, o)));
+});
+
+/** GET /api/reports/term-rules?…&grain=term|target&rules=<json>&limit — dynamic metric rules. */
+reportsRouter.get('/term-rules', async (req, res) => {
+  const q = rangeQuerySchema.parse(req.query);
+  const o = adFilters
+    .extend({ grain: z.enum(['term', 'target']).default('term'), rules: z.string().optional(), limit: num(1000, 1, 5000) })
+    .parse(req.query);
+  res.json(await withDims(q.profileId, () => getTermRules(q.profileId, q.from, q.to, o.grain, parseRules(o.rules), o, o)));
+});
+
+/** GET /api/reports/bid-actions?…&reduceAcosMultiple&reduceMinClicks&scaleAcosMultiple&scaleMinOrders&limit — target bid moves (range > 3 days). */
+reportsRouter.get('/bid-actions', async (req, res) => {
+  const q = rangeQuerySchema.parse(req.query);
+  const o = adFilters
+    .extend({
+      reduceAcosMultiple: num(1.5, 0, 100),
+      reduceMinClicks: num(10, 0, 100000),
+      scaleAcosMultiple: num(0.6, 0, 100),
+      scaleMinOrders: num(2, 0, 100000),
+      limit: num(1000, 1, 5000),
+    })
+    .parse(req.query);
+  res.json(await withDims(q.profileId, () => getBidActions(q.profileId, q.from, q.to, o, o)));
 });
 
 /** GET /api/reports/hourly?…&channel&category&adType&targeting&branding — Hour-wise */

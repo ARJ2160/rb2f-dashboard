@@ -3,12 +3,12 @@
 import type { CoverageResponse, DsrResponse, DurMetric, DurResponse } from '@dash/shared';
 import { useEffect, useState, type ReactNode } from 'react';
 
-import { ChannelSplit, DsrTable } from '@/components/dsr-table';
+import { DsrTable } from '@/components/dsr-table';
 import { DateRangePicker } from '@/components/date-picker';
 import { DurTable } from '@/components/dur-table';
 import { ErrorBox, Notes } from '@/components/notes';
-import { getCoverage, getDsr, getDur } from '@/lib/api';
-import { fmtDateLong, isoAddDays, isoToday } from '@/lib/format';
+import { getCoverage, getDsr, getDur, getSummaryCompare } from '@/lib/api';
+import { fmtDateLong, isoToday } from '@/lib/format';
 import { CategoryView } from '@/components/views/category-view';
 import { PlacementsView } from '@/components/views/placements-view';
 import { SearchTermsView } from '@/components/views/search-terms-view';
@@ -18,26 +18,49 @@ import { StatesView } from '@/components/views/states-view';
 import { AdsView } from '@/components/views/ads-view';
 import { HourlyView } from '@/components/views/hourly-view';
 import { SummaryView } from '@/components/views/summary-view';
+import { NegationsView } from '@/components/views/negations-view';
+import { TermRulesView } from '@/components/views/term-rules-view';
+// Targeting page hidden for now — restore this import with its tab + render block below.
+// import { TargetingView } from '@/components/views/targeting-view';
 import type { Period } from '@/components/views/shared';
 import { AmazonOverview } from '@/components/views/overview-view';
-import { DashboardShell, FieldSelect, PeriodPicker, SideCard, type ShellTab } from '@/components/shell/dashboard-shell';
+import { DashboardShell, FieldSelect, PeriodPicker, SideCard, presetRange, type ShellTab } from '@/components/shell/dashboard-shell';
 import { previousRange } from '@/components/shell/use-load';
 
-type Tab = 'overview' | 'summary' | 'dsr' | 'dur' | 'category' | 'search' | 'sqp' | 'harvest' | 'placement' | 'state' | 'ads' | 'hourly';
+type Tab =
+  | 'summary'
+  | 'overview'
+  | 'dsr'
+  | 'dur'
+  | 'category'
+  | 'search'
+  | 'negations'
+  | 'termrules'
+  | 'targeting'
+  | 'sqp'
+  | 'harvest'
+  | 'placement'
+  | 'state'
+  | 'ads'
+  | 'hourly';
 
 const TABS: Array<ShellTab<Tab>> = [
-  { id: 'overview', label: 'Overview', hint: 'Ad performance overview — tick metrics to plot their daily trend', icon: 'overview' },
-  { id: 'summary', label: 'MoM / WoW', hint: 'Month-to-date vs last month, last 7 days vs the 7 before — as of the latest data', icon: 'mom' },
-  { id: 'dsr', label: 'DSR', hint: 'Daily Sales Report — one row per date', icon: 'dsr' },
-  { id: 'dur', label: 'DUR', hint: 'Daily Units Report — ASIN × date', icon: 'dur' },
-  { id: 'category', label: 'Category', hint: 'DSR columns by ASIN-mapper category', icon: 'category' },
-  { id: 'ads', label: 'Ads Analysis', hint: 'Ad types, targeting, Branded / Competitor / Generic', icon: 'ads' },
-  { id: 'search', label: 'Search Terms', hint: 'SP + SB search terms, SD targets', icon: 'search' },
-  { id: 'harvest', label: 'Keyword Harvesting', hint: 'SP / SB search terms with multiple orders that are not manual targets yet', icon: 'harvest' },
-  { id: 'sqp', label: 'SQP', hint: "Search Query Performance — queries where the brand beats the category but isn't targeted yet", icon: 'sqp' },
-  { id: 'placement', label: 'Placements', hint: 'SP + SB by Top of Search / Rest of Search / Product Pages', icon: 'placement' },
-  { id: 'state', label: 'State Wise Data', hint: 'Sales and units by ship-to state', icon: 'map' },
-  { id: 'hourly', label: 'Hour-wise', hint: 'Ad metrics by hour of day', icon: 'hourly' },
+  { id: 'summary', label: 'Account Overview', hint: 'Month-to-date vs last month, last 7 days vs the 7 before, and a custom period compare', icon: 'mom', group: 'Performance' },
+  { id: 'overview', label: 'Ads Overview', hint: 'Ad performance overview — tick metrics to plot their daily trend', icon: 'overview', group: 'Performance' },
+  { id: 'dsr', label: 'DSR', hint: 'Daily Sales Report — one row per date', icon: 'dsr', group: 'Performance' },
+  { id: 'dur', label: 'DUR', hint: 'Daily Units Report — ASIN × date', icon: 'dur', group: 'Performance' },
+  { id: 'category', label: 'Category', hint: 'DSR columns by ASIN-mapper category', icon: 'category', group: 'Analysis' },
+  { id: 'ads', label: 'Ads Analysis', hint: 'Ad types, targeting, Branded / Competitor / Generic', icon: 'ads', group: 'Analysis' },
+  { id: 'placement', label: 'Placements', hint: 'SP + SB by Top of Search / Rest of Search / Product Pages', icon: 'placement', group: 'Analysis' },
+  { id: 'state', label: 'State Wise Data', hint: 'Sales and units by ship-to state', icon: 'map', group: 'Analysis' },
+  { id: 'hourly', label: 'Hour-wise', hint: 'Ad metrics by hour of day', icon: 'hourly', group: 'Analysis' },
+  { id: 'search', label: 'Search Terms', hint: 'SP + SB search terms, SD targets', icon: 'search', group: 'Keywords' },
+  { id: 'negations', label: 'Search Term Negations', hint: 'Terms with 0 orders & high clicks, or ACoS far above the account with few orders', icon: 'search', group: 'Keywords' },
+  { id: 'termrules', label: 'Search Term Rules', hint: 'List search terms by your own metric rules (clicks, ACoS, ROAS, …)', icon: 'keywords', group: 'Keywords' },
+  { id: 'harvest', label: 'Keyword Harvesting', hint: 'SP / SB search terms with multiple orders that are not manual targets yet', icon: 'harvest', group: 'Keywords' },
+  // Targeting page hidden for now — uncomment to restore (also the import and render block).
+  // { id: 'targeting', label: 'Targeting', hint: 'Target-level rules, bid reduction and bid scale-up (range > 3 days)', icon: 'ads', group: 'Keywords' },
+  { id: 'sqp', label: 'SQP', hint: "Search Query Performance — queries where the brand beats the category but isn't targeted yet", icon: 'sqp', group: 'Keywords' },
 ];
 
 /** Latest / earliest day any source has data. */
@@ -47,12 +70,11 @@ function bounds(c: CoverageResponse | null) {
   return { latest, earliest };
 }
 
-/** Default window: the last 30 days that actually have data. */
+/** Default window: this month (month-to-date), up to the latest day with data. */
 function defaultRange(c: CoverageResponse | null): { from: string; to: string } {
   const { latest, earliest } = bounds(c);
   const to = latest ?? isoToday();
-  const from = isoAddDays(to, -29);
-  return { from: earliest && from < earliest ? earliest : from, to };
+  return presetRange('mtd', to, earliest);
 }
 
 /**
@@ -72,7 +94,7 @@ export function ReportsDashboard({
   /** Shown when the profile has no data at all. */
   emptyState: ReactNode;
 }) {
-  const [tab, setTab] = useState<Tab>('overview');
+  const [tab, setTab] = useState<Tab>('summary');
   const [coverage, setCoverage] = useState<CoverageResponse | null>(null);
   const [range, setRange] = useState<{ from: string; to: string } | null>(null);
   const [metric, setMetric] = useState<DurMetric>('units');
@@ -116,7 +138,9 @@ export function ReportsDashboard({
   const hasAnyData = coverage?.sources.some((s) => s.days > 0);
   // MoM / WoW, SQP and Keyword Harvesting choose their own periods, so the date range doesn't apply to them.
   const isSummary = tab === 'summary' || tab === 'sqp' || tab === 'harvest';
-  const isView = tab !== 'dsr' && tab !== 'dur' && tab !== 'overview' && !isSummary;
+  // Rule / negation / targeting pages use the selected range but have no comparison period.
+  const isActionTab = tab === 'negations' || tab === 'termrules' || tab === 'targeting';
+  const isView = tab !== 'dsr' && tab !== 'dur' && tab !== 'overview' && !isSummary && !isActionTab;
   const compare: Period | null =
     isView && compareOn && compareRange && compareRange.from <= compareRange.to ? compareRange : null;
   const toggleCompare = () => {
@@ -195,12 +219,11 @@ export function ReportsDashboard({
       )}
       {error && <ErrorBox message={error} />}
 
-      {tab === 'summary' && <SummaryView profileId={profileId} />}
+      {tab === 'summary' && <SummaryView profileId={profileId} compareLoad={getSummaryCompare} />}
       {tab === 'sqp' && <SqpView profileId={profileId} />}
       {tab === 'harvest' && <HarvestView profileId={profileId} />}
       {tab === 'dsr' && dsr && (
         <>
-          <ChannelSplit data={dsr} />
           <DsrTable data={dsr} />
           <Notes notes={dsr.notes} />
         </>
@@ -225,6 +248,10 @@ export function ReportsDashboard({
           {tab === 'ads' && (
             <AdsView profileId={profileId} from={range.from} to={range.to} compare={compare} />
           )}
+          {tab === 'negations' && <NegationsView profileId={profileId} from={range.from} to={range.to} />}
+          {tab === 'termrules' && <TermRulesView profileId={profileId} from={range.from} to={range.to} grain="term" />}
+          {/* Targeting page hidden for now — restore the import, the tab entry, and this line to bring it back. */}
+          {/* {tab === 'targeting' && <TargetingView profileId={profileId} from={range.from} to={range.to} />} */}
           {tab === 'hourly' && (
             <HourlyView profileId={profileId} from={range.from} to={range.to} compare={compare} />
           )}
