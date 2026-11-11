@@ -1,6 +1,6 @@
 import type { DsrMetrics, DsrResponse } from '@dash/shared';
 
-import { fmtDateLong, fmtInt, fmtMoney, fmtPct } from '@/lib/format';
+import { fmtDateLong, fmtInt, fmtMoney, fmtPct, fmtWeekday } from '@/lib/format';
 
 /** Columns in rule-book order (§10.1). */
 export const COLUMNS: Array<{ key: keyof DsrMetrics; label: string; fmt: (v: number | null) => string }> = [
@@ -75,6 +75,7 @@ export function DsrTable({ data }: { data: DsrResponse }) {
         <thead className="sticky top-0 z-20 bg-base-200 shadow-[0_1px_0_var(--color-line)]">
           <tr className="text-xs text-muted">
             <th className="sticky left-0 z-30 bg-base-200 px-3 py-2 text-left font-medium">Date</th>
+            <th className="whitespace-nowrap px-3 py-2 text-left font-medium">Day</th>
             {COLUMNS.map((c) => (
               <th key={c.key} className="whitespace-nowrap px-3 py-2 text-right font-medium">
                 {c.label}
@@ -83,10 +84,12 @@ export function DsrTable({ data }: { data: DsrResponse }) {
           </tr>
           <tr className="bg-accent-soft font-semibold">
             <td className="sticky left-0 z-30 bg-accent-soft px-3 py-1.5">TOTAL</td>
+            <td className="bg-accent-soft px-3 py-1.5" />
             <Cells m={data.total} />
           </tr>
           <tr className="border-b border-line bg-canvas font-medium">
             <td className="sticky left-0 z-30 bg-canvas px-3 py-1.5">AVG</td>
+            <td className="bg-canvas px-3 py-1.5" />
             <Cells m={data.avg} />
           </tr>
         </thead>
@@ -94,6 +97,7 @@ export function DsrTable({ data }: { data: DsrResponse }) {
           {data.rows.map((r) => (
             <tr key={r.date} className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft">
               <td className="sticky left-0 z-10 whitespace-nowrap bg-inherit px-3 py-1.5">{fmtDateLong(r.date)}</td>
+              <td className="whitespace-nowrap px-3 py-1.5 text-muted">{fmtWeekday(r.date)}</td>
               <Cells m={r} />
             </tr>
           ))}

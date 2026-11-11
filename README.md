@@ -280,6 +280,8 @@ Sync order: mappers → ads → sales → inventory, oldest → newest. Cancelle
 
 **Label aliases.** The SKU mapper and campaign mapper don't share labels (`NPD-NCS` vs `NCS`, `Farmer's Honey` vs `Harvest Honey`, `Gift Box` vs `Gift hamper`); `packages/shared/src/blinkit/categories.ts` normalises them — extend per brand with `BK_CATEGORY_ALIASES` / `BK_SKU_ALIASES` (JSON).
 
+**Marketplace logos.** Official logos aren't bundled. Put the files you're allowed to use at `apps/web/public/logos/amazon.svg` and `apps/web/public/logos/blinkit.svg` (`.png` also works); the sidebar and the Amazon | Blinkit switch pick them up automatically (`components/shell/marketplace-logo.tsx`), otherwise a neutral built-in mark is shown.
+
 Setup: `bun install` (no new packages) → `bun run db:migrate` (0010) → put files under `<brand>/blinkit/…` → GCS page → **Blinkit** → *Sync now*.
 
 ## Adding the next report type

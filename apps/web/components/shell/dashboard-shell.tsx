@@ -6,6 +6,7 @@ import { DateRangePicker } from '@/components/date-picker';
 import { isoAddDays } from '@/lib/format';
 
 import { Icon, type IconName } from './icons';
+import { MarketplaceLogo } from './marketplace-logo';
 
 /* Shared frame for the Amazon and Blinkit dashboards: a left sidebar with the
    report tabs (collapsible, remembered per browser), a filter bar on top and
@@ -17,13 +18,15 @@ export interface ShellTab<T extends string> {
   label: string;
   hint: string;
   icon: IconName;
+  /** Sidebar section the tab sits under (e.g. "Performance"). */
+  group?: string;
 }
 
 export type MarketplaceId = 'amazon' | 'blinkit';
 
-const MARK: Record<MarketplaceId, { letter: string; className: string; label: string }> = {
-  amazon: { letter: 'a', className: 'bg-[#232f3e] text-white', label: 'Amazon' },
-  blinkit: { letter: 'b', className: 'bg-[#f8cb46] text-[#14171c]', label: 'Blinkit' },
+const MARK: Record<MarketplaceId, { label: string }> = {
+  amazon: { label: 'Amazon' },
+  blinkit: { label: 'Blinkit' },
 };
 
 const COLLAPSE_KEY = 'dash.sidebarCollapsed';
@@ -82,12 +85,7 @@ export function DashboardShell<T extends string>({
         className={`hidden shrink-0 flex-col border-r border-line bg-side transition-[width] duration-200 lg:flex ${collapsed ? 'w-[68px]' : 'w-60'}`}
       >
         <div className={`flex items-center gap-2.5 px-3 pb-3 pt-4 ${collapsed ? 'flex-col' : ''}`}>
-          <span
-            className={`grid size-9 shrink-0 place-items-center rounded-lg text-base font-bold ${mark.className}`}
-            aria-hidden
-          >
-            {mark.letter}
-          </span>
+          <MarketplaceLogo id={marketplace} size={38} />
           {!collapsed && (
             <div className="min-w-0 flex-1 leading-tight">
               <div className="truncate text-[17px] font-semibold capitalize tracking-tight">{title}</div>
@@ -105,11 +103,18 @@ export function DashboardShell<T extends string>({
         </div>
 
         <nav className="flex flex-col gap-0.5 px-2 pb-4" aria-label={`${mark.label} reports`}>
-          {tabs.map((t) => {
+          {tabs.map((t, i) => {
             const on = t.id === tab;
+            const newGroup = t.group && t.group !== tabs[i - 1]?.group;
             return (
+              <div key={t.id} className="contents">
+                {newGroup &&
+                  (collapsed ? (
+                    i > 0 && <div className="mx-3 my-2 border-t border-line" aria-hidden />
+                  ) : (
+                    <div className={`px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted ${i > 0 ? 'pt-4' : 'pt-1'}`}>{t.group}</div>
+                  ))}
               <button
-                key={t.id}
                 onClick={() => onTab(t.id)}
                 title={collapsed ? `${t.label} — ${t.hint}` : t.hint}
                 aria-current={on ? 'page' : undefined}
@@ -120,6 +125,7 @@ export function DashboardShell<T extends string>({
                 <Icon name={t.icon} className="size-[19px] shrink-0" />
                 {!collapsed && <span className="truncate">{t.label}</span>}
               </button>
+              </div>
             );
           })}
         </nav>
@@ -130,9 +136,7 @@ export function DashboardShell<T extends string>({
       <div className="min-w-0 flex-1">
         {/* narrow screens: tabs as a scrolling strip */}
         <div className="flex items-center gap-2 border-b border-line px-4 pt-3 lg:hidden">
-          <span className={`grid size-7 shrink-0 place-items-center rounded-md text-sm font-bold ${mark.className}`} aria-hidden>
-            {mark.letter}
-          </span>
+          <MarketplaceLogo id={marketplace} size={28} />
           <span className="truncate text-sm font-semibold capitalize">{title}</span>
         </div>
         <div className="flex gap-1 overflow-x-auto border-b border-line px-3 py-2 lg:hidden" role="tablist">

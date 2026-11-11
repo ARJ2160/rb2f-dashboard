@@ -22,14 +22,14 @@ import { BkOverview } from './overview-view';
 type Tab = 'overview' | 'mom' | 'dsr' | 'dur' | 'category' | 'city' | 'keywords' | 'inventory';
 
 const TABS: Array<ShellTab<Tab>> = [
-  { id: 'overview', label: 'Overview', hint: 'Ad performance overview — tick metrics to plot their daily trend', icon: 'overview' },
-  { id: 'mom', label: 'MoM / WoW', hint: 'Month-to-date vs last month, last 7 days vs the 7 before — as of the latest data', icon: 'mom' },
-  { id: 'dsr', label: 'DSR', hint: 'Daily Sales Report — one row per date', icon: 'dsr' },
-  { id: 'dur', label: 'DUR', hint: 'Daily Units Report — Blinkit item × date', icon: 'dur' },
-  { id: 'category', label: 'Category', hint: 'Sales and ads by category or SKU, with a daily trend', icon: 'category' },
-  { id: 'city', label: 'City Wise Data', hint: 'Sales by state / city; ads only for campaigns that target an exact city', icon: 'map' },
-  { id: 'keywords', label: 'Keywords', hint: 'Product Listing and Banner keywords, Recommendation placements', icon: 'keywords' },
-  { id: 'inventory', label: 'Inventory · DOC', hint: 'Last-7-day run rate and days of cover per item × feeder warehouse', icon: 'inventory' },
+  { id: 'overview', label: 'Overview', hint: 'Ad performance overview — tick metrics to plot their daily trend', icon: 'overview', group: 'Performance' },
+  { id: 'mom', label: 'MoM / WoW', hint: 'Month-to-date vs last month, last 7 days vs the 7 before — as of the latest data', icon: 'mom', group: 'Performance' },
+  { id: 'dsr', label: 'DSR', hint: 'Daily Sales Report — one row per date', icon: 'dsr', group: 'Performance' },
+  { id: 'dur', label: 'DUR', hint: 'Daily Units Report — Blinkit item × date', icon: 'dur', group: 'Performance' },
+  { id: 'category', label: 'Category', hint: 'Sales and ads by category or SKU, with a daily trend', icon: 'category', group: 'Analysis' },
+  { id: 'city', label: 'City Wise Data', hint: 'Sales by state / city; ads only for campaigns that target an exact city', icon: 'map', group: 'Analysis' },
+  { id: 'keywords', label: 'Keywords', hint: 'Product Listing and Banner keywords, Recommendation placements', icon: 'keywords', group: 'Analysis' },
+  { id: 'inventory', label: 'Inventory · DOC', hint: 'Last-7-day run rate and days of cover per item × feeder warehouse', icon: 'inventory', group: 'Stock' },
 ];
 
 const AD_TYPES = [

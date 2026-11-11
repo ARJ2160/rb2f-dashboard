@@ -8,6 +8,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ErrorBox } from '@/components/notes';
 import { BlinkitDashboard } from '@/components/blinkit/blinkit-dashboard';
 import { ReportsDashboard } from '@/components/reports-dashboard';
+import { MarketplaceLogo } from '@/components/shell/marketplace-logo';
 import { Select } from '@/components/views/shared';
 import { getGcsBrands, getGcsFiles, startGcsSync, type Marketplace } from '@/lib/api';
 import { fmtDateLong } from '@/lib/format';
@@ -234,7 +235,7 @@ export default function GcsPage() {
 
   return (
     <div className="space-y-5">
-      <section className="space-y-3 rounded-box border border-line bg-surface shadow-sm px-4 py-3">
+      <section className="space-y-3 rounded-2xl border border-line bg-surface px-5 py-4">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="mr-auto">
             <h1 className="text-base font-semibold tracking-tight">GCS warehouse</h1>
@@ -244,19 +245,27 @@ export default function GcsPage() {
             </p>
           </div>
 
-          <div className="join" role="radiogroup" aria-label="Marketplace">
-            {MARKETPLACES.map((m) => (
-              <button
-                key={m.id}
-                role="radio"
-                aria-checked={marketplace === m.id}
-                onClick={() => setMarketplace(m.id)}
-                className={`btn btn-sm join-item ${marketplace === m.id ? 'btn-primary' : 'font-normal'}`}
-                title={`Sync and view each brand's ${m.id}/ folder`}
-              >
-                {m.label}
-              </button>
-            ))}
+          <div className="inline-flex rounded-xl border border-line bg-side p-1" role="radiogroup" aria-label="Marketplace">
+            {MARKETPLACES.map((m) => {
+              const on = marketplace === m.id;
+              return (
+                <button
+                  key={m.id}
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setMarketplace(m.id)}
+                  className={`flex h-9 items-center gap-2 rounded-lg pl-1.5 pr-3.5 text-sm transition-all ${
+                    on ? 'bg-surface font-semibold text-ink shadow-[0_1px_3px_rgb(20_23_28/0.12)] ring-1 ring-line' : 'text-ink/65 hover:text-ink'
+                  }`}
+                  title={`Sync and view each brand's ${m.id}/ folder`}
+                >
+                  <span className={on ? '' : 'opacity-60 grayscale-[35%]'}>
+                    <MarketplaceLogo id={m.id} size={24} />
+                  </span>
+                  {m.label}
+                </button>
+              );
+            })}
           </div>
 
           {info && info.brands.length > 0 && (
@@ -302,15 +311,16 @@ export default function GcsPage() {
           )}
         </div>
 
-        {current && <SyncStatus brand={current} />}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          {current && <SyncStatus brand={current} />}
+          {current && (current.filesSynced > 0 || job) && (
+            <button onClick={() => setShowFiles(!showFiles)} className="text-xs font-medium text-ink/70 underline-offset-2 hover:text-ink hover:underline">
+              {showFiles ? 'Hide files' : `Show files (${current.filesSynced || job?.filesTotal || 0})`}
+            </button>
+          )}
+        </div>
         {info?.error && <ErrorBox message={info.error} />}
         {error && <ErrorBox message={error} />}
-
-        {current && (current.filesSynced > 0 || job) && (
-          <button onClick={() => setShowFiles(!showFiles)} className="btn btn-link btn-xs self-start px-0">
-            {showFiles ? 'Hide files' : `Show files (${current.filesSynced || job?.filesTotal || 0})`}
-          </button>
-        )}
         {current && showFiles && (
           <FilesTable
             brand={current.brand}
@@ -383,11 +393,14 @@ export default function GcsPage() {
 function SyncStatus({ brand }: { brand: GcsBrand }) {
   const job = brand.job;
   if (!job) {
+    const synced = !!brand.lastSyncedAt;
     return (
-      <p className="text-xs text-muted">
-        Last synced {fmtWhen(brand.lastSyncedAt)}
-        {brand.filesSynced > 0 && ` · ${brand.filesSynced} file${brand.filesSynced === 1 ? '' : 's'}`}
-      </p>
+      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ${synced ? 'bg-good/10 text-good' : 'bg-black/[0.05] text-muted'}`}>
+        <span className={`size-1.5 rounded-full ${synced ? 'bg-good' : 'bg-muted'}`} aria-hidden />
+        {synced ? 'Synced' : 'Not synced yet'}
+        {synced && <span className="text-ink/70">· {fmtWhen(brand.lastSyncedAt)}</span>}
+        {brand.filesSynced > 0 && <span className="text-ink/70">· {brand.filesSynced} file{brand.filesSynced === 1 ? '' : 's'}</span>}
+      </span>
     );
   }
   if (job.state === 'running') {
@@ -400,8 +413,12 @@ function SyncStatus({ brand }: { brand: GcsBrand }) {
             style={{ width: `${job.filesTotal ? pct : 5}%` }}
           />
         </div>
-        <p className="text-xs text-muted">
-          {job.filesTotal ? `${job.filesDone} / ${job.filesTotal} files` : 'Listing files…'}
+        <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
+          <span className="relative flex size-2" aria-hidden>
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent opacity-50" />
+            <span className="relative inline-flex size-2 rounded-full bg-accent" />
+          </span>
+          Syncing · {job.filesTotal ? `${job.filesDone} / ${job.filesTotal} files` : 'listing files…'}
           {job.current && <span className="font-mono"> · {job.current}</span>}
           {job.startedBy?.includes('@') && <> · started by {job.startedBy}</>}
         </p>

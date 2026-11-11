@@ -20,6 +20,12 @@ export function fmtDateLong(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
 }
 
+/** "2026-04-10" → "Fri" (weekday, UTC, no timezone drift). */
+export function fmtWeekday(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  return d.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
+}
+
 export function isoToday(): string {
   return new Date().toISOString().slice(0, 10);
 }

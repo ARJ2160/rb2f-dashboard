@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 
-import { Donut } from '@/components/charts';
 import { IndiaMap, type MapMetric } from '@/components/india-map';
 import { getStates } from '@/lib/api';
 import { fmtInt, fmtMoney, fmtPct } from '@/lib/format';
@@ -27,9 +26,6 @@ export function StatesView(props: RangeProps) {
     props
   );
   const prevBy = new Map(prev?.rows.map((r) => [r.state, r]) ?? []);
-  const val = (r: { sales: number; units: number; orders: number | null } | undefined) =>
-    r == null ? null : metric === 'orders' ? r.orders : r[metric];
-  const fmt = metric === 'sales' ? fmtMoney : fmtInt;
 
   return (
     <ViewShell
@@ -59,18 +55,9 @@ export function StatesView(props: RangeProps) {
     >
       {data && (
         <>
-          <div className="grid gap-3 lg:grid-cols-[3fr_2fr]">
-            <Card title={`${METRICS.find((m) => m.value === metric)!.label} by state`}>
-              <IndiaMap rows={data.rows} prev={prev?.rows ?? null} metric={metric} />
-            </Card>
-            <Card title={`Top states · ${METRICS.find((m) => m.value === metric)!.label.toLowerCase()} share`}>
-              <Donut
-                items={data.rows.map((r) => ({ label: r.state, value: val(r) ?? 0, prev: val(prevBy.get(r.state)) }))}
-                fmt={fmt}
-                comparing={comparing}
-              />
-            </Card>
-          </div>
+          <Card title={`${METRICS.find((m) => m.value === metric)!.label} by state`}>
+            <IndiaMap rows={data.rows} prev={prev?.rows ?? null} metric={metric} />
+          </Card>
           <div className={TABLE_WRAP}>
             <table className="table table-sm">
               <thead className={THEAD}>
