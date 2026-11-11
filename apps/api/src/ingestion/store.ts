@@ -5,16 +5,24 @@ import type { Tx } from '../db/client';
 import {
   campaignMapper,
   dailyAsinAds,
+  dailyAsinGv,
   dailyAsinSales,
   dailyCampaignAds,
+  dailyPiCitySales,
   dailyPlacements,
   dailySearchTerms,
   dailyStateSales,
+  keywordSov,
+  productSearchRank,
   products,
   sbAttributedDaily,
   searchQueryPerformance,
 } from '../db/schema';
 import { campaignAttrs, dailyHourlyAds } from '../db/schema';
+import type { AsinGvRecord } from './parsers/asin-gv';
+import type { KeywordSovRecord } from './parsers/keyword-sov';
+import type { PiCitySalesRecord } from './parsers/pi-city-sales';
+import type { SearchRankRecord } from './parsers/search-rank';
 import type { CampaignAttr } from '../lib/ad-type';
 import { campaignKeyOf, type CampaignMapperRecord } from './parsers/campaign-mapper';
 import type { HourlyRecord } from './parsers/campaign';
@@ -83,6 +91,78 @@ export async function storeSales(
         target: [products.profileId, products.asin],
         set: { reportTitle: sql`excluded.report_title`, updatedAt: sql`now()` },
       });
+  }
+}
+
+/** Amazon Pi city-level sales → daily_pi_city_sales (replace-by-date). Titles seeded into products. */
+export async function storePiCitySales(tx: Tx, profileId: string, uploadId: string, records: PiCitySalesRecord[]): Promise<void> {
+  const dates = uniqueDates(records);
+  for (const d of chunks(dates)) {
+    await tx.delete(dailyPiCitySales).where(and(eq(dailyPiCitySales.profileId, profileId), inArray(dailyPiCitySales.date, d)));
+  }
+  for (const c of chunks(records)) {
+    await tx.insert(dailyPiCitySales).values(
+      c.map((r) => ({
+        profileId,
+        date: r.date,
+        asin: r.asin,
+        state: r.state,
+        city: r.city,
+        postalCode: r.postalCode,
+        grossSales: r.grossSales,
+        grossUnits: Math.round(r.grossUnits),
+        netSales: r.netSales,
+        netUnits: Math.round(r.netUnits),
+        indexedGlanceViews: r.indexedGlanceViews,
+        uploadId,
+      }))
+    );
+  }
+
+  const titled = new Map<string, string>();
+  for (const r of records) if (r.asin && r.title) titled.set(r.asin, r.title);
+  for (const c of chunks([...titled.entries()])) {
+    await tx
+      .insert(products)
+      .values(c.map(([asin, title]) => ({ profileId, asin, reportTitle: title })))
+      .onConflictDoUpdate({
+        target: [products.profileId, products.asin],
+        set: { reportTitle: sql`excluded.report_title`, updatedAt: sql`now()` },
+      });
+  }
+}
+
+/** Amazon Pi Product Search Ranking → product_search_rank (replace-by-month). */
+export async function storeSearchRank(tx: Tx, profileId: string, uploadId: string, records: SearchRankRecord[]): Promise<void> {
+  const periods = [...new Set(records.map((r) => r.period))].sort();
+  for (const p of chunks(periods)) {
+    await tx.delete(productSearchRank).where(and(eq(productSearchRank.profileId, profileId), inArray(productSearchRank.period, p)));
+  }
+  for (const c of chunks(records)) {
+    await tx.insert(productSearchRank).values(c.map((r) => ({ profileId, ...r, uploadId })));
+  }
+}
+
+/** Amazon Pi ASIN-level Glance Views → daily_asin_gv (replace-by-date). */
+export async function storeAsinGv(tx: Tx, profileId: string, uploadId: string, records: AsinGvRecord[]): Promise<void> {
+  for (const d of chunks(uniqueDates(records))) {
+    await tx.delete(dailyAsinGv).where(and(eq(dailyAsinGv.profileId, profileId), inArray(dailyAsinGv.date, d)));
+  }
+  for (const c of chunks(records)) {
+    await tx.insert(dailyAsinGv).values(c.map((r) => ({ profileId, ...r, uploadId })));
+  }
+}
+
+/** Amazon Pi keyword SOV → keyword_sov (replace by each duration + snapshot-date window in the file). */
+export async function storeKeywordSov(tx: Tx, profileId: string, uploadId: string, records: KeywordSovRecord[]): Promise<void> {
+  const windows = [...new Map(records.map((r) => [`${r.duration}|${r.snapshotDate}`, r])).values()];
+  for (const w of windows) {
+    await tx
+      .delete(keywordSov)
+      .where(and(eq(keywordSov.profileId, profileId), eq(keywordSov.duration, w.duration), eq(keywordSov.snapshotDate, w.snapshotDate)));
+  }
+  for (const c of chunks(records)) {
+    await tx.insert(keywordSov).values(c.map((r) => ({ profileId, ...r, uploadId })));
   }
 }
 

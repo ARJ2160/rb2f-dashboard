@@ -276,6 +276,90 @@ export interface BidActionsResponse {
   notes: string[];
 }
 
+// ── Amazon Pi — Search Rank ─────────────────────────────────────────
+
+export interface SearchRankPoint {
+  period: string; // YYYY-MM-01
+  rank: number;
+}
+export interface SearchRankAsin {
+  asin: string;
+  title: string | null;
+  category: string | null;
+  subcategory: string | null;
+  latestRank: number | null;
+  bestRank: number | null;
+  /** latest − earliest (negative = improved, since lower rank is better). */
+  change: number | null;
+  points: SearchRankPoint[];
+}
+export interface SearchRankResponse {
+  profileId: string;
+  /** All month periods present, sorted. */
+  periods: string[];
+  asins: SearchRankAsin[];
+  notes: string[];
+}
+
+// ── Amazon Pi — Glance Views (ASIN level) ───────────────────────────
+
+export interface GvTrendPoint {
+  date: string;
+  glanceViews: number;
+}
+export interface GvAsinRow {
+  asin: string;
+  title: string | null;
+  category: string | null;
+  glanceViews: number;
+  sharePct: number | null;
+}
+export interface GlanceViewsResponse {
+  profileId: string;
+  from: string | null;
+  to: string | null;
+  dates: string[];
+  trend: GvTrendPoint[];
+  total: number;
+  rows: GvAsinRow[];
+  categories: string[];
+  category: string | null;
+  notes: string[];
+}
+
+// ── Amazon Pi — Keyword SOV ─────────────────────────────────────────
+
+export interface KeywordMetricDef {
+  key: string;
+  label: string;
+  group: 'sp' | 'sb' | 'organic';
+  format: 'pct' | 'money' | 'num' | 'asin';
+  /** On by default in the metric picker. */
+  default: boolean;
+}
+export interface KeywordSovRow {
+  keyword: string;
+  keywordType: string;
+  searches: string | null;
+  rank: number | null;
+  mostClickedOrganicAsin: string | null;
+  mostClickedSpAsin: string | null;
+  metrics: Record<string, number | string | null>;
+}
+export interface KeywordSovResponse {
+  profileId: string;
+  duration: string;
+  durations: string[];
+  /** Snapshot dates available for the chosen duration, latest first. */
+  dates: string[];
+  date: string | null;
+  types: string[];
+  keywordType: string | null;
+  metricDefs: KeywordMetricDef[];
+  rows: KeywordSovRow[];
+  notes: string[];
+}
+
 // ── Placements ──────────────────────────────────────────────────────
 
 export interface PlacementRow extends AdMetrics {

@@ -17,6 +17,9 @@ import { DEFAULT_MIN_BRAND_CLICKS } from './sqp-scoring';
 import { getStates } from './states.service';
 import { getSummary, getSummaryCompare } from './summary.service';
 import { getBidActions, getNegations, getTermRules } from './targeting.service';
+import { getSearchRank } from './search-rank.service';
+import { getGlanceViews } from './glance-views.service';
+import { getKeywordSov } from './keyword-sov.service';
 
 export const reportsRouter = Router();
 
@@ -80,6 +83,25 @@ reportsRouter.get('/summary-compare', async (req, res) => {
     .object({ profileId: profileIdSchema, aFrom: iso, aTo: iso, bFrom: iso, bTo: iso, category: optText })
     .parse(req.query);
   res.json(await withDims(o.profileId, () => getSummaryCompare(o.profileId, o)));
+});
+
+/** GET /api/reports/search-rank?profileId — Amazon Pi monthly search rank per ASIN. */
+reportsRouter.get('/search-rank', async (req, res) => {
+  const o = z.object({ profileId: profileIdSchema }).parse(req.query);
+  res.json(await getSearchRank(o.profileId));
+});
+
+/** GET /api/reports/glance-views?profileId&from&to&category — Amazon Pi ASIN glance views. */
+reportsRouter.get('/glance-views', async (req, res) => {
+  const iso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional();
+  const o = z.object({ profileId: profileIdSchema, from: iso, to: iso, category: optText }).parse(req.query);
+  res.json(await getGlanceViews(o.profileId, o));
+});
+
+/** GET /api/reports/keyword-sov?profileId&duration&date&keywordType — Amazon Pi keyword SOV. */
+reportsRouter.get('/keyword-sov', async (req, res) => {
+  const o = z.object({ profileId: profileIdSchema, duration: optText, date: optText, keywordType: optText }).parse(req.query);
+  res.json(await getKeywordSov(o.profileId, o));
 });
 
 /** GET /api/reports/coverage?profileId — uploaded date ranges per source + mapper match rate. */

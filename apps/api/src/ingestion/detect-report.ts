@@ -30,7 +30,11 @@ export function detectReportType(
 export function detectByHeaders(h: string[]): ReportType | null {
   const has = (...aliases: string[]) => hasColumn(h, aliases);
 
-  // ── Sales sources ──
+  // ── Amazon Pi reports (own camelCase columns) ──
+  if (has('grossSales', 'netSales') && has('orderDay') && has('city')) return 'pi_city_sales';
+  if (has('searchRank') && has('searchMonth', 'searchYear')) return 'search_rank';
+  if (has('glanceViews') && has('snapshotDay')) return 'asin_gv';
+  if (has('keyword') && has('keywordType') && (has('overallSpSOV') || has('firstPageSpSOV') || has('mostClickedSpAsin'))) return 'keyword_sov';
   // Vendor Central: Ordered and/or Shipped revenue & units per ASIN.
   if (has('ASIN') && has('Ordered Revenue', 'Ordered Units', 'Shipped Revenue', 'Shipped Units')) return 'vendor_central';
   if (has('Sessions - Total', 'Sessions') && has('Ordered Product Sales', 'Units Ordered')) return 'business_report';
@@ -112,6 +116,10 @@ export function detectByName(name: string): ReportType | null {
 
   if (has('asin', 'mapper')) return 'asin_mapper';
   if (has('campaign', 'mapper')) return 'campaign_mapper';
+  if (has('city', 'level') || (has('asin', 'sales') && has('city'))) return 'pi_city_sales';
+  if (has('search', 'ranking') || has('search', 'rank')) return 'search_rank';
+  if (has('glance', 'views')) return 'asin_gv';
+  if (has('search', 'performance') || has('keyword', 'performance') || (word('keywords') && has('category'))) return 'keyword_sov';
   if (has('vendor')) return 'vendor_central';
   if (has('business')) return 'business_report';
   if (has('search', 'query')) return 'search_query_performance';

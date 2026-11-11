@@ -21,6 +21,9 @@ import type {
   TermActionGrain,
   TermRule,
   BidActionsResponse,
+  SearchRankResponse,
+  GlanceViewsResponse,
+  KeywordSovResponse,
   UploadLogEntry,
   UploadResponse,
 } from '@dash/shared';
@@ -111,6 +114,18 @@ export async function getBidActions(profileId: string, from: string, to: string,
   return json(await fetch(`${API_URL}/api/reports/bid-actions?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' }));
 }
 
+export async function getSearchRank(profileId: string): Promise<SearchRankResponse> {
+  return json(await fetch(`${API_URL}/api/reports/search-rank?${qs({ profileId })}`, { cache: 'no-store' }));
+}
+
+export async function getGlanceViews(profileId: string, f: { from?: string; to?: string; category?: string } = {}): Promise<GlanceViewsResponse> {
+  return json(await fetch(`${API_URL}/api/reports/glance-views?${qs({ profileId, ...f })}`, { cache: 'no-store' }));
+}
+
+export async function getKeywordSov(profileId: string, f: { duration?: string; date?: string; keywordType?: string } = {}): Promise<KeywordSovResponse> {
+  return json(await fetch(`${API_URL}/api/reports/keyword-sov?${qs({ profileId, ...f })}`, { cache: 'no-store' }));
+}
+
 export async function getBrandTerms(profileId: string): Promise<{ terms: string[] }> {
   return json(await fetch(`${API_URL}/api/reports/brand-terms?${qs({ profileId })}`, { cache: 'no-store' }));
 }
@@ -195,15 +210,30 @@ export interface IngestResponse {
   sync: { jobId: string; brand: string } | null;
 }
 
-export interface DetectResult {
-  filename: string;
-  /** Coarse warehouse report type id (e.g. "campaign"), or null when unrecognised. */
-  reportType: string | null;
-  /** Pipeline's fine-grained guess, for display ("sp_campaign"). */
-  fineType: string | null;
-  detectedBy: 'headers' | 'filename' | null;
-  note?: string;
+export async function getGcsReportTypes(marketplace?: Marketplace): Promise<ReportType[]> {
+  return json(
+    await fetch(
+      `${API_URL}/api/gcs/report-types${marketplace ? `?marketplace=${marketplace}` : ''}`,
+      { cache: 'no-store' }
+    )
+  );
 }
+
+export async function gcsIngest(
+  brand: string,
+  marketplace: Marketplace,
+  reportType: string,
+  files: File[]
+): Promise<IngestResponse> {
+  const fd = new FormData();
+  fd.set('brand', brand);
+  fd.set('marketplace', marketplace);
+  fd.set('reportType', reportType);
+  for (const f of files) fd.append('files', f, f.name);
+  return json(await fetch(`${API_URL}/api/gcs/ingest`, { method: 'POST', body: fd }));
+}
+
+// ── Bulk ingest (detect → assign → upload a mixed batch) ──────────────────────
 
 export interface FileAssignment {
   filename: string;
@@ -211,19 +241,29 @@ export interface FileAssignment {
   reportType: string;
 }
 
-export interface BulkIngestResponse {
-  files: IngestFileResult[];
-  sync: Array<{ jobId: string; brand: string }>;
+export interface GcsDetection {
+  filename: string;
+  /** Coarse warehouse folder id, or null when unmapped. */
+  reportType: string | null;
+  /** Fine-grained pipeline guess, for display. */
+  fineType: string | null;
+  detectedBy: 'headers' | 'filename' | null;
+  note?: string;
 }
 
-/** Inspect files' columns and guess each one's report type (no upload). */
-export async function gcsDetect(files: File[]): Promise<{ detections: DetectResult[] }> {
+export interface BulkIngestResponse {
+  files: IngestFileResult[];
+  sync: GcsSyncJob[];
+}
+
+/** Guess each file's report type from its columns — no upload happens. */
+export async function gcsDetect(files: File[]): Promise<{ detections: GcsDetection[] }> {
   const fd = new FormData();
   for (const f of files) fd.append('files', f, f.name);
   return json(await fetch(`${API_URL}/api/gcs/detect`, { method: 'POST', body: fd }));
 }
 
-/** Upload a mixed batch of report types in one call. */
+/** Upload a mixed batch of reports in one call, then kick off a sync per marketplace touched. */
 export async function gcsIngestBulk(
   brand: string,
   startDate: string,
@@ -238,31 +278,4 @@ export async function gcsIngestBulk(
   fd.set('assignments', JSON.stringify(assignments));
   for (const f of files) fd.append('files', f, f.name);
   return json(await fetch(`${API_URL}/api/gcs/ingest-bulk`, { method: 'POST', body: fd }));
-}
-
-export async function getGcsReportTypes(marketplace?: Marketplace): Promise<ReportType[]> {
-  return json(
-    await fetch(
-      `${API_URL}/api/gcs/report-types${marketplace ? `?marketplace=${marketplace}` : ''}`,
-      { cache: 'no-store' }
-    )
-  );
-}
-
-export async function gcsIngest(
-  brand: string,
-  marketplace: Marketplace,
-  reportType: string,
-  startDate: string,
-  endDate: string,
-  files: File[]
-): Promise<IngestResponse> {
-  const fd = new FormData();
-  fd.set('brand', brand);
-  fd.set('marketplace', marketplace);
-  fd.set('reportType', reportType);
-  fd.set('startDate', startDate);
-  fd.set('endDate', endDate);
-  for (const f of files) fd.append('files', f, f.name);
-  return json(await fetch(`${API_URL}/api/gcs/ingest`, { method: 'POST', body: fd }));
 }

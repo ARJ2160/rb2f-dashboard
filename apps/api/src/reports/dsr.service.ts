@@ -14,6 +14,10 @@ import { db } from '../db/client';
 import { dailyAsinSales, products } from '../db/schema';
 import { getAdMetrics, sumChannels } from './ad-metrics';
 import { asinCategorySql, listCategories } from './filters';
+import { piActive } from './pi-sales';
+
+/** One row per day {sales, units, pageViews, unpricedMissing} — same shape whether sourced from Pi or Seller+Vendor. */
+type SalesDayRow = { date: string; sales: string; units: string; pageViews: string | null; unpricedMissing: string };
 
 /**
  * DSR — Daily Sales Report (rule book §10.1). One row per calendar day.
@@ -28,24 +32,38 @@ import { asinCategorySql, listCategories } from './filters';
  * the averaged sums, which equals the TOTAL ratios).
  */
 export async function getDsr(profileId: string, from: string, to: string, category?: string): Promise<DsrResponse> {
+  const pi = await piActive(profileId, from, to);
   const salesCat = category ? sql`and ${asinCategorySql('daily_asin_sales.asin', 'products')} = ${category}` : sql``;
-  const [salesRows, ads, categories] = await Promise.all([
-    db
-      .select({
-        date: dailyAsinSales.date,
-        // Reported revenue + Vendor shipped units valued at the mapper's selling price.
-        sales: sql<string>`coalesce(sum(${dailyAsinSales.sales}), 0) + coalesce(sum(${dailyAsinSales.unpricedUnits} * ${products.sellingPrice}), 0)`,
-        units: sql<string>`coalesce(sum(${dailyAsinSales.units}), 0)`,
-        pageViews: sql<string | null>`sum(${dailyAsinSales.pageViews})`,
-        unpricedMissing: sql<string>`coalesce(sum(case when ${products.sellingPrice} is null then ${dailyAsinSales.unpricedUnits} else 0 end), 0)`,
-      })
-      .from(dailyAsinSales)
-      .leftJoin(products, and(eq(products.profileId, dailyAsinSales.profileId), eq(products.asin, dailyAsinSales.asin)))
-      .where(and(eq(dailyAsinSales.profileId, profileId), between(dailyAsinSales.date, from, to), sql`true ${salesCat}`))
-      .groupBy(dailyAsinSales.date),
-    getAdMetrics(profileId, from, to, category),
-    listCategories(profileId),
-  ]);
+  const piCat = category ? sql`and coalesce(p.mapper_category, 'Unmapped') = ${category}` : sql``;
+
+  // When Amazon Pi is present it is the only sales source (gross value/units);
+  // Page Views falls back to Pi's indexed glance views. Otherwise Seller + Vendor.
+  const salesQuery: Promise<SalesDayRow[]> = pi
+    ? db.execute<SalesDayRow>(sql`
+        select s.date::text as date,
+               coalesce(sum(s.gross_sales), 0)::text as sales,
+               coalesce(sum(s.gross_units), 0)::text as units,
+               sum(s.indexed_glance_views)::text as "pageViews",
+               '0' as "unpricedMissing"
+        from daily_pi_city_sales s
+        left join products p on p.profile_id = s.profile_id and p.asin = s.asin
+        where s.profile_id = ${profileId} and s.date between ${from} and ${to} ${piCat}
+        group by s.date`)
+    : db
+        .select({
+          date: dailyAsinSales.date,
+          // Reported revenue + Vendor shipped units valued at the mapper's selling price.
+          sales: sql<string>`coalesce(sum(${dailyAsinSales.sales}), 0) + coalesce(sum(${dailyAsinSales.unpricedUnits} * ${products.sellingPrice}), 0)`,
+          units: sql<string>`coalesce(sum(${dailyAsinSales.units}), 0)`,
+          pageViews: sql<string | null>`sum(${dailyAsinSales.pageViews})`,
+          unpricedMissing: sql<string>`coalesce(sum(case when ${products.sellingPrice} is null then ${dailyAsinSales.unpricedUnits} else 0 end), 0)`,
+        })
+        .from(dailyAsinSales)
+        .leftJoin(products, and(eq(products.profileId, dailyAsinSales.profileId), eq(products.asin, dailyAsinSales.asin)))
+        .where(and(eq(dailyAsinSales.profileId, profileId), between(dailyAsinSales.date, from, to), sql`true ${salesCat}`))
+        .groupBy(dailyAsinSales.date) as unknown as Promise<SalesDayRow[]>;
+
+  const [salesRows, ads, categories] = await Promise.all([salesQuery, getAdMetrics(profileId, from, to, category), listCategories(profileId)]);
 
   const byChannel = (['sp', 'sb', 'sd'] as const).map((channel) => {
     const out = { channel, days: 0, asinDays: 0, campaignDays: 0, spend: 0, adSales: 0, impressions: 0, clicks: 0, adUnits: 0 };
@@ -137,7 +155,10 @@ export async function getDsr(profileId: string, from: string, to: string, catego
       `${unvalued} Vendor Central shipped unit(s) came with ₹0 revenue and have no selling price in the ASIN mapper — they count in Units but not in Sales. Add prices (Selling Price / BAU) to the mapper and re-upload it; no need to re-upload the Vendor file.`
     );
   }
-  if (salesRows.length === 0) notes.push('No Business Report / Vendor Central data in this range.');
+  if (pi) {
+    notes.push('Sales & Units come from Amazon Pi (gross), the sole sales source for this profile. Page Views = Pi indexed glance views.');
+  }
+  if (salesRows.length === 0) notes.push(pi ? 'No Amazon Pi sales in this range.' : 'No Business Report / Vendor Central data in this range.');
   if (adDays === 0) notes.push('No SP/SB/SD ad data in this range — ad columns are 0.');
   const missingSales = dates.length - salesRows.length;
   if (salesRows.length && missingSales > 0) notes.push(`${missingSales} day(s) in range have no sales data uploaded.`);

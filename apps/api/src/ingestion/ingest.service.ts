@@ -22,17 +22,25 @@ import {
   storeHourly,
   storeAsinMapper,
   storeCampaignMapper,
+  storeAsinGv,
+  storeKeywordSov,
+  storePiCitySales,
   storePlacements,
   storeSales,
   storeSbAttributed,
   storeSearchQueryPerformance,
+  storeSearchRank,
   storeSearchTerms,
   storeStateSales,
 } from './store';
 import { parseAdvertisedProduct } from './parsers/advertised-product';
+import { parseAsinGv } from './parsers/asin-gv';
+import { parseKeywordSov } from './parsers/keyword-sov';
 import { parseSbAttributed } from './parsers/sb-attributed';
 import { parseCampaignMapper } from './parsers/campaign-mapper';
 import { parseOrderReport } from './parsers/order-report';
+import { parsePiCitySales } from './parsers/pi-city-sales';
+import { parseSearchRank } from './parsers/search-rank';
 import { parsePlacements } from './parsers/placement';
 import { parseSearchQueryPerformance } from './parsers/search-query-performance';
 import { parseSearchTerms } from './parsers/search-term';
@@ -183,6 +191,22 @@ async function ingestSheet(
     case 'order_report': {
       const parsed = parseOrderReport(sheet.rows, ctx);
       return finish(parsed, () => db.transaction((tx) => storeStateSales(tx, profileId, uploadId, 'seller', parsed.records)));
+    }
+    case 'pi_city_sales': {
+      const parsed = parsePiCitySales(sheet.rows, ctx);
+      return finish(parsed, () => db.transaction((tx) => storePiCitySales(tx, profileId, uploadId, parsed.records)));
+    }
+    case 'search_rank': {
+      const parsed = parseSearchRank(sheet.rows, ctx);
+      return finish(parsed, () => db.transaction((tx) => storeSearchRank(tx, profileId, uploadId, parsed.records)));
+    }
+    case 'asin_gv': {
+      const parsed = parseAsinGv(sheet.rows, ctx);
+      return finish(parsed, () => db.transaction((tx) => storeAsinGv(tx, profileId, uploadId, parsed.records)));
+    }
+    case 'keyword_sov': {
+      const parsed = parseKeywordSov(sheet.rows, ctx, [sheet.sheetName, filename]);
+      return finish(parsed, () => db.transaction((tx) => storeKeywordSov(tx, profileId, uploadId, parsed.records)));
     }
     case 'search_query_performance': {
       const parsed = parseSearchQueryPerformance(sheet.headers, sheet.rows, ctx, [sheet.sheetName, filename]);

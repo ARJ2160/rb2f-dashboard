@@ -317,6 +317,102 @@ export const dailyPlacements = pgTable(
  * shipping lines only). Vendor: Vendor Central "View By = State" export, same
  * Ordered/Shipped rules and unpriced-unit valuation as daily_asin_sales.
  */
+/**
+ * Amazon Pi "ASIN-wise Sales + Indexed GVs at City Level" — one row per
+ * ASIN × day × delivery city (postal code). When a profile has any of these
+ * rows for a range, Pi is the sole sales source (overrides Seller + Vendor);
+ * it also carries city geography, replacing the Order report behind the map.
+ * `gross_*` is ordered value, `net_*` is after cancellations/discounts;
+ * `indexed_glance_views` is Amazon's obfuscated (indexed) glance-view count.
+ */
+export const dailyPiCitySales = pgTable(
+  'daily_pi_city_sales',
+  {
+    profileId: text('profile_id').notNull(),
+    date: date('date', { mode: 'string' }).notNull(),
+    asin: text('asin').notNull(),
+    state: text('state').notNull(),
+    city: text('city').notNull(),
+    postalCode: text('postal_code').notNull(),
+    grossSales: numeric('gross_sales', { precision: 14, scale: 2, mode: 'number' }).notNull().default(0),
+    grossUnits: integer('gross_units').notNull().default(0),
+    netSales: numeric('net_sales', { precision: 14, scale: 2, mode: 'number' }).notNull().default(0),
+    netUnits: integer('net_units').notNull().default(0),
+    indexedGlanceViews: numeric('indexed_glance_views', { precision: 16, scale: 2, mode: 'number' }).notNull().default(0),
+    uploadId: uuid('upload_id'),
+  },
+  (t) => [
+    primaryKey({ columns: [t.profileId, t.date, t.asin, t.state, t.city, t.postalCode] }),
+    index('daily_pi_city_sales_profile_date_idx').on(t.profileId, t.date),
+  ]
+);
+
+/** Amazon Pi "Product Search Ranking" — monthly organic search rank per ASIN (lower = better). */
+export const productSearchRank = pgTable(
+  'product_search_rank',
+  {
+    profileId: text('profile_id').notNull(),
+    asin: text('asin').notNull(),
+    /** First of the month (YYYY-MM-01) for sorting / replace-by-period. */
+    period: date('period', { mode: 'string' }).notNull(),
+    searchRank: numeric('search_rank', { precision: 10, scale: 4, mode: 'number' }).notNull().default(0),
+    category: text('category'),
+    subcategory: text('subcategory'),
+    brand: text('brand'),
+    title: text('title'),
+    uploadId: uuid('upload_id'),
+  },
+  (t) => [primaryKey({ columns: [t.profileId, t.asin, t.period] }), index('product_search_rank_profile_idx').on(t.profileId)]
+);
+
+/** Amazon Pi "Total Indexed Glance Views — ASIN level" — one snapshot day per ASIN. */
+export const dailyAsinGv = pgTable(
+  'daily_asin_gv',
+  {
+    profileId: text('profile_id').notNull(),
+    date: date('date', { mode: 'string' }).notNull(),
+    asin: text('asin').notNull(),
+    glanceViews: numeric('glance_views', { precision: 16, scale: 2, mode: 'number' }).notNull().default(0),
+    category: text('category'),
+    subcategory: text('subcategory'),
+    brand: text('brand'),
+    uploadId: uuid('upload_id'),
+  },
+  (t) => [primaryKey({ columns: [t.profileId, t.date, t.asin] }), index('daily_asin_gv_profile_date_idx').on(t.profileId, t.date)]
+);
+
+/**
+ * Amazon Pi "Search Performance" keyword report (category / branded / competitor
+ * / generic), one row per keyword per duration window (7 / 15 / 30 days). The
+ * many SOV / CTR / CPC / ACoS / coverage metrics are kept in a JSON blob so the
+ * front-end metric picker can surface any of them without a schema change.
+ */
+export const keywordSov = pgTable(
+  'keyword_sov',
+  {
+    profileId: text('profile_id').notNull(),
+    /** '7days' | '15days' | '30days' */
+    duration: text('duration').notNull(),
+    /** Export snapshot date (from the file name) — lets several pulls coexist and be picked on the screen. */
+    snapshotDate: date('snapshot_date', { mode: 'string' }).notNull(),
+    keyword: text('keyword').notNull(),
+    /** GENERIC | BRANDED | COMPETITOR (drives the tabs). */
+    keywordType: text('keyword_type').notNull(),
+    category: text('category'),
+    /** "# of Searches" range, e.g. "500K-1MM". */
+    searches: text('searches'),
+    rank: integer('rank'),
+    mostClickedOrganicAsin: text('most_clicked_organic_asin'),
+    mostClickedSpAsin: text('most_clicked_sp_asin'),
+    metrics: jsonb('metrics').$type<Record<string, number | string | null>>().notNull().default({}),
+    uploadId: uuid('upload_id'),
+  },
+  (t) => [
+    primaryKey({ columns: [t.profileId, t.duration, t.snapshotDate, t.keyword] }),
+    index('keyword_sov_profile_idx').on(t.profileId, t.duration, t.snapshotDate),
+  ]
+);
+
 export const dailyStateSales = pgTable(
   'daily_state_sales',
   {

@@ -4,6 +4,9 @@ import { and, between, eq, sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { dailyAsinSales, products } from '../db/schema';
 import { listCategories } from './filters';
+import { piActive } from './pi-sales';
+
+type DurSalesRow = { asin: string; date: string; units: string; orders: string | null; category: string | null; title: string | null };
 
 /**
  * DUR — Daily Units Report (rule book §10.2). Pivot: one row per ASIN, one
@@ -21,20 +24,32 @@ import { listCategories } from './filters';
  * separate from "Unmapped" (an ASIN that the mapper doesn't know).
  */
 export async function getDur(profileId: string, from: string, to: string, metric: DurMetric, category?: string): Promise<DurResponse> {
-  const categories = await listCategories(profileId);
-  const rows = await db
-    .select({
-      asin: dailyAsinSales.asin,
-      date: dailyAsinSales.date,
-      units: sql<string>`coalesce(sum(${dailyAsinSales.units}), 0)`,
-      orders: sql<string | null>`sum(${dailyAsinSales.orderItems})`,
-      category: sql<string | null>`max(${products.mapperCategory})`,
-      title: sql<string | null>`max(coalesce(${products.mapperTitle}, ${products.reportTitle}))`,
-    })
-    .from(dailyAsinSales)
-    .leftJoin(products, and(eq(products.profileId, dailyAsinSales.profileId), eq(products.asin, dailyAsinSales.asin)))
-    .where(and(eq(dailyAsinSales.profileId, profileId), between(dailyAsinSales.date, from, to)))
-    .groupBy(dailyAsinSales.asin, dailyAsinSales.date);
+  const [categories, pi] = await Promise.all([listCategories(profileId), piActive(profileId, from, to)]);
+  // Under Amazon Pi, units = gross units and there is no order count (orders → null/"—").
+  const rows: DurSalesRow[] = pi
+    ? await db.execute<DurSalesRow>(sql`
+        select s.asin as asin, s.date::text as date,
+               coalesce(sum(s.gross_units), 0)::text as units,
+               null::text as orders,
+               max(p.mapper_category) as category,
+               max(coalesce(p.mapper_title, p.report_title)) as title
+        from daily_pi_city_sales s
+        left join products p on p.profile_id = s.profile_id and p.asin = s.asin
+        where s.profile_id = ${profileId} and s.date between ${from} and ${to}
+        group by s.asin, s.date`)
+    : await db
+        .select({
+          asin: dailyAsinSales.asin,
+          date: dailyAsinSales.date,
+          units: sql<string>`coalesce(sum(${dailyAsinSales.units}), 0)`,
+          orders: sql<string | null>`sum(${dailyAsinSales.orderItems})`,
+          category: sql<string | null>`max(${products.mapperCategory})`,
+          title: sql<string | null>`max(coalesce(${products.mapperTitle}, ${products.reportTitle}))`,
+        })
+        .from(dailyAsinSales)
+        .leftJoin(products, and(eq(products.profileId, dailyAsinSales.profileId), eq(products.asin, dailyAsinSales.asin)))
+        .where(and(eq(dailyAsinSales.profileId, profileId), between(dailyAsinSales.date, from, to)))
+        .groupBy(dailyAsinSales.asin, dailyAsinSales.date);
 
   const dates = enumerateDates(from, to);
   const days = daysInRange(from, to);
@@ -93,9 +108,13 @@ export async function getDur(profileId: string, from: string, to: string, metric
 
   const notes: string[] = [
     ...(category ? [`Category "${category}": ${out.length} ASIN(s).`] : []),
-    metric === 'units'
-      ? 'Values = units sold (Seller "Units Ordered" + Vendor "Ordered Units").'
-      : 'Values = order items (Seller "Total Order Items"). Vendor Central has no order count, so Vendor-only ASINs show "—".',
+    pi
+      ? metric === 'units'
+        ? 'Values = gross units from Amazon Pi (the sole sales source for this profile).'
+        : 'Amazon Pi reports no order count, so Orders is unavailable — switch to Units.'
+      : metric === 'units'
+        ? 'Values = units sold (Seller "Units Ordered" + Vendor "Ordered Units").'
+        : 'Values = order items (Seller "Total Order Items"). Vendor Central has no order count, so Vendor-only ASINs show "—".',
   ];
   const noData = dates.length - datesWithData.size;
   if (rows.length && noData > 0) notes.push(`${noData} day(s) in range have no sales upload — shown as "—".`);

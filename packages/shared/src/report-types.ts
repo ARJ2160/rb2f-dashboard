@@ -26,6 +26,14 @@ export const REPORT_TYPES = {
   hourly: { label: 'Hourly Campaign', inScope: false },
   order_report: { label: 'Order Report', inScope: true },
   search_query_performance: { label: 'Search Query Performance', inScope: true },
+  /** Amazon Pi — ASIN-wise Sales + Indexed GVs at City Level (date × ASIN × city). */
+  pi_city_sales: { label: 'Amazon Pi — Sales by City', inScope: true },
+  /** Amazon Pi — Product Search Ranking (monthly rank per ASIN). */
+  search_rank: { label: 'Amazon Pi — Search Rank', inScope: true },
+  /** Amazon Pi — Total Indexed Glance Views, ASIN level (daily snapshot). */
+  asin_gv: { label: 'Amazon Pi — Glance Views (ASIN)', inScope: true },
+  /** Amazon Pi — Search Performance keyword report (SOV / CTR / CPC / ACoS …). */
+  keyword_sov: { label: 'Amazon Pi — Keyword SOV', inScope: true },
 } as const satisfies Record<string, { label: string; inScope: boolean }>;
 
 export type ReportType = keyof typeof REPORT_TYPES;

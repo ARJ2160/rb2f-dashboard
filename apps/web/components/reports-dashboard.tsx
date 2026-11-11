@@ -20,6 +20,9 @@ import { HourlyView } from '@/components/views/hourly-view';
 import { SummaryView } from '@/components/views/summary-view';
 import { NegationsView } from '@/components/views/negations-view';
 import { TermRulesView } from '@/components/views/term-rules-view';
+import { GlanceViewsView } from '@/components/views/glance-views-view';
+import { SearchRankView } from '@/components/views/search-rank-view';
+import { KeywordSovView } from '@/components/views/keyword-sov-view';
 // Targeting page hidden for now — restore this import with its tab + render block below.
 // import { TargetingView } from '@/components/views/targeting-view';
 import type { Period } from '@/components/views/shared';
@@ -38,6 +41,9 @@ type Tab =
   | 'termrules'
   | 'targeting'
   | 'sqp'
+  | 'gv'
+  | 'searchrank'
+  | 'keywordsov'
   | 'harvest'
   | 'placement'
   | 'state'
@@ -61,6 +67,9 @@ const TABS: Array<ShellTab<Tab>> = [
   // Targeting page hidden for now — uncomment to restore (also the import and render block).
   // { id: 'targeting', label: 'Targeting', hint: 'Target-level rules, bid reduction and bid scale-up (range > 3 days)', icon: 'ads', group: 'Keywords' },
   { id: 'sqp', label: 'SQP', hint: "Search Query Performance — queries where the brand beats the category but isn't targeted yet", icon: 'sqp', group: 'Keywords' },
+  { id: 'gv', label: 'Glance Views', hint: 'Amazon Pi indexed glance views by ASIN and day', icon: 'overview', group: 'Keywords' },
+  { id: 'searchrank', label: 'Search Rank', hint: 'Amazon Pi monthly organic search rank per ASIN (lower is better)', icon: 'sqp', group: 'Keywords' },
+  { id: 'keywordsov', label: 'Keyword SOV', hint: 'Amazon Pi keyword share of voice, CTR / CPC / ACoS across SP, SB and organic', icon: 'keywords', group: 'Keywords' },
 ];
 
 /** Latest / earliest day any source has data. */
@@ -137,7 +146,7 @@ export function ReportsDashboard({
   const { latest, earliest } = bounds(coverage);
   const hasAnyData = coverage?.sources.some((s) => s.days > 0);
   // MoM / WoW, SQP and Keyword Harvesting choose their own periods, so the date range doesn't apply to them.
-  const isSummary = tab === 'summary' || tab === 'sqp' || tab === 'harvest';
+  const isSummary = tab === 'summary' || tab === 'sqp' || tab === 'harvest' || tab === 'gv' || tab === 'searchrank' || tab === 'keywordsov';
   // Rule / negation / targeting pages use the selected range but have no comparison period.
   const isActionTab = tab === 'negations' || tab === 'termrules' || tab === 'targeting';
   const isView = tab !== 'dsr' && tab !== 'dur' && tab !== 'overview' && !isSummary && !isActionTab;
@@ -214,13 +223,16 @@ export function ReportsDashboard({
       heading={tab !== 'overview'}
       sideCard={coverage && hasAnyData ? <CoverageCard coverage={coverage} /> : null}
     >
-      {coverage && !hasAnyData && tab !== 'sqp' && (
+      {coverage && !hasAnyData && tab !== 'sqp' && tab !== 'gv' && tab !== 'searchrank' && tab !== 'keywordsov' && (
         <div className="rounded-xl border border-line bg-side px-5 py-6 text-sm">{emptyState}</div>
       )}
       {error && <ErrorBox message={error} />}
 
       {tab === 'summary' && <SummaryView profileId={profileId} compareLoad={getSummaryCompare} />}
       {tab === 'sqp' && <SqpView profileId={profileId} />}
+      {tab === 'gv' && <GlanceViewsView profileId={profileId} />}
+      {tab === 'searchrank' && <SearchRankView profileId={profileId} />}
+      {tab === 'keywordsov' && <KeywordSovView profileId={profileId} />}
       {tab === 'harvest' && <HarvestView profileId={profileId} />}
       {tab === 'dsr' && dsr && (
         <>

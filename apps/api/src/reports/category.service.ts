@@ -4,8 +4,11 @@ import { sql } from 'drizzle-orm';
 import { db } from '../db/client';
 import { getAdMetrics } from './ad-metrics';
 import { getAdsByAsin } from './asin-ads';
+import { piActive } from './pi-sales';
 
 const MISSING = '(missing ASIN)';
+
+type CatSalesRow = { asin: string; sales: string; units: string; page_views: string | null; unvalued: string };
 
 /**
  * Category-wise view (rule book §10.4): DSR columns grouped by the ASIN-mapper
@@ -20,17 +23,29 @@ export async function getCategoryView(
   to: string,
   opts: { category?: string | undefined; asinLimit?: number } = {}
 ): Promise<CategoryResponse> {
+  const pi = await piActive(profileId, from, to);
+  const salesQuery: Promise<CatSalesRow[]> = pi
+    ? db.execute<CatSalesRow>(sql`
+        select s.asin,
+               coalesce(sum(s.gross_sales), 0)::text as sales,
+               coalesce(sum(s.gross_units), 0)::text as units,
+               sum(s.indexed_glance_views)::text as page_views,
+               '0' as unvalued
+        from daily_pi_city_sales s
+        where s.profile_id = ${profileId} and s.date between ${from} and ${to}
+        group by s.asin`)
+    : db.execute<CatSalesRow>(sql`
+        select s.asin,
+               (coalesce(sum(s.sales), 0) + coalesce(sum(s.unpriced_units * p.selling_price), 0))::text as sales,
+               coalesce(sum(s.units), 0)::text as units,
+               sum(s.page_views)::text as page_views,
+               coalesce(sum(case when p.selling_price is null then s.unpriced_units else 0 end), 0)::text as unvalued
+        from daily_asin_sales s
+        left join products p on p.profile_id = s.profile_id and p.asin = s.asin
+        where s.profile_id = ${profileId} and s.date between ${from} and ${to}
+        group by s.asin`);
   const [sales, ads, cats, dayAds] = await Promise.all([
-    db.execute<{ asin: string; sales: string; units: string; page_views: string | null; unvalued: string }>(sql`
-      select s.asin,
-             coalesce(sum(s.sales), 0) + coalesce(sum(s.unpriced_units * p.selling_price), 0) as sales,
-             coalesce(sum(s.units), 0) as units,
-             sum(s.page_views) as page_views,
-             coalesce(sum(case when p.selling_price is null then s.unpriced_units else 0 end), 0) as unvalued
-      from daily_asin_sales s
-      left join products p on p.profile_id = s.profile_id and p.asin = s.asin
-      where s.profile_id = ${profileId} and s.date between ${from} and ${to}
-      group by s.asin`),
+    salesQuery,
     getAdsByAsin(profileId, from, to),
     db.execute<{ asin: string; category: string | null; title: string | null }>(
       sql`select asin, mapper_category as category, coalesce(mapper_title, report_title) as title from products where profile_id = ${profileId}`
@@ -86,6 +101,7 @@ export async function getCategoryView(
     .sort((a, b) => b.sales - a.sales || b.spends - a.spends);
 
   const notes: string[] = [];
+  if (pi) notes.push('Sales & Units come from Amazon Pi (gross), the sole sales source for this profile.');
   const unmapped = rows.find((r) => r.category === 'Unmapped');
   if (unmapped && total.sales > 0) {
     const share = (unmapped.sales / total.sales) * 100;
