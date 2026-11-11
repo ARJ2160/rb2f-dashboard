@@ -14,8 +14,10 @@ const toIso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /** Button that opens a calendar below it; closes on outside click or Escape. */
-function Popup({ label, open, setOpen, children }: {
+function Popup({ label, prefix, open, setOpen, children }: {
   label: ReactNode;
+  /** Small muted caption inside the field, before the icon (e.g. "As of"). */
+  prefix?: string | undefined;
   open: boolean;
   setOpen: (v: boolean) => void;
   children: ReactNode;
@@ -35,6 +37,7 @@ function Popup({ label, open, setOpen, children }: {
   return (
     <div ref={ref} className="relative">
       <button type="button" onClick={() => setOpen(!open)} className="field cursor-pointer">
+        {prefix && <span className="text-xs text-muted">{prefix}</span>}
         <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-muted" aria-hidden>
           <path d="M6 2a1 1 0 0 1 1 1v1h6V3a1 1 0 1 1 2 0v1h1a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h1V3a1 1 0 0 1 1-1Zm10 6H4v8h12V8Z" />
         </svg>
@@ -91,14 +94,15 @@ export function DateRangePicker({ value, onChange, min, max }: {
 }
 
 /** Single date. */
-export function DatePicker({ value, onChange, max }: {
+export function DatePicker({ value, onChange, max, prefix }: {
   value: string;
   onChange: (v: string) => void;
   max?: string | null | undefined;
+  prefix?: string | undefined;
 }) {
   const [open, setOpen] = useState(false);
   return (
-    <Popup open={open} setOpen={setOpen} label={value ? fmtDateLong(value) : 'Pick a date'}>
+    <Popup open={open} setOpen={setOpen} prefix={prefix} label={value ? fmtDateLong(value) : 'Pick a date'}>
       <DayPicker
         className="react-day-picker"
         mode="single"

@@ -73,6 +73,15 @@ reportsRouter.get('/summary', async (req, res) => {
   res.json(await withDims(o.profileId, () => getSummary(o.profileId, { asOf: o.asOf, category: o.category })));
 });
 
+/** GET /api/reports/summary-compare?profileId&aFrom&aTo&bFrom&bTo&category — MoM / WoW custom A-vs-B compare. */
+reportsRouter.get('/summary-compare', async (req, res) => {
+  const iso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'dates must be YYYY-MM-DD');
+  const o = z
+    .object({ profileId: profileIdSchema, aFrom: iso, aTo: iso, bFrom: iso, bTo: iso, category: optText })
+    .parse(req.query);
+  res.json(await withDims(o.profileId, () => getSummaryCompare(o.profileId, o)));
+});
+
 /** GET /api/reports/coverage?profileId — uploaded date ranges per source + mapper match rate. */
 reportsRouter.get('/coverage', async (req, res) => {
   const { profileId } = z.object({ profileId: profileIdSchema }).parse(req.query);

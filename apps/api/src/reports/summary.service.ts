@@ -1,4 +1,4 @@
-import { daysInRange, enumerateDates, pct, ratio, type DsrMetrics, type SummaryPeriod, type SummaryResponse, type SummaryRow } from '@dash/shared';
+import { daysInRange, enumerateDates, pct, ratio, type DsrMetrics, type SummaryCompareResponse, type SummaryPeriod, type SummaryResponse, type SummaryRow } from '@dash/shared';
 import { sql } from 'drizzle-orm';
 
 import { db } from '../db/client';
@@ -144,4 +144,40 @@ export async function getSummary(profileId: string, opts: { asOf?: string; categ
   if (opts.category) notes.push(`Category "${opts.category}" — same rules as the DSR category filter.`);
 
   return { profileId, asOf, autoAsOf, latest, category: opts.category ?? null, categories, periods, rows, notes };
+}
+
+/**
+ * MoM / WoW custom compare — the same metric rows over two arbitrary periods
+ * A and B (A is treated as "current", B as the comparison), with A-vs-B change %.
+ * Backs the Compare section on the MoM / WoW screen.
+ */
+export async function getSummaryCompare(
+  profileId: string,
+  opts: { aFrom: string; aTo: string; bFrom: string; bTo: string; category?: string }
+): Promise<SummaryCompareResponse> {
+  const [a, b] = await Promise.all([
+    loadPeriod(profileId, { from: opts.aFrom, to: opts.aTo }, opts.category),
+    loadPeriod(profileId, { from: opts.bFrom, to: opts.bTo }, opts.category),
+  ]);
+
+  const rows = ROWS.map(({ get, ...def }) => {
+    const av = get(a);
+    const bv = get(b);
+    return { ...def, a: av, b: bv, change: changePct(av, bv) };
+  });
+
+  const notes: string[] = [];
+  if ([a, b].some((p) => p.vendorUnits > 0)) {
+    notes.push('Sessions come from the Seller Central Business Report only (Vendor Central has no sessions). CR% = Units ÷ Sessions, so Vendor units make it read high.');
+  }
+  if (opts.category) notes.push(`Category "${opts.category}" — same rules as the DSR category filter.`);
+
+  return {
+    profileId,
+    a: { from: opts.aFrom, to: opts.aTo, label: periodLabel(opts.aFrom, opts.aTo), days: daysInRange(opts.aFrom, opts.aTo) },
+    b: { from: opts.bFrom, to: opts.bTo, label: periodLabel(opts.bFrom, opts.bTo), days: daysInRange(opts.bFrom, opts.bTo) },
+    category: opts.category ?? null,
+    rows,
+    notes,
+  };
 }

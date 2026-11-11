@@ -63,6 +63,13 @@ export async function getSummary(profileId: string, f: { asOf?: string; category
   return json(await fetch(`${API_URL}/api/reports/summary?${qs({ profileId, ...f })}`, { cache: 'no-store' }));
 }
 
+export async function getSummaryCompare(
+  profileId: string,
+  f: { aFrom: string; aTo: string; bFrom: string; bTo: string; category?: string }
+): Promise<SummaryCompareResponse> {
+  return json(await fetch(`${API_URL}/api/reports/summary-compare?${qs({ profileId, ...f })}`, { cache: 'no-store' }));
+}
+
 export async function getCoverage(profileId: string): Promise<CoverageResponse> {
   return json(await fetch(`${API_URL}/api/reports/coverage?${qs({ profileId })}`, { cache: 'no-store' }));
 }

@@ -490,6 +490,39 @@ export interface SummaryResponse {
   notes: string[];
 }
 
+// ── MoM / WoW custom compare (two arbitrary periods, A vs B) ────────
+
+export interface SummaryComparePeriod {
+  from: string;
+  to: string;
+  /** "1-21 Oct" */
+  label: string;
+  days: number;
+}
+
+export interface SummaryCompareRow {
+  key: string;
+  label: string;
+  format: 'money' | 'int' | 'pct' | 'ratio';
+  /** Which direction is good — colours the change %. */
+  better: 'up' | 'down' | 'none';
+  /** Period A value. */
+  a: number | null;
+  /** Period B (comparison) value. */
+  b: number | null;
+  /** % change A vs B. */
+  change: number | null;
+}
+
+export interface SummaryCompareResponse {
+  profileId: string;
+  a: SummaryComparePeriod;
+  b: SummaryComparePeriod;
+  category: string | null;
+  rows: SummaryCompareRow[];
+  notes: string[];
+}
+
 // ── SQP (Brand Analytics Search Query Performance, Brand View) ─────
 
 /** What a query is currently targeted in (matched on the targeted keyword, never the triggered search term). */
