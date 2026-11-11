@@ -17,6 +17,7 @@ import path from 'node:path';
 
 const STORAGE_API = 'https://storage.googleapis.com/storage/v1';
 const READ_ONLY_SCOPE = 'https://www.googleapis.com/auth/devstorage.read_only';
+export const READ_WRITE_SCOPE = 'https://www.googleapis.com/auth/devstorage.read_write';
 const METADATA_TOKEN_URL =
   'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token';
 
@@ -91,11 +92,13 @@ export class GcsClient {
     private readonly key: ServiceAccountKey | null,
     /** Overridable for tests. */
     private readonly apiBase = STORAGE_API,
-    private readonly metadataTokenUrl = METADATA_TOKEN_URL
+    private readonly metadataTokenUrl = METADATA_TOKEN_URL,
+    /** OAuth scope for key-based auth (read-only by default; read_write for uploads). */
+    private readonly scope: string = READ_ONLY_SCOPE
   ) {}
 
-  static fromKeyFile(bucket: string, file: string): GcsClient {
-    return new GcsClient(bucket, loadServiceAccount(file));
+  static fromKeyFile(bucket: string, file: string, scope = READ_ONLY_SCOPE): GcsClient {
+    return new GcsClient(bucket, loadServiceAccount(file), STORAGE_API, METADATA_TOKEN_URL, scope);
   }
 
   /** Cloud Run: authenticate as the service account attached to the service. */
@@ -138,7 +141,7 @@ export class GcsClient {
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-        assertion: signJwt(key, Math.floor(Date.now() / 1000)),
+        assertion: signJwt(key, Math.floor(Date.now() / 1000), this.scope),
       }),
     });
     const body = (await res.json().catch(() => ({}))) as {
@@ -271,4 +274,50 @@ export class GcsClient {
     const res = await this.get(url, 5 * 60_000);
     return Buffer.from(await res.arrayBuffer());
   }
+  /**
+   * Upload an object to GCS (requires Storage Object Creator or higher on the bucket).
+   * On Cloud Run the metadata-server token already covers what IAM allows; with a key
+   * file, construct this client with READ_WRITE_SCOPE.
+   */
+  async upload(
+    objectName: string,
+    buffer: Buffer,
+    contentType = 'application/octet-stream'
+  ): Promise<{ name: string; generation: string; size: number }> {
+    const uploadBase = this.apiBase.replace('/storage/v1', '/upload/storage/v1');
+    const url = `${uploadBase}/b/${encodeURIComponent(this.bucket)}/o?${new URLSearchParams({
+      uploadType: 'media',
+      name: objectName,
+    })}`;
+    const token = await this.accessToken();
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          authorization: `Bearer ${token}`,
+          'content-type': contentType,
+          'content-length': String(buffer.length),
+        },
+        body: buffer,
+        signal: AbortSignal.timeout(120_000),
+      });
+    } catch (err) {
+      throw new GcsError(`GCS upload failed: ${(err as Error).message}`);
+    }
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      let msg = text.slice(0, 300);
+      try {
+        msg = (JSON.parse(text) as { error?: { message?: string } }).error?.message ?? msg;
+      } catch { /* not JSON */ }
+      const hint = res.status === 403
+        ? ` — give ${this.principal} "Storage Object Creator" on gs://${this.bucket}`
+        : '';
+      throw new GcsError(`GCS upload failed (${res.status}): ${msg}${hint}`, res.status);
+    }
+    const body = (await res.json()) as { name: string; generation: string; size: string };
+    return { name: body.name, generation: body.generation, size: Number(body.size) };
+  }
+
 }

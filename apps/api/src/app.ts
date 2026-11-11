@@ -53,6 +53,10 @@ export function createApp() {
     ['/api/gcs/sync', '/api/reports/rebuild-dims', '/api/blinkit/rebuild-dims'],
     rateLimit({ limit: env.RATE_LIMIT_SYNC_PER_10MIN, windowMs: 10 * MINUTE, what: 'sync requests' })
   );
+  app.post(
+    ['/api/gcs/ingest', '/api/gcs/ingest-bulk', '/api/gcs/detect'],
+    rateLimit({ limit: env.RATE_LIMIT_UPLOADS_PER_10MIN, windowMs: 10 * MINUTE, what: 'uploads' })
+  );
 
   app.use(express.json({ limit: '100kb' }));
 
