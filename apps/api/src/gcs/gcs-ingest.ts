@@ -87,6 +87,34 @@ export const AMAZON_REPORT_TYPES: readonly ReportType[] = [
     marketplace: 'amazon',
     hint: 'Brand analytics search query performance report',
   },
+  {
+    id: 'pi_sales',
+    label: 'Amazon Pi — Sales by City',
+    folder: 'pi_sales',
+    marketplace: 'amazon',
+    hint: 'ASIN × day × city sales + indexed glance views (becomes the sole sales source)',
+  },
+  {
+    id: 'search_rank',
+    label: 'Amazon Pi — Search Rank',
+    folder: 'search_rank',
+    marketplace: 'amazon',
+    hint: 'Monthly organic search rank per ASIN',
+  },
+  {
+    id: 'gv',
+    label: 'Amazon Pi — Glance Views (ASIN)',
+    folder: 'gv',
+    marketplace: 'amazon',
+    hint: 'Daily indexed glance views per ASIN',
+  },
+  {
+    id: 'keyword_sov',
+    label: 'Amazon Pi — Keyword SOV',
+    folder: 'keyword_sov',
+    marketplace: 'amazon',
+    hint: 'Keyword share of voice / CTR / CPC / ACoS (7 / 15 / 30 day)',
+  },
 ];
 
 export const BLINKIT_REPORT_TYPES: readonly ReportType[] = [
@@ -183,6 +211,10 @@ const FINE_TO_COARSE: Partial<Record<FineReportType, string>> = {
   asin_mapper: 'asin_mapper',
   campaign_mapper: 'campaign_mapper',
   search_query_performance: 'sqp',
+  pi_city_sales: 'pi_sales',
+  search_rank: 'search_rank',
+  asin_gv: 'gv',
+  keyword_sov: 'keyword_sov',
 };
 
 export interface DetectResult {
