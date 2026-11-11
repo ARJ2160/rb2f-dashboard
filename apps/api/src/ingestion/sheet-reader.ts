@@ -29,6 +29,9 @@ const HEADER_TOKENS = [
   'category',
   'search query',
   'customer search term',
+  'keyword',
+  'searchrank',
+  'glanceviews',
 ];
 
 const HEADER_SCAN_ROWS = 20;
@@ -114,15 +117,27 @@ function headerRange(ws: XLSX.WorkSheet): XLSX.Range {
   return { s: r.s, e: { r: Math.min(r.e.r, r.s.r + HEADER_SCAN_ROWS - 1), c: r.e.c } };
 }
 
+/**
+ * The header is the row that carries a known header token. Among such rows we
+ * pick the WIDEST — so a "key, value" metadata line whose key happens to be a
+ * token (e.g. Brand Analytics' `Category, Beauty-Fragrance` preamble) never
+ * wins over the real, many-column header below it. Falls back to the first
+ * non-trivial row when no token is found at all.
+ */
 function findHeaderRow(textAoa: unknown[][]): number {
   let firstNonTrivial = -1;
+  let best = -1;
+  let bestCells = 0;
   for (let i = 0; i < Math.min(textAoa.length, HEADER_SCAN_ROWS); i++) {
     const cells = (textAoa[i] ?? []).map((c) => String(c ?? '').trim().toLowerCase()).filter(Boolean);
     if (cells.length < 2) continue;
     if (firstNonTrivial < 0) firstNonTrivial = i;
-    if (cells.some((c) => HEADER_TOKENS.includes(c))) return i;
+    if (cells.some((c) => HEADER_TOKENS.includes(c)) && cells.length > bestCells) {
+      best = i;
+      bestCells = cells.length;
+    }
   }
-  return firstNonTrivial;
+  return best >= 0 ? best : firstNonTrivial;
 }
 
 function dedupeHeaders(raw: string[]): string[] {
