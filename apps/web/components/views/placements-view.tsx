@@ -1,11 +1,11 @@
 'use client';
 
-import type { AdMetrics } from '@dash/shared';
+import { addAdBase, deriveAd, emptyAdBase, type AdBase, type AdMetrics, type PlacementRow } from '@dash/shared';
 import { useState } from 'react';
 
-import { Donut, HBars } from '@/components/charts';
+import { HBars } from '@/components/charts';
 import { getPlacements } from '@/lib/api';
-import { fmtInt, fmtMoney, fmtPct } from '@/lib/format';
+import { fmtInt, fmtPct } from '@/lib/format';
 
 import {
   AdCells,
@@ -57,63 +57,86 @@ export function PlacementsView(props: RangeProps) {
     >
       {data && (
         <>
-          <div className="grid gap-3 lg:grid-cols-[3fr_2fr]">
-            <Card
-              title="Placements"
-              right={<Select label="Metric" value={metric} onChange={(v) => setMetric(v as keyof AdMetrics)} options={CHART_METRICS} allLabel={null} />}
-            >
-              <HBars
-                items={data.rows.map((r) => ({
-                  label: label(r.channel, r.placement),
-                  value: (r[metric] as number | null) ?? 0,
-                  prev: (prevBy.get(key(r))?.[metric] as number | null | undefined) ?? null,
-                }))}
-                fmt={fmt}
+          <Card
+            title="Placements"
+            right={<Select label="Metric" value={metric} onChange={(v) => setMetric(v as keyof AdMetrics)} options={CHART_METRICS} allLabel={null} />}
+          >
+            <HBars
+              items={data.rows.map((r) => ({
+                label: label(r.channel, r.placement),
+                value: (r[metric] as number | null) ?? 0,
+                prev: (prevBy.get(key(r))?.[metric] as number | null | undefined) ?? null,
+              }))}
+              fmt={fmt}
+              comparing={comparing}
+            />
+          </Card>
+          {(['sp', 'sb'] as const)
+            .filter((ch) => data.rows.some((r) => r.channel === ch))
+            .map((ch) => (
+              <ChannelTable
+                key={ch}
+                channel={ch}
+                rows={data.rows.filter((r) => r.channel === ch)}
+                prevBy={prevBy}
+                keyOf={key}
                 comparing={comparing}
               />
-            </Card>
-            <Card title="Spend share">
-              <Donut
-                items={data.rows.map((r) => ({ label: label(r.channel, r.placement), value: r.spend, prev: prevBy.get(key(r))?.spend }))}
-                fmt={fmtMoney}
-                colorKeys={data.rows.map((r) => label(r.channel, r.placement))}
-                comparing={comparing}
-              />
-            </Card>
-          </div>
-          <div className={TABLE_WRAP}>
-            <table className="table table-sm">
-              <thead className={THEAD}>
-                <tr className="text-xs text-muted">
-                  <th className="px-3 py-2 text-left font-medium">Channel</th>
-                  <th className="px-3 py-2 text-left font-medium">Placement</th>
-                  <th className="px-3 py-2 text-right font-medium">Campaigns</th>
-                  <th className="px-3 py-2 text-right font-medium">Spend share</th>
-                  <AdHeader />
-                </tr>
-                <tr className="border-b border-line bg-accent-soft font-semibold">
-                  <td className="px-3 py-1.5" colSpan={3}>
-                    TOTAL
-                  </td>
-                  <td className="num px-3 py-1.5 text-right">100%</td>
-                  <AdCells m={data.total} prev={prev?.total} comparing={comparing} />
-                </tr>
-              </thead>
-              <tbody>
-                {data.rows.map((r) => (
-                  <tr key={key(r)} className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft">
-                    <td className="px-3 py-1.5 text-xs font-semibold">{r.channel.toUpperCase()}</td>
-                    <td className="whitespace-nowrap px-3 py-1.5">{NAMES[r.placement] ?? r.placement}</td>
-                    <td className="num px-3 py-1.5 text-right">{fmtInt(r.campaigns)}</td>
-                    <MCell v={r.spendSharePct} prev={prevBy.get(key(r))?.spendSharePct} fmt={fmtPct} comparing={comparing} />
-                    <AdCells m={r} prev={prevBy.get(key(r))} comparing={comparing} />
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+            ))}
         </>
       )}
     </ViewShell>
+  );
+}
+
+/** One table per channel so SP and SB placements are shown separately, each with its own TOTAL. */
+function ChannelTable({ channel, rows, prevBy, keyOf, comparing }: {
+  channel: 'sp' | 'sb';
+  rows: PlacementRow[];
+  prevBy: Map<string, PlacementRow>;
+  keyOf: (r: { channel: string; placement: string }) => string;
+  comparing: boolean;
+}) {
+  const base: AdBase = rows.reduce((a, r) => addAdBase(a, r), emptyAdBase());
+  const total = deriveAd(base);
+  const prevBase: AdBase | null = comparing
+    ? rows.reduce((a, r) => (prevBy.get(keyOf(r)) ? addAdBase(a, prevBy.get(keyOf(r))!) : a), emptyAdBase())
+    : null;
+  const prevTotal = prevBase ? deriveAd(prevBase) : undefined;
+  const shareTotal = rows.reduce((a, r) => a + (r.spendSharePct ?? 0), 0);
+
+  return (
+    <div className="space-y-1.5">
+      <div className="text-sm font-semibold text-ink">{channel.toUpperCase()}</div>
+      <div className={TABLE_WRAP}>
+        <table className="table table-sm">
+          <thead className={THEAD}>
+            <tr className="text-xs text-muted">
+              <th className="px-3 py-2 text-left font-medium">Placement</th>
+              <th className="px-3 py-2 text-right font-medium">Campaigns</th>
+              <th className="px-3 py-2 text-right font-medium">Spend share</th>
+              <AdHeader />
+            </tr>
+            <tr className="border-b border-line bg-accent-soft font-semibold">
+              <td className="px-3 py-1.5" colSpan={2}>
+                {channel.toUpperCase()} TOTAL
+              </td>
+              <td className="num px-3 py-1.5 text-right">{fmtPct(shareTotal)}</td>
+              <AdCells m={total} prev={prevTotal} comparing={comparing} />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={keyOf(r)} className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft">
+                <td className="whitespace-nowrap px-3 py-1.5">{NAMES[r.placement] ?? r.placement}</td>
+                <td className="num px-3 py-1.5 text-right">{fmtInt(r.campaigns)}</td>
+                <MCell v={r.spendSharePct} prev={prevBy.get(keyOf(r))?.spendSharePct} fmt={fmtPct} comparing={comparing} />
+                <AdCells m={r} prev={prevBy.get(keyOf(r))} comparing={comparing} />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

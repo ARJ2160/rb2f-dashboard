@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { Donut, HBars } from '@/components/charts';
+import { HBars } from '@/components/charts';
 import { getSearchTerms } from '@/lib/api';
 import { fmtInt, fmtMoney } from '@/lib/format';
 
@@ -32,7 +32,6 @@ const SORTS = [
   { value: 'impressions', label: 'Impressions' },
   { value: 'adUnits', label: 'Ad Units' },
 ];
-const BRAND_KEYS = ['Branded', 'Competitor', 'Generic'];
 
 function List({ items, total, className = '' }: { items: string[]; total: number; className?: string }) {
   if (!items.length) return <span className="text-muted">—</span>;
@@ -69,13 +68,6 @@ export function SearchTermsView(props: RangeProps) {
   );
   const prevBy = new Map(prev?.rows.map((r) => [r.searchTerm, r]) ?? []);
 
-  // Branding mix of the listed terms (spend).
-  const mix = BRAND_KEYS.map((k) => ({
-    label: k,
-    value: data?.rows.filter((r) => r.branding === k).reduce((a, r) => a + r.spend, 0) ?? 0,
-    prev: prev?.rows.filter((r) => r.branding === k).reduce((a, r) => a + r.spend, 0),
-  }));
-
   return (
     <ViewShell
       error={error}
@@ -97,21 +89,16 @@ export function SearchTermsView(props: RangeProps) {
     >
       {data && (
         <>
-          <div className="grid gap-3 lg:grid-cols-2">
-            <Card title="Top 10 terms by spend">
-              <HBars
-                items={[...data.rows]
-                  .sort((a, b) => b.spend - a.spend)
-                  .slice(0, 10)
-                  .map((r) => ({ label: r.searchTerm, value: r.spend, prev: prevBy.get(r.searchTerm)?.spend }))}
-                fmt={fmtMoney}
-                comparing={comparing}
-              />
-            </Card>
-            <Card title={`Spend by branding (listed ${fmtInt(data.rows.length)} terms)`}>
-              <Donut items={mix} fmt={fmtMoney} colorKeys={BRAND_KEYS} comparing={comparing} />
-            </Card>
-          </div>
+          <Card title="Top 10 terms by spend">
+            <HBars
+              items={[...data.rows]
+                .sort((a, b) => b.spend - a.spend)
+                .slice(0, 10)
+                .map((r) => ({ label: r.searchTerm, value: r.spend, prev: prevBy.get(r.searchTerm)?.spend }))}
+              fmt={fmtMoney}
+              comparing={comparing}
+            />
+          </Card>
           <div className={TABLE_WRAP}>
             <table className="table table-sm">
               <thead className={THEAD}>

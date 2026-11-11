@@ -20,16 +20,32 @@ export function dimsJoin(alias: string): SQL {
 }
 
 /**
+ * A filter value is a comma-separated list (one value for single-select views,
+ * several for multi-select). Build `expr in (v1, v2, …)`; a single value stays a
+ * one-element IN, so existing single-select callers are unchanged.
+ */
+function inList(expr: SQL, csv: string): SQL | null {
+  const vals = csv.split(',').map((s) => s.trim()).filter(Boolean);
+  if (!vals.length) return null;
+  return sql`${expr} in (${sql.join(vals.map((v) => sql`${v}`), sql`, `)})`;
+}
+
+/**
  * WHERE fragments. Search-term views pass row-level targeting / branding
  * expressions (each search term has its own target and class); campaign-level
- * views use the campaign's dominant value from campaign_dims.
+ * views use the campaign's dominant value from campaign_dims. Each filter value
+ * may be a comma-separated list (multi-select).
  */
 export function dimsWhere(f: AdFilters, row: { targeting?: SQL; branding?: SQL } = {}): SQL[] {
   const out: SQL[] = [];
-  if (f.category) out.push(sql`coalesce(cd.category, 'Unmapped') = ${f.category}`);
-  if (f.adType) out.push(sql`coalesce(cd.ad_type, 'Unknown') = ${f.adType}`);
-  if (f.targeting) out.push(sql`${row.targeting ?? sql`coalesce(cd.targeting, 'Other')`} = ${f.targeting}`);
-  if (f.branding) out.push(sql`${row.branding ?? sql`coalesce(cd.branding, 'Generic')`} = ${f.branding}`);
+  const add = (expr: SQL, csv: string | undefined) => {
+    const frag = csv ? inList(expr, csv) : null;
+    if (frag) out.push(frag);
+  };
+  add(sql`coalesce(cd.category, 'Unmapped')`, f.category);
+  add(sql`coalesce(cd.ad_type, 'Unknown')`, f.adType);
+  add(row.targeting ?? sql`coalesce(cd.targeting, 'Other')`, f.targeting);
+  add(row.branding ?? sql`coalesce(cd.branding, 'Generic')`, f.branding);
   return out;
 }
 

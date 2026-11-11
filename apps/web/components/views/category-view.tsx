@@ -3,10 +3,10 @@
 import type { DsrMetrics } from '@dash/shared';
 import { useState } from 'react';
 
-import { Donut, HBars } from '@/components/charts';
+import { HBars } from '@/components/charts';
 import { COLUMNS } from '@/components/dsr-table';
 import { getCategory } from '@/lib/api';
-import { fmtInt, fmtMoney, fmtPct } from '@/lib/format';
+import { fmtInt, fmtPct } from '@/lib/format';
 
 import { Card, MCell, Select, THEAD, TABLE_WRAP, useCompareReport, ViewShell, type RangeProps } from './shared';
 
@@ -27,20 +27,12 @@ function DsrCells({ m, prev, comparing }: { m: DsrMetrics; prev?: DsrMetrics | u
   );
 }
 
-const SHARE_METRICS = [
-  { value: 'sales', label: 'Sales' },
-  { value: 'unitsSold', label: 'Units Sold' },
-  { value: 'spends', label: 'Spends' },
-  { value: 'adSales', label: 'Ad Sales' },
-] as const;
-
 /**
  * Category-wise (rule book §10.4): DSR columns by ASIN-mapper category, a
- * share chart, and the ASIN-level table below (filter to one category).
+ * TACoS chart, and the ASIN-level table below (filter to one category).
  */
 export function CategoryView(props: RangeProps) {
   const [category, setCategory] = useState('');
-  const [shareMetric, setShareMetric] = useState<(typeof SHARE_METRICS)[number]['value']>('sales');
   const comparing = !!props.compare;
   const { data, prev, error, loading } = useCompareReport(
     (p) => getCategory(props.profileId, p.from, p.to, { category }),
@@ -50,7 +42,6 @@ export function CategoryView(props: RangeProps) {
   const prevCat = new Map(prev?.rows.map((r) => [r.category, r]) ?? []);
   const prevAsin = new Map(prev?.asinRows.map((r) => [r.asin, r]) ?? []);
   const cats = data?.categories ?? [];
-  const fmtShare = shareMetric === 'unitsSold' ? fmtInt : fmtMoney;
 
   return (
     <ViewShell
@@ -61,35 +52,14 @@ export function CategoryView(props: RangeProps) {
     >
       {data && (
         <>
-          <div className="grid gap-3 lg:grid-cols-2">
-            <Card
-              title="Share by category"
-              right={
-                <Select
-                  label="Metric"
-                  value={shareMetric}
-                  onChange={(v) => setShareMetric(v as typeof shareMetric)}
-                  options={[...SHARE_METRICS]}
-                  allLabel={null}
-                />
-              }
-            >
-              <Donut
-                items={data.rows.map((r) => ({ label: r.category, value: r[shareMetric], prev: prevCat.get(r.category)?.[shareMetric] }))}
-                fmt={fmtShare}
-                colorKeys={cats}
-                comparing={comparing}
-              />
-            </Card>
-            <Card title="ACoS / TACoS by category (top 8 by Sales)">
-              <HBars
-                items={data.rows.slice(0, 8).map((r) => ({ label: r.category, value: r.tacosPct ?? 0, prev: prevCat.get(r.category)?.tacosPct }))}
-                fmt={fmtPct}
-                comparing={comparing}
-              />
-              <p className="mt-2 text-[11px] text-muted">TACoS = Spends ÷ Sales. Lower is better.</p>
-            </Card>
-          </div>
+          <Card title="ACoS / TACoS by category (top 8 by Sales)">
+            <HBars
+              items={data.rows.slice(0, 8).map((r) => ({ label: r.category, value: r.tacosPct ?? 0, prev: prevCat.get(r.category)?.tacosPct }))}
+              fmt={fmtPct}
+              comparing={comparing}
+            />
+            <p className="mt-2 text-[11px] text-muted">TACoS = Spends ÷ Sales. Lower is better.</p>
+          </Card>
 
           <div className={TABLE_WRAP}>
             <table className="table table-sm">
