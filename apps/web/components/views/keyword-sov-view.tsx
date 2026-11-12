@@ -109,7 +109,7 @@ export function KeywordSovView({ profileId }: { profileId: string }) {
                 role="tab"
                 aria-selected={type === t}
                 onClick={() => setType(t)}
-                className={`rounded-lg px-3 py-1.5 text-sm ${type === t ? 'bg-ink font-medium text-white' : 'text-ink/75 hover:bg-black/5'}`}
+                className={`rounded-lg px-3 py-1.5 text-sm ${type === t ? 'bg-brand font-medium text-white' : 'text-ink/75 hover:bg-black/5'}`}
               >
                 {typeLabel(t)}
               </button>

@@ -102,7 +102,7 @@ export default function IngestPage() {
           if (!d) return { ...r, detecting: false };
           return {
             ...r,
-            marketplace: 'amazon', // column detection is Amazon-based
+            marketplace: d.marketplace ?? 'amazon', // Amazon, or Instamart when its own columns were recognised
             reportType: d.reportType ?? '',
             detectedBy: d.detectedBy,
             fineType: d.fineType,
@@ -374,12 +374,12 @@ export default function IngestPage() {
           {result.sync.length > 0 ? (
             <p className="text-sm text-muted">
               Sync started ({result.sync.length} marketplace{result.sync.length > 1 ? 's' : ''}).{' '}
-              <a href="/gcs" className="text-primary underline">View on GCS page →</a>
+              <a href="/" className="text-primary underline">View on GCS page →</a>
             </p>
           ) : result.files.some((f) => f.status === 'uploaded') ? (
             <p className="text-sm text-muted">
               Files uploaded.{' '}
-              <a href="/gcs" className="text-primary underline">Go to GCS → Sync now</a>
+              <a href="/" className="text-primary underline">Go to GCS → Sync now</a>
             </p>
           ) : null}
         </section>

@@ -77,13 +77,9 @@ export function Select({ label, value, onChange, options, allLabel = 'All' }: {
   allLabel?: string | null;
 }) {
   return (
-    <label className="field cursor-pointer">
-      <span className="text-xs text-muted">{label}</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="max-w-56 cursor-pointer bg-transparent pr-1 font-medium text-ink outline-none"
-      >
+    <label className="select max-w-60 cursor-pointer">
+      <span className="label text-muted">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="font-medium text-ink">
         {allLabel !== null && <option value="">{allLabel}</option>}
         {options.map((o) => {
           const v = typeof o === 'string' ? o : o.value;

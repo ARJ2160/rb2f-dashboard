@@ -178,7 +178,7 @@ export function ReportsDashboard({
             <button
               key={m}
               onClick={() => setMetric(m)}
-              className={`rounded-md px-3 py-1 text-sm ${metric === m ? 'bg-ink font-medium text-white' : 'text-ink/75 hover:bg-black/5'}`}
+              className={`rounded-md px-3 py-1 text-sm ${metric === m ? 'bg-brand font-medium text-white' : 'text-ink/75 hover:bg-black/5'}`}
             >
               {m === 'units' ? 'Units sold' : 'Orders'}
             </button>

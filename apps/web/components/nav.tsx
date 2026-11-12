@@ -2,30 +2,24 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
-
-import { useProfile } from '@/lib/profile';
 
 const LINKS = [
-  { href: '/reports', label: 'Reports' },
-  { href: '/upload', label: 'Upload' },
-  { href: '/gcs', label: 'GCS' },
   { href: '/ingest', label: 'Ingest' },
 ];
 
 export function Nav() {
   const pathname = usePathname();
-  const { profileId, setProfileId } = useProfile();
-  const [draft, setDraft] = useState(profileId);
-  useEffect(() => setDraft(profileId), [profileId]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-6 px-4 sm:px-6">
-        <span className="text-sm font-semibold tracking-tight">RB2F Dashboard</span>
+        <Link href="/" className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+          <span className="inline-block size-2 rounded-full bg-brand" aria-hidden />
+          <span className="text-brand">RB2F</span> Dashboard
+        </Link>
         <nav className="flex gap-1">
           {LINKS.map((l) => {
-            const active = pathname.startsWith(l.href);
+            const active = l.href === '/' ? pathname === '/' : pathname.startsWith(l.href);
             return (
               <Link
                 key={l.href}
@@ -37,27 +31,6 @@ export function Nav() {
             );
           })}
         </nav>
-        {/* The GCS / Ingest pages pick their brand themselves — the manual profile box doesn't apply there. */}
-        {!pathname.startsWith('/gcs') && !pathname.startsWith('/ingest') && (
-          <form
-            className="ml-auto flex items-center gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setProfileId(draft);
-            }}
-          >
-            <label htmlFor="profile" className="text-xs text-muted">
-              Brand / profile
-            </label>
-            <input
-              id="profile"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={() => setProfileId(draft)}
-              className="input input-sm w-40"
-            />
-          </form>
-        )}
       </div>
     </header>
   );

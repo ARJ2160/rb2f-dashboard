@@ -127,7 +127,7 @@ export function TargetingView({ profileId, from, to }: { profileId: string; from
             role="tab"
             aria-selected={sub === t.id}
             onClick={() => setSub(t.id)}
-            className={`rounded-lg px-3 py-1.5 text-sm ${sub === t.id ? 'bg-ink font-medium text-white' : 'text-ink/75 hover:bg-black/5'}`}
+            className={`rounded-lg px-3 py-1.5 text-sm ${sub === t.id ? 'bg-brand font-medium text-white' : 'text-ink/75 hover:bg-black/5'}`}
           >
             {t.label}
           </button>

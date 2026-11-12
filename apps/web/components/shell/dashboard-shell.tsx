@@ -122,7 +122,7 @@ export function DashboardShell<T extends string>({
                 aria-current={on ? 'page' : undefined}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[14.5px] transition-colors ${
                   collapsed ? 'justify-center px-0' : ''
-                } ${on ? 'bg-side-active font-medium text-ink' : 'text-ink/75 hover:bg-black/[0.04] hover:text-ink'}`}
+                } ${on ? 'bg-brand-soft font-semibold text-brand' : 'text-ink/75 hover:bg-black/[0.04] hover:text-ink'}`}
               >
                 <Icon name={t.icon} className="size-[19px] shrink-0" />
                 {!collapsed && <span className="truncate">{t.label}</span>}
@@ -148,7 +148,7 @@ export function DashboardShell<T extends string>({
               role="tab"
               aria-selected={t.id === tab}
               onClick={() => onTab(t.id)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-sm ${t.id === tab ? 'bg-ink text-white' : 'text-ink/75 hover:bg-black/5'}`}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-sm ${t.id === tab ? 'bg-brand text-white' : 'text-ink/75 hover:bg-black/5'}`}
             >
               {t.label}
             </button>
@@ -265,9 +265,9 @@ export function FieldSelect({ label, value, onChange, options, allLabel = null }
   allLabel?: string | null;
 }) {
   return (
-    <label className="field cursor-pointer">
-      <span className="text-xs text-muted">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="max-w-56 cursor-pointer bg-transparent pr-1 font-medium text-ink outline-none">
+    <label className="select max-w-60 cursor-pointer">
+      <span className="label text-muted">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="font-medium text-ink">
         {allLabel !== null && <option value="">{allLabel}</option>}
         {options.map((o) => {
           const v = typeof o === 'string' ? o : o.value;

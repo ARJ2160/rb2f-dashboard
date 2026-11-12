@@ -24,8 +24,6 @@ import type {
   SearchRankResponse,
   GlanceViewsResponse,
   KeywordSovResponse,
-  UploadLogEntry,
-  UploadResponse,
 } from '@dash/shared';
 
 /** Same origin: this app forwards /api/* to the API service (app/api/[...path]/route.ts). */
@@ -43,16 +41,6 @@ async function json<T>(res: Response): Promise<T> {
 const qs = (p: Record<string, string | undefined>) =>
   new URLSearchParams(Object.entries(p).filter((e): e is [string, string] => !!e[1])).toString();
 
-export async function uploadFiles(profileId: string, files: File[]): Promise<UploadResponse> {
-  const fd = new FormData();
-  fd.set('profileId', profileId);
-  for (const f of files) fd.append('files', f, f.name);
-  return json(await fetch(`${API_URL}/api/uploads`, { method: 'POST', body: fd }));
-}
-
-export async function getUploads(profileId: string): Promise<UploadLogEntry[]> {
-  return json(await fetch(`${API_URL}/api/uploads?${qs({ profileId, limit: '30' })}`, { cache: 'no-store' }));
-}
 
 export async function getDsr(profileId: string, from: string, to: string, category = ''): Promise<DsrResponse> {
   return json(await fetch(`${API_URL}/api/reports/dsr?${qs({ profileId, from, to, category })}`, { cache: 'no-store' }));

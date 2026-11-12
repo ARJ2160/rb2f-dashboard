@@ -85,7 +85,7 @@ export function PerformanceOverview({
               onClick={() => toggle(m.key)}
               title={m.hint}
               className={`group relative flex min-h-[100px] w-[214px] shrink-0 snap-start flex-col rounded-xl border bg-surface px-5 py-4 text-left transition-colors ${
-                on ? 'border-ink shadow-[0_0_0_1px_var(--color-ink)]' : 'border-line hover:border-ink/30'
+                on ? 'border-brand bg-brand-soft/40 shadow-[0_0_0_1px_var(--color-brand)]' : 'border-line hover:border-brand/40'
               }`}
             >
               <span className="flex items-center gap-1.5 pr-7 text-[15px] text-ink/85">
@@ -97,7 +97,7 @@ export function PerformanceOverview({
               </span>
               <span
                 className={`absolute right-4 top-4 grid size-[20px] place-items-center rounded-[5px] border ${
-                  on ? 'border-ink bg-ink text-white' : 'border-[#c7cbd2] bg-surface'
+                  on ? 'border-brand bg-brand text-white' : 'border-[#c7cbd2] bg-surface'
                 }`}
                 aria-hidden
               >
