@@ -5,13 +5,35 @@ import { AD_TYPE_LABEL, METRICS, metricValue, type BkDailyResponse, type MetricK
 import { ErrorBox, Notes } from '@/components/notes';
 import { BreakdownTable, PerformanceOverview, type AxisKind, type OverviewMetric } from '@/components/shell/performance-overview';
 import { periodSentence, previousRange, spanDays, useLoad } from '@/components/shell/use-load';
-import { bkDsr } from '@/lib/blinkit-api';
 import { fmtInt, fmtPct, fmtRupee, fmtRupee2 } from '@/lib/format';
 
 import { bkFmt } from './cells';
+import { useQc } from './qc-context';
 
-/* Blinkit "Ad performance overview" (Brand Central layout): ad cards first in
-   Brand Central's order, then the sales side the ads report doesn't have. */
+/* Quick-commerce "Ad performance overview" (Brand Central layout): ad cards
+   first, then the sales side the ads report doesn't have. One card list per
+   marketplace, in the wording of its own ads console. */
+
+type CardDef = { k: MetricKey; label: string; hint: string };
+
+/** Swiggy Instamart (Ads report columns in brackets). */
+const IM_CARDS: CardDef[] = [
+  { k: 'spend', label: 'Budget Burnt', hint: 'TOTAL_BUDGET_BURNT across Keyword, Search Inline Banner and Auto Suggest ads' },
+  { k: 'impr', label: 'Impressions', hint: 'TOTAL_IMPRESSIONS' },
+  { k: 'clicks', label: 'Clicks', hint: 'TOTAL_CLICKS' },
+  { k: 'ctr', label: 'CTR', hint: 'Clicks ÷ impressions' },
+  { k: 'atc', label: 'A2C', hint: 'Add to carts from ads (TOTAL_A2C)' },
+  { k: 'aunits', label: 'Conversions', hint: 'TOTAL_CONVERSIONS' },
+  { k: 'asales', label: 'Ad GMV', hint: 'GMV attributed to ads (TOTAL_GMV)' },
+  { k: 'roas', label: 'ROAS', hint: 'Ad GMV ÷ budget burnt' },
+  { k: 'cpc', label: 'CPC', hint: 'Budget burnt ÷ clicks' },
+  { k: 'cpm', label: 'CPM', hint: 'Spend per 1,000 impressions' },
+  { k: 'mvp', label: 'Avg Ad Rank', hint: 'AD_RANK weighted by impressions — lower is better' },
+  { k: 'rev', label: 'Total GMV', hint: 'All Instamart sales (sales export GMV) — ads and organic' },
+  { k: 'units', label: 'Total Units', hint: 'All units sold (sales export)' },
+  { k: 'tacos', label: 'TACoS', hint: 'Budget burnt ÷ total GMV' },
+  { k: 'organic', label: 'Organic Sales', hint: 'Total GMV − ad GMV' },
+];
 
 const CARDS: Array<{ k: MetricKey; label: string; hint: string }> = [
   { k: 'spend', label: 'Budget Spent', hint: 'Estimated Budget Consumed across PL, PR and BL campaigns' },
@@ -47,19 +69,21 @@ export function BkOverview({ profileId, from, to, category, adType, latest }: {
   adType: string;
   latest: string | null;
 }) {
+  const { api, flavour } = useQc();
+  const im = flavour.id === 'instamart';
   const prev = previousRange({ from, to });
   const { data, error, loading } = useLoad(
     () =>
       Promise.all([
-        bkDsr(profileId, { from, to, category, adType }),
-        bkDsr(profileId, { ...prev, category, adType }).catch(() => null),
+        api.dsr(profileId, { from, to, category, adType }),
+        api.dsr(profileId, { ...prev, category, adType }).catch(() => null),
       ]) as Promise<[BkDailyResponse, BkDailyResponse | null]>,
-    [profileId, from, to, category, adType]
+    [profileId, from, to, category, adType, flavour.id]
   );
   const [cur, before] = data ?? [null, null];
   const n = spanDays({ from, to });
 
-  const metrics: OverviewMetric[] = CARDS.map(({ k, label, hint }) => ({
+  const metrics: OverviewMetric[] = (im ? IM_CARDS : CARDS).map(({ k, label, hint }) => ({
     key: k,
     label,
     hint,
@@ -92,12 +116,16 @@ export function BkOverview({ profileId, from, to, category, adType, latest }: {
         defaultSelected={['spend']}
         prevLabel={`prev. ${n} day${n === 1 ? '' : 's'}`}
         loading={loading}
-        csvName={`blinkit-overview_${from}_${to}`}
+        csvName={`${flavour.id}-overview_${from}_${to}`}
       >
         {cur && (
           <BreakdownTable
-            title="By campaign type"
-            head={['Campaign type', 'Budget Spent', 'Share', 'Impressions', 'ATC', 'Quantity Sold', 'Sales', 'ROAS', 'CPM']}
+            title={im ? 'By ad property' : 'By campaign type'}
+            head={
+              im
+                ? ['Ad property', 'Budget Burnt', 'Share', 'Impressions', 'Clicks', 'CTR', 'A2C', 'Conversions', 'Ad GMV', 'ROAS']
+                : ['Campaign type', 'Budget Spent', 'Share', 'Impressions', 'ATC', 'Quantity Sold', 'Sales', 'ROAS', 'CPM']
+            }
             rows={cur.byAdType
               .filter((r) => r.spend > 0 || r.impr > 0)
               .map((r) => ({
@@ -107,11 +135,12 @@ export function BkOverview({ profileId, from, to, category, adType, latest }: {
                   fmtRupee(r.spend),
                   spendAll ? fmtPct((r.spend / spendAll) * 100) : '—',
                   fmtInt(r.impr),
+                  ...(im ? [fmtInt(r.clicks ?? 0), r.impr ? fmtPct(((r.clicks ?? 0) / r.impr) * 100) : '—'] : []),
                   fmtInt(r.atc),
                   fmtInt(r.aunits),
                   fmtRupee(r.asales),
                   r.spend ? (r.asales / r.spend).toFixed(2) : '—',
-                  r.impr ? fmtRupee2((r.spend / r.impr) * 1000) : '—',
+                  ...(im ? [] : [r.impr ? fmtRupee2((r.spend / r.impr) * 1000) : '—']),
                 ],
               }))}
           />

@@ -16,6 +16,8 @@ import type { ReportType as FineReportType } from '@dash/shared';
 
 import { env } from '../config/env';
 import { detectReportType } from '../ingestion/detect-report';
+import { detectInstamart } from '../instamart/ingest';
+import { normKey } from '@dash/shared/blinkit';
 import { readWorkbook } from '../ingestion/sheet-reader';
 import { GcsClient, READ_WRITE_SCOPE } from './gcs-client';
 
@@ -26,7 +28,7 @@ export interface ReportType {
   label: string;
   /** Sub-folder under <brand>/<marketplace>/  */
   folder: string;
-  marketplace: 'amazon' | 'blinkit';
+  marketplace: 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto';
   hint?: string;
 }
 
@@ -169,16 +171,83 @@ export const BLINKIT_REPORT_TYPES: readonly ReportType[] = [
   },
 ];
 
+export const SWIGGY_INSTAMART_REPORT_TYPES: readonly ReportType[] = [
+  {
+    id: 'sales',
+    label: 'Sales',
+    folder: 'sales',
+    marketplace: 'swiggy_instamart',
+    hint: 'Instamart sales export (ORDERED_DATE, CITY, STORE_ID, ITEM_CODE, UNITS_SOLD, GMV)',
+  },
+  {
+    id: 'ads',
+    label: 'Ads',
+    folder: 'ads',
+    marketplace: 'swiggy_instamart',
+    hint: 'Instamart ads export (METRICS_DATE, CAMPAIGN_ID, AD_PROPERTY, KEYWORD, CITY, TOTAL_BUDGET_BURNT …)',
+  },
+  {
+    id: 'inventory',
+    label: 'Inventory',
+    folder: 'inventory',
+    marketplace: 'swiggy_instamart',
+    hint: 'Daily stock-on-hand export — not read yet (no sample so far); files are kept in the bucket',
+  },
+  {
+    id: 'sku_mapper',
+    label: 'SKU Mapper',
+    folder: 'sku_mapper',
+    marketplace: 'swiggy_instamart',
+    hint: 'Item Code → SKU / Category, plus product and campaign names → SKU',
+  },
+];
+
+export const ZEPTO_REPORT_TYPES: readonly ReportType[] = [
+  {
+    id: 'sales',
+    label: 'Sales',
+    folder: 'sales',
+    marketplace: 'zepto',
+    hint: 'Order-level sales export from Zepto portal',
+  },
+  {
+    id: 'ads',
+    label: 'Ads',
+    folder: 'ads',
+    marketplace: 'zepto',
+    hint: 'Campaign-level ad metrics from Zepto',
+  },
+  {
+    id: 'inventory',
+    label: 'Inventory',
+    folder: 'inventory',
+    marketplace: 'zepto',
+    hint: 'Daily stock-on-hand export from Zepto',
+  },
+  {
+    id: 'sku_mapper',
+    label: 'SKU Mapper',
+    folder: 'sku_mapper',
+    marketplace: 'zepto',
+    hint: 'Maps Zepto Item ID → SKU, Category, Price',
+  },
+];
+
 export const ALL_REPORT_TYPES: readonly ReportType[] = [
   ...AMAZON_REPORT_TYPES,
   ...BLINKIT_REPORT_TYPES,
+  ...SWIGGY_INSTAMART_REPORT_TYPES,
+  ...ZEPTO_REPORT_TYPES,
 ];
 
-export function reportTypesForMarketplace(marketplace: 'amazon' | 'blinkit'): readonly ReportType[] {
-  return marketplace === 'amazon' ? AMAZON_REPORT_TYPES : BLINKIT_REPORT_TYPES;
+export function reportTypesForMarketplace(marketplace: 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto'): readonly ReportType[] {
+  if (marketplace === 'blinkit')          return BLINKIT_REPORT_TYPES;
+  if (marketplace === 'swiggy_instamart') return SWIGGY_INSTAMART_REPORT_TYPES;
+  if (marketplace === 'zepto')            return ZEPTO_REPORT_TYPES;
+  return AMAZON_REPORT_TYPES;
 }
 
-export function findReportType(marketplace: 'amazon' | 'blinkit', id: string): ReportType | undefined {
+export function findReportType(marketplace: 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto', id: string): ReportType | undefined {
   return reportTypesForMarketplace(marketplace).find((r) => r.id === id);
 }
 
@@ -227,7 +296,12 @@ export interface DetectResult {
   detectedBy: 'headers' | 'filename' | null;
   /** Set when the file is a recognised report with no warehouse folder yet. */
   note?: string;
+  /** Marketplace the columns belong to (absent = Amazon). */
+  marketplace?: 'amazon' | 'swiggy_instamart';
 }
+
+/** Swiggy Instamart exports are recognised by their own columns (sales / ads / SKU mapper). */
+const IM_FOLDER: Record<string, string> = { im_sales: 'sales', im_ads: 'ads', im_sku_mapper: 'sku_mapper' };
 
 /**
  * Inspect a file's columns and decide which warehouse report type it is.
@@ -244,6 +318,9 @@ export function detectIngestType(buffer: Buffer, filename: string): DetectResult
   // Try each sheet; the first that classifies wins (combined workbooks name
   // their tabs, so sheetName feeds the fallback).
   for (const sheet of sheets) {
+    const im = detectInstamart({ fileName: filename, sheetName: sheet.sheetName, headers: sheet.headers.map((h) => normKey(h)), rows: [] });
+    if (im !== 'unknown')
+      return { filename, reportType: IM_FOLDER[im] ?? null, fineType: null, detectedBy: 'headers', marketplace: 'swiggy_instamart' };
     const hit = detectReportType(sheet.headers, sheet.sheetName, filename);
     if (!hit) continue;
     const coarse = FINE_TO_COARSE[hit.reportType];
@@ -360,7 +437,7 @@ export async function uploadFilesToGcs(
 export interface BulkIngestItem {
   original: string;
   buffer: Buffer;
-  marketplace: 'amazon' | 'blinkit';
+  marketplace: 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto';
   reportTypeId: string;
 }
 
@@ -378,7 +455,7 @@ export async function uploadBulkToGcs(
   startDate: string,
   endDate: string,
   items: BulkIngestItem[]
-): Promise<{ results: IngestFileResult[]; marketplaces: Array<'amazon' | 'blinkit'> }> {
+): Promise<{ results: IngestFileResult[]; marketplaces: Array<'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto'> }> {
   const credFile = env.gcsCredentialsFile ?? null;
   const bucket = env.GCS_BUCKET;
   const client =
@@ -392,7 +469,7 @@ export async function uploadBulkToGcs(
   const typeSeen = new Map<string, number>();
 
   const results: IngestFileResult[] = [];
-  const marketplaces = new Set<'amazon' | 'blinkit'>();
+  const marketplaces = new Set<'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto'>();
 
   for (const it of items) {
     const reportType = findReportType(it.marketplace, it.reportTypeId);

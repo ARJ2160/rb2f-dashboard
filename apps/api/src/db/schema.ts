@@ -524,3 +524,6 @@ export const gcsObjects = pgTable(
 
 // ── Blinkit (bk_* tables) ──
 export * from '../blinkit/schema';
+
+// ── Swiggy Instamart (im_* tables) ──
+export * from '../instamart/schema';

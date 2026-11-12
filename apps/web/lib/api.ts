@@ -165,7 +165,7 @@ export async function getHarvest(profileId: string, f: Filters): Promise<Harvest
 // ── GCS warehouse (read-only) ──
 
 /** Marketplace folder synced from GCS: `<brand>/amazon/` (default) or `<brand>/blinkit/`. */
-export type Marketplace = 'amazon' | 'blinkit';
+export type Marketplace = 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto';
 
 export async function getGcsBrands(refresh = false, marketplace: Marketplace = 'amazon'): Promise<GcsBrandsResponse> {
   return json(
@@ -249,6 +249,8 @@ export interface GcsDetection {
   fineType: string | null;
   detectedBy: 'headers' | 'filename' | null;
   note?: string;
+  /** Set when the columns belong to another marketplace than Amazon (e.g. Swiggy Instamart). */
+  marketplace?: Marketplace;
 }
 
 export interface BulkIngestResponse {

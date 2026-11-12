@@ -12,15 +12,15 @@ import type {
 
 import { API_URL } from './api';
 
-/* Blinkit report endpoints (/api/blinkit/*) — same conventions as lib/api.ts. */
+/* Quick-commerce report endpoints (/api/blinkit/*, /api/instamart/*) — same conventions as lib/api.ts. */
 
-async function get<T>(path: string, p: Record<string, string | number | undefined>): Promise<T> {
+async function get<T>(base: string, path: string, p: Record<string, string | number | undefined>): Promise<T> {
   const q = new URLSearchParams(
     Object.entries(p)
       .filter((e): e is [string, string | number] => e[1] !== undefined && e[1] !== '')
       .map(([k, v]) => [k, String(v)])
   ).toString();
-  const res = await fetch(`${API_URL}/api/blinkit${path}?${q}`, { cache: 'no-store' });
+  const res = await fetch(`${API_URL}${base}${path}?${q}`, { cache: 'no-store' });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error((body as { error?: string }).error ?? `Request failed (${res.status})`);
   return body as T;
@@ -30,23 +30,40 @@ export interface BkRange {
   from: string;
   to: string;
   category?: string | undefined;
-  /** PL / PR / BL — filters the ads side of /dsr */
+  /** Ad-type code (Blinkit PL / PR / BL, Instamart KW / SIB / AS) — filters the ads side of /dsr */
   adType?: string | undefined;
 }
 
-export const bkMeta = (profileId: string) => get<BkMetaResponse>('/meta', { profileId });
-export const bkMom = (profileId: string, f: { asOf?: string; category?: string } = {}) =>
-  get<SummaryResponse>('/mom', { profileId, ...f });
-export const bkDsr = (profileId: string, r: BkRange) => get<BkDailyResponse>('/dsr', { profileId, ...r });
-export const bkDur = (profileId: string, r: BkRange, metric: 'units' | 'orders' | 'revenue') =>
-  get<DurResponse>('/dur', { profileId, ...r, metric });
-export const bkGroups = (profileId: string, r: BkRange, groupBy: 'category' | 'sku') =>
-  get<BkGroupsResponse>('/groups', { profileId, ...r, groupBy });
-export const bkGeo = (profileId: string, r: BkRange) => get<BkGeoResponse>('/geo', { profileId, ...r });
-export const bkCityAds = (profileId: string, r: BkRange) => get<BkCityAdsResponse>('/city-ads', { profileId, ...r });
-export const bkKeywords = (profileId: string, r: BkRange, f: Record<string, string | number | undefined>) =>
-  get<BkKeywordsResponse>('/keywords', { profileId, ...r, ...f });
-export const bkInventory = (profileId: string, f: { snapshot?: string; category?: string }) =>
-  get<BkInventoryResponse>('/inventory', { profileId, ...f });
-export const bkInventoryTrend = (profileId: string, f: { category?: string }) =>
-  get<BkInventoryTrendResponse>('/inventory/trend', { profileId, ...f });
+/**
+ * Quick-commerce report client for one API mount: `/api/blinkit` or
+ * `/api/instamart` — both return the same response shapes.
+ */
+export function qcApi(base: string) {
+  return {
+    meta: (profileId: string) => get<BkMetaResponse>(base, '/meta', { profileId }),
+    mom: (profileId: string, f: { asOf?: string; category?: string } = {}) => get<SummaryResponse>(base, '/mom', { profileId, ...f }),
+    dsr: (profileId: string, r: BkRange) => get<BkDailyResponse>(base, '/dsr', { profileId, ...r }),
+    dur: (profileId: string, r: BkRange, metric: 'units' | 'orders' | 'revenue') => get<DurResponse>(base, '/dur', { profileId, ...r, metric }),
+    groups: (profileId: string, r: BkRange, groupBy: 'category' | 'sku') => get<BkGroupsResponse>(base, '/groups', { profileId, ...r, groupBy }),
+    geo: (profileId: string, r: BkRange) => get<BkGeoResponse>(base, '/geo', { profileId, ...r }),
+    cityAds: (profileId: string, r: BkRange) => get<BkCityAdsResponse>(base, '/city-ads', { profileId, ...r }),
+    keywords: (profileId: string, r: BkRange, f: Record<string, string | number | undefined>) =>
+      get<BkKeywordsResponse>(base, '/keywords', { profileId, ...r, ...f }),
+    inventory: (profileId: string, f: { snapshot?: string; category?: string }) => get<BkInventoryResponse>(base, '/inventory', { profileId, ...f }),
+    inventoryTrend: (profileId: string, f: { category?: string }) => get<BkInventoryTrendResponse>(base, '/inventory/trend', { profileId, ...f }),
+  };
+}
+export type QcApi = ReturnType<typeof qcApi>;
+
+/* Blinkit shorthands (kept for existing callers). */
+const blinkit = qcApi('/api/blinkit');
+export const bkMeta = blinkit.meta;
+export const bkMom = blinkit.mom;
+export const bkDsr = blinkit.dsr;
+export const bkDur = blinkit.dur;
+export const bkGroups = blinkit.groups;
+export const bkGeo = blinkit.geo;
+export const bkCityAds = blinkit.cityAds;
+export const bkKeywords = blinkit.keywords;
+export const bkInventory = blinkit.inventory;
+export const bkInventoryTrend = blinkit.inventoryTrend;

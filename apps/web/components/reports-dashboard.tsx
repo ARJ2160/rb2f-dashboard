@@ -61,15 +61,15 @@ const TABS: Array<ShellTab<Tab>> = [
   { id: 'state', label: 'State Wise Data', hint: 'Sales and units by ship-to state', icon: 'map', group: 'Analysis' },
   { id: 'hourly', label: 'Hour-wise', hint: 'Ad metrics by hour of day', icon: 'hourly', group: 'Analysis' },
   { id: 'search', label: 'Search Terms', hint: 'SP + SB search terms, SD targets', icon: 'search', group: 'Keywords' },
-  { id: 'negations', label: 'Search Term Negations', hint: 'Terms with 0 orders & high clicks, or ACoS far above the account with few orders', icon: 'search', group: 'Keywords' },
-  { id: 'termrules', label: 'Search Term Rules', hint: 'List search terms by your own metric rules (clicks, ACoS, ROAS, …)', icon: 'keywords', group: 'Keywords' },
+  { id: 'negations', label: 'Search Term Negations', hint: 'Terms with 0 orders & high clicks, or ACoS far above the account with few orders', icon: 'negate', group: 'Keywords' },
+  { id: 'termrules', label: 'Search Term Rules', hint: 'List search terms by your own metric rules (clicks, ACoS, ROAS, …)', icon: 'rules', group: 'Keywords' },
   { id: 'harvest', label: 'Keyword Harvesting', hint: 'SP / SB search terms with multiple orders that are not manual targets yet', icon: 'harvest', group: 'Keywords' },
   // Targeting page hidden for now — uncomment to restore (also the import and render block).
   // { id: 'targeting', label: 'Targeting', hint: 'Target-level rules, bid reduction and bid scale-up (range > 3 days)', icon: 'ads', group: 'Keywords' },
   { id: 'sqp', label: 'SQP', hint: "Search Query Performance — queries where the brand beats the category but isn't targeted yet", icon: 'sqp', group: 'Keywords' },
-  { id: 'gv', label: 'Glance Views', hint: 'Amazon Pi indexed glance views by ASIN and day', icon: 'overview', group: 'Keywords' },
-  { id: 'searchrank', label: 'Search Rank', hint: 'Amazon Pi monthly organic search rank per ASIN (lower is better)', icon: 'sqp', group: 'Keywords' },
-  { id: 'keywordsov', label: 'Keyword SOV', hint: 'Amazon Pi keyword share of voice, CTR / CPC / ACoS across SP, SB and organic', icon: 'keywords', group: 'Keywords' },
+  { id: 'gv', label: 'Glance Views', hint: 'Amazon Pi indexed glance views by ASIN and day', icon: 'eye', group: 'Keywords' },
+  { id: 'searchrank', label: 'Search Rank', hint: 'Amazon Pi monthly organic search rank per ASIN (lower is better)', icon: 'rank', group: 'Keywords' },
+  { id: 'keywordsov', label: 'Keyword SOV', hint: 'Amazon Pi keyword share of voice, CTR / CPC / ACoS across SP, SB and organic', icon: 'pie', group: 'Keywords' },
 ];
 
 /** Latest / earliest day any source has data. */

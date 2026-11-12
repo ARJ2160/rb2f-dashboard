@@ -43,6 +43,10 @@ const EnvSchema = z.object({
   GCS_MARKETPLACE_FOLDER: z.string().trim().default('amazon'),
   /** Blinkit folder under each brand (`<brand>/blinkit/…`), synced from the GCS page's Blinkit view. */
   GCS_BLINKIT_FOLDER: z.string().trim().default('blinkit'),
+  /** Swiggy Instamart folder under each brand (`<brand>/instamart/…`). */
+  GCS_SWIGGY_FOLDER: z.string().trim().default('instamart'),
+  /** Zepto folder under each brand (`<brand>/zepto/…`). */
+  GCS_ZEPTO_FOLDER: z.string().trim().default('zepto'),
   /** Re-sync every brand every N minutes (0 = only when "Sync" is clicked). */
   GCS_SYNC_INTERVAL_MIN: z.coerce.number().min(0).default(0),
   /** Files larger than this are skipped. */

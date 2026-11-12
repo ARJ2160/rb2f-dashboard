@@ -1,6 +1,6 @@
 'use client';
 
-import type { BkMetaResponse } from '@dash/shared/blinkit';
+import { QC_FLAVOURS, type BkMetaResponse, type QcMarket } from '@dash/shared/blinkit';
 import { useEffect, useState, type ReactNode } from 'react';
 
 import { DateRangePicker } from '@/components/date-picker';
@@ -9,7 +9,6 @@ import { DashboardShell, FieldSelect, PeriodPicker, SideCard, type ShellTab } fr
 import { previousRange } from '@/components/shell/use-load';
 import type { Period } from '@/components/views/shared';
 import { SummaryView } from '@/components/views/summary-view';
-import { bkMeta, bkMom } from '@/lib/blinkit-api';
 import { fmtDateLong, isoAddDays, isoToday } from '@/lib/format';
 
 import { CategoryView } from './category-view';
@@ -18,12 +17,14 @@ import { DsrView, DurView } from './dsr-dur';
 import { InventoryView } from './inventory-view';
 import { KeywordsView } from './keywords-view';
 import { BkOverview } from './overview-view';
+import { QcProvider, useQc } from './qc-context';
 
 type Tab = 'overview' | 'mom' | 'dsr' | 'dur' | 'category' | 'city' | 'keywords' | 'inventory';
 
 const TABS: Array<ShellTab<Tab>> = [
-  { id: 'overview', label: 'Overview', hint: 'Ad performance overview — tick metrics to plot their daily trend', icon: 'overview', group: 'Performance' },
-  { id: 'mom', label: 'MoM / WoW', hint: 'Month-to-date vs last month, last 7 days vs the 7 before — as of the latest data', icon: 'mom', group: 'Performance' },
+  // Same names and order as the Amazon dashboard.
+  { id: 'mom', label: 'Account Overview', hint: 'Month-to-date vs last month, last 7 days vs the 7 before — as of the latest data', icon: 'mom', group: 'Performance' },
+  { id: 'overview', label: 'Ads Overview', hint: 'Ad performance overview — tick metrics to plot their daily trend', icon: 'overview', group: 'Performance' },
   { id: 'dsr', label: 'DSR', hint: 'Daily Sales Report — one row per date', icon: 'dsr', group: 'Performance' },
   { id: 'dur', label: 'DUR', hint: 'Daily Units Report — Blinkit item × date', icon: 'dur', group: 'Performance' },
   { id: 'category', label: 'Category', hint: 'Sales and ads by category or SKU, with a daily trend', icon: 'category', group: 'Analysis' },
@@ -32,11 +33,19 @@ const TABS: Array<ShellTab<Tab>> = [
   { id: 'inventory', label: 'Inventory · DOC', hint: 'Last-7-day run rate and days of cover per item × feeder warehouse', icon: 'inventory', group: 'Stock' },
 ];
 
-const AD_TYPES = [
-  { value: 'PL', label: 'Product Listing' },
-  { value: 'PR', label: 'Product Recommendation' },
-  { value: 'BL', label: 'Banner Listing' },
-];
+/** Tab list for a marketplace: Instamart's ads report has the city on every row and there is no inventory feed yet. */
+function tabsFor(market: QcMarket): Array<ShellTab<Tab>> {
+  if (market === 'blinkit') return TABS;
+  return TABS.filter((t) => t.id !== 'inventory' || QC_FLAVOURS[market].inventory).map((t) =>
+    t.id === 'dur'
+      ? { ...t, hint: 'Daily Units Report — Instamart item code × date' }
+      : t.id === 'city'
+        ? { ...t, hint: 'Sales and ad spend by city — exact, the ads report carries the city on every row' }
+        : t.id === 'keywords'
+          ? { ...t, hint: 'Keyword, Search Inline Banner and Auto Suggest keywords — by city, campaign and ad property' }
+          : t
+  );
+}
 
 /** Latest / earliest day that has sales or ads. */
 function bounds(m: BkMetaResponse | null) {
@@ -54,16 +63,33 @@ function defaultRange(m: BkMetaResponse | null): Period {
 }
 
 /**
- * Every Blinkit report for one profile (`gcs_<brand>` on the GCS page), in the
- * shared Brand Central-style shell: sidebar of reports, filters on top.
+ * Every quick-commerce report for one profile (`gcs_<brand>` on the GCS page),
+ * in the shared Brand Central-style shell: sidebar of reports, filters on top.
+ * `market` picks the API (/api/blinkit or /api/instamart) and what the views show.
  */
-export function BlinkitDashboard({ profileId, title, subtitle, emptyState }: {
+export function BlinkitDashboard({ market = 'blinkit', ...p }: {
+  market?: QcMarket;
   profileId: string;
   title: string;
   subtitle?: ReactNode;
   emptyState: ReactNode;
 }) {
-  const [tab, setTab] = useState<Tab>('overview');
+  return (
+    <QcProvider market={market}>
+      <QcDashboard {...p} />
+    </QcProvider>
+  );
+}
+
+function QcDashboard({ profileId, title, subtitle, emptyState }: {
+  profileId: string;
+  title: string;
+  subtitle?: ReactNode;
+  emptyState: ReactNode;
+}) {
+  const { api, flavour } = useQc();
+  const tabs = tabsFor(flavour.id);
+  const [tab, setTab] = useState<Tab>('mom'); // opens on Account Overview, like Amazon
   const [meta, setMeta] = useState<BkMetaResponse | null>(null);
   const [range, setRange] = useState<Period | null>(null);
   const [category, setCategory] = useState('');
@@ -75,13 +101,13 @@ export function BlinkitDashboard({ profileId, title, subtitle, emptyState }: {
   useEffect(() => {
     let alive = true;
     setRange(null);
-    bkMeta(profileId)
+    api.meta(profileId)
       .then((m) => alive && (setMeta(m), setRange(defaultRange(m))))
       .catch((e: Error) => alive && (setError(e.message), setRange(defaultRange(null))));
     return () => {
       alive = false;
     };
-  }, [profileId]);
+  }, [profileId, api]);
 
   const { latest, earliest } = bounds(meta);
   const hasData = !!meta && (meta.sales.rows > 0 || meta.ads.rows > 0 || meta.inventory.snapshots.length > 0);
@@ -98,7 +124,9 @@ export function BlinkitDashboard({ profileId, title, subtitle, emptyState }: {
       {range && !ownPeriod && (latest ? <PeriodPicker value={range} onChange={setRange} latest={latest} earliest={earliest} /> : <DateRangePicker value={range} onChange={setRange} />)}
       {/* MoM / WoW has its own As-of date and category picker (same as Amazon). */}
       {tab !== 'mom' && meta && <FieldSelect label="Category" value={category} onChange={setCategory} options={meta.categories} allLabel="All" />}
-      {tab === 'overview' && <FieldSelect label="Campaign type" value={adType} onChange={setAdType} options={AD_TYPES} allLabel="All" />}
+      {tab === 'overview' && (
+        <FieldSelect label={flavour.id === 'instamart' ? 'Ad property' : 'Campaign type'} value={adType} onChange={setAdType} options={flavour.adTypes} allLabel="All" />
+      )}
       {range && comparable && (
         <>
           <label className="field cursor-pointer select-none">
@@ -120,20 +148,20 @@ export function BlinkitDashboard({ profileId, title, subtitle, emptyState }: {
 
   return (
     <DashboardShell
-      marketplace="blinkit"
+      marketplace={flavour.logo}
       title={title}
       subtitle={subtitle}
-      tabs={TABS}
+      tabs={tabs}
       tab={tab}
       onTab={setTab}
       toolbar={toolbar}
       heading={tab !== 'overview'}
-      sideCard={meta && hasData ? <Coverage meta={meta} /> : null}
+      sideCard={meta && hasData ? <Coverage meta={meta} inventory={flavour.inventory} /> : null}
     >
       {meta && !hasData && <div className="rounded-xl border border-line bg-side px-5 py-6 text-sm">{emptyState}</div>}
       {error && <ErrorBox message={error} />}
 
-      {hasData && tab === 'mom' && <SummaryView profileId={profileId} load={bkMom} />}
+      {hasData && tab === 'mom' && <SummaryView profileId={profileId} load={api.mom} />}
       {hasData && range && range.from <= range.to && (
         <>
           {tab === 'overview' && <BkOverview profileId={profileId} from={range.from} to={range.to} category={category} adType={adType} latest={latest} />}
@@ -146,13 +174,13 @@ export function BlinkitDashboard({ profileId, title, subtitle, emptyState }: {
           )}
         </>
       )}
-      {hasData && tab === 'inventory' && <InventoryView profileId={profileId} category={category} />}
+      {hasData && tab === 'inventory' && flavour.inventory && <InventoryView profileId={profileId} category={category} />}
     </DashboardShell>
   );
 }
 
 /** Data coverage — pinned to the foot of the sidebar. */
-function Coverage({ meta }: { meta: BkMetaResponse }) {
+function Coverage({ meta, inventory }: { meta: BkMetaResponse; inventory: boolean }) {
   const span = (r: { from: string | null; to: string | null }) => (r.from && r.to ? `${fmtDateLong(r.from)} – ${fmtDateLong(r.to)}` : 'none');
   const unmapped = meta.unmappedItems.length + meta.unmappedCampaigns.length;
   const snaps = meta.inventory.snapshots;
@@ -167,10 +195,12 @@ function Coverage({ meta }: { meta: BkMetaResponse }) {
           <dt className="font-semibold text-ink">Ads</dt>
           <dd>{span(meta.ads)}</dd>
         </div>
-        <div>
-          <dt className="font-semibold text-ink">Inventory</dt>
-          <dd>{snaps[0] ? `${fmtDateLong(snaps[0])} · ${snaps.length} snapshot${snaps.length === 1 ? '' : 's'}` : 'none'}</dd>
-        </div>
+        {inventory && (
+          <div>
+            <dt className="font-semibold text-ink">Inventory</dt>
+            <dd>{snaps[0] ? `${fmtDateLong(snaps[0])} · ${snaps.length} snapshot${snaps.length === 1 ? '' : 's'}` : 'none'}</dd>
+          </div>
+        )}
         <div
           title={[...meta.unmappedItems.map((i) => `Item ${i.itemId} ${i.name}`), ...meta.unmappedCampaigns.map((c) => `Campaign ${c.name}`)].join('\n')}
         >
@@ -179,6 +209,11 @@ function Coverage({ meta }: { meta: BkMetaResponse }) {
             {unmapped ? `${meta.unmappedItems.length} item(s), ${meta.unmappedCampaigns.length} campaign(s) unmapped` : 'All items and campaigns mapped'}
           </dd>
         </div>
+        {meta.notes.map((n) => (
+          <dd key={n} className="text-[11px] leading-snug text-ink/70">
+            {n}
+          </dd>
+        ))}
       </dl>
     </SideCard>
   );

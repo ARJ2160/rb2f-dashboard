@@ -13,7 +13,18 @@ const P = {
   placement: 'M3 4h14v4H3zM3 10h6v6H3zM11 10h6v6h-6z',
   map: 'M10 17s-5-4.6-5-8.5A5 5 0 0 1 15 8.5C15 12.4 10 17 10 17zM10 6.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
   hourly: 'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM10 6v4l3 2',
-  keywords: 'M4 6h12M4 10h8M4 14h10',
+  /** tag — keyword lists */
+  keywords: 'M3 3.5h6.5l7.5 7.5-6 6-8-7.5V3.5zM6.5 7v.01',
+  /** magnifier with a minus — negative search terms */
+  negate: 'M9 4a5 5 0 1 0 0 10A5 5 0 0 0 9 4zM12.6 12.6 16 16M6.5 9h5',
+  /** sliders — rules / thresholds */
+  rules: 'M4 6h3M11 6h5M4 10h8M15 10h1M4 14h2M9 14h7M9 4.5v3M13.5 8.5v3M7.5 12.5v3',
+  /** eye — glance (page) views */
+  eye: 'M2.5 10s3-5.5 7.5-5.5S17.5 10 17.5 10s-3 5.5-7.5 5.5S2.5 10 2.5 10zM10 7.75a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5z',
+  /** podium — search rank */
+  rank: 'M3 16.5h14M4 16.5V12h4v4.5M8 16.5V7.5h4v9M12 16.5V10h4v6.5M10 3.5v1.5',
+  /** pie — share of voice */
+  pie: 'M9 3.5a6.5 6.5 0 1 0 7.5 7.5H9V3.5zM11.5 2.5V8.5h6a6 6 0 0 0-6-6z',
   inventory: 'M3 7 10 3l7 4v7l-7 4-7-4zM3 7l7 4 7-4M10 11v7',
   collapse: 'M3 4h14v12H3zM8 4v12',
   info: 'M10 3a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM10 9v4.5M10 6.5v.01',

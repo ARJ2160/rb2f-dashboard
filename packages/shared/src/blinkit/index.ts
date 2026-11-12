@@ -8,4 +8,5 @@ export * from './geo';
 export * from './inventory';
 export * from './categories';
 export * from './api-types';
+export * from './flavour';
 export { CITY_COORDS } from './city-coords';

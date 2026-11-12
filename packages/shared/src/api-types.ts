@@ -465,7 +465,7 @@ export interface GcsFileResult {
 export interface GcsSyncJob {
   brand: string;
   /** 'amazon' (default) or 'blinkit' — which `<brand>/<marketplace>/` folder is being synced. */
-  marketplace?: 'amazon' | 'blinkit';
+  marketplace?: 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto';
   profileId: string;
   state: 'running' | 'done' | 'error';
   /** Email of the person who started it ("scheduled" for the auto-sync). */

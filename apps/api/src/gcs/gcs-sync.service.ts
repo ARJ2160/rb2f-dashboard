@@ -16,6 +16,7 @@ import { Cooldowns, formatWait } from '../lib/limits';
 import { log } from '../lib/logger';
 import { markDimsStale, rebuildCampaignDims } from '../reports/dims';
 import { ingestBlinkitFile } from '../blinkit/ingestion/ingest';
+import { ingestInstamartFile } from '../instamart/ingest';
 import { GcsClient, GcsError, type GcsObject } from './gcs-client';
 import { ingestWarehouseFile } from './warehouse-ingest';
 import {
@@ -25,6 +26,7 @@ import {
   marketplacePrefix,
   relativeName,
   syncOrder,
+  MARKETPLACES,
   type BrandFolder,
   type Marketplace,
 } from './paths';
@@ -57,7 +59,12 @@ import {
 let client: GcsClient | null = null;
 
 /** Bucket folder (under each brand) for a marketplace. */
-export const marketplaceFolder = (m: Marketplace) => (m === 'blinkit' ? env.GCS_BLINKIT_FOLDER : env.GCS_MARKETPLACE_FOLDER);
+export function marketplaceFolder(m: Marketplace): string {
+  if (m === 'blinkit')          return env.GCS_BLINKIT_FOLDER;
+  if (m === 'swiggy_instamart') return env.GCS_SWIGGY_FOLDER;
+  if (m === 'zepto')            return env.GCS_ZEPTO_FOLDER;
+  return env.GCS_MARKETPLACE_FOLDER; // amazon
+}
 
 export function gcsConfigError(): string | null {
   // On Cloud Run the API authenticates as its own service account; locally a JSON key is needed.
@@ -271,7 +278,7 @@ async function execute(job: GcsSyncJob, folder: BrandFolder, marketplace: Market
 
 /** Sync every brand and marketplace, one after another (used by the optional interval). */
 export async function syncAllBrands(): Promise<void> {
-  for (const marketplace of ['amazon', 'blinkit'] as const) {
+  for (const marketplace of MARKETPLACES) {
     for (const folder of await listBrandFolders(true)) {
       // Wait for a free slot rather than competing with syncs people started.
       while (!stopping && runningJobs().length >= env.SYNC_MAX_CONCURRENT) {
@@ -319,7 +326,8 @@ function finishWithError(job: GcsSyncJob, err: unknown) {
 async function runSync(job: GcsSyncJob, folder: BrandFolder, marketplace: Marketplace = 'amazon'): Promise<void> {
   const prefix = marketplacePrefix(folder.folder, marketplaceFolder(marketplace));
   const listed = ingestableObjects(await gcs().listObjects(prefix), prefix);
-  const objects = marketplace === 'blinkit' ? blinkitSyncOrder(listed, prefix) : syncOrder(listed, prefix);
+  // Blinkit and Instamart: mappers first, then ads, then sales (same ranking).
+  const objects = marketplace === 'blinkit' || marketplace === 'swiggy_instamart' ? blinkitSyncOrder(listed, prefix) : syncOrder(listed, prefix);
   job.filesTotal = objects.length;
   if (objects.length === 0) {
     job.message = `No .csv / .xlsx files under gs://${env.GCS_BUCKET}/${prefix}`;
@@ -403,7 +411,11 @@ async function ingestObject(profileId: string, obj: GcsObject, file: string, mar
     };
   }
   const sheets = await ingestSlots.run<SheetResult[]>(() =>
-    marketplace === 'blinkit' ? ingestBlinkitFile(profileId, file, buffer) : ingestWarehouseFile(profileId, file, buffer)
+    marketplace === 'blinkit'
+      ? ingestBlinkitFile(profileId, file, buffer)
+      : marketplace === 'swiggy_instamart'
+        ? ingestInstamartFile(profileId, file, buffer)
+        : ingestWarehouseFile(profileId, file, buffer) // amazon, zepto
   );
   return summarize(file, sheets);
 }

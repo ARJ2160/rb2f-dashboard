@@ -4,10 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 
 /* Marketplace mark for the sidebar and the Amazon | Blinkit switch.
    Official logos are not bundled: put the files you're licensed to use at
-   apps/web/public/logos/amazon.svg and apps/web/public/logos/blinkit.svg (.png also works) and they are
+   apps/web/public/logos/amazon.svg, blinkit.svg, swiggy_instamart.svg and zepto.svg (.png also works) and they are
    picked up automatically. Until then a neutral built-in mark is shown. */
 
-export type LogoMarketplace = 'amazon' | 'blinkit';
+export type LogoMarketplace = 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto';
 
 const SOURCES = (id: LogoMarketplace) => [`/logos/${id}.svg`, `/logos/${id}.png`];
 
@@ -28,6 +28,20 @@ const FALLBACK: Record<LogoMarketplace, { bg: string; fg: string; path: string; 
     fg: '#1c1c1c',
     path: 'M13.5 2.5 5.5 13.5h6l-1 8 8-11h-6l1-8z',
     label: 'Blinkit',
+  },
+  // shopping bag — Swiggy Instamart
+  swiggy_instamart: {
+    bg: '#fc8019',
+    fg: '#ffffff',
+    path: 'M6 2h12l1 5H5L6 2zM5 7l1 13h12l1-13H5zM9 11v4M15 11v4',
+    label: 'Swiggy Instamart',
+  },
+  // Z-mark — Zepto
+  zepto: {
+    bg: '#8b2fc9',
+    fg: '#ffffff',
+    path: 'M5 5h14L5 19h14',
+    label: 'Zepto',
   },
 };
 

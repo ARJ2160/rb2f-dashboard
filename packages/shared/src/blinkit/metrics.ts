@@ -14,10 +14,11 @@ export interface Sums {
   nu: number;       // New Users Acquired
   mvpw: number;     // Σ(Most Viewed Position × Impressions)
   mvpi: number;     // Σ Impressions of rows that carry a position
+  clicks: number;   // Ad clicks (Instamart; Blinkit reports none → 0)
 }
 
 export const blank = (): Sums => ({
-  rev: 0, units: 0, orders: 0, impr: 0, atc: 0, aunits: 0, asales: 0, dsales: 0, spend: 0, nu: 0, mvpw: 0, mvpi: 0,
+  rev: 0, units: 0, orders: 0, impr: 0, atc: 0, aunits: 0, asales: 0, dsales: 0, spend: 0, nu: 0, mvpw: 0, mvpi: 0, clicks: 0,
 });
 
 export function addInto(t: Sums, a: Partial<Sums>): Sums {
@@ -30,7 +31,7 @@ const div = (a: number, b: number) => (b ? a / b : NaN);
 export type MetricKey =
   | 'rev' | 'orders' | 'units' | 'aov' | 'spend' | 'asales' | 'dsales' | 'organic' | 'acos' | 'tacos' | 'roas'
   | 'impr' | 'cpm' | 'atc' | 'atcr' | 'cvr' | 'aunits' | 'mvp' | 'nu' | 'adshare'
-  | 'asp' | 'troas' | 'orgshare' | 'cpa';
+  | 'asp' | 'troas' | 'orgshare' | 'cpa' | 'clicks' | 'ctr' | 'cpc';
 
 export type Fmt = 'inr' | 'inr1' | 'num' | 'pct' | 'pct2' | 'x2' | 'pos';
 
@@ -71,6 +72,9 @@ export const METRICS: Record<MetricKey, MetricDef> = {
   asp:     { label: 'ASP (₹/unit)',   fmt: 'inr',  get: (a) => div(a.rev, a.units),       higherIsBetter: true,  needs: 'sales' },
   troas:   { label: 'Total ROAS',     fmt: 'x2',   get: (a) => (a.rev ? div(a.rev, a.spend) : NaN), higherIsBetter: true, needs: 'both' },
   cpa:     { label: 'CPA (Spend/unit)', fmt: 'inr1', get: (a) => div(a.spend, a.units),  higherIsBetter: false, needs: 'both' },
+  clicks:  { label: 'Clicks',         fmt: 'num',  get: (a) => a.clicks,                   higherIsBetter: true,  additive: true, needs: 'ads' },
+  ctr:     { label: 'CTR',            fmt: 'pct2', get: (a) => div(a.clicks, a.impr) * 100, higherIsBetter: true,  needs: 'ads' },
+  cpc:     { label: 'CPC',            fmt: 'inr1', get: (a) => div(a.spend, a.clicks),     higherIsBetter: false, needs: 'ads' },
 };
 
 export const metricValue = (k: MetricKey, a: Sums) => METRICS[k].get(a);

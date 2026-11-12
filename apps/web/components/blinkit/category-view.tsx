@@ -1,39 +1,41 @@
 'use client';
 
-import { METRICS, type BkDailyResponse, type BkGroupsResponse, type MetricKey } from '@dash/shared/blinkit';
+import { type BkDailyResponse, type BkGroupsResponse, type MetricKey } from '@dash/shared/blinkit';
 import { useState } from 'react';
 
 import { Columns, Donut, HBars } from '@/components/charts';
 import { ErrorBox, Notes } from '@/components/notes';
 import { Card, Select } from '@/components/views/shared';
-import { bkDsr, bkGroups } from '@/lib/blinkit-api';
 import { fmtDay, fmtInt, fmtMoney, fmtPct } from '@/lib/format';
 
 import { BkCell, bkFmt, bkVal, days, ROW, TD_LEFT, TH, TH_LEFT, type BkViewProps } from './cells';
 import { useLoad } from './dsr-dur';
+import { useQc } from './qc-context';
 
-const COLS: MetricKey[] = ['rev', 'orders', 'units', 'aov', 'spend', 'asales', 'organic', 'acos', 'tacos', 'roas', 'cpm', 'impr', 'atcr', 'cvr', 'mvp'];
+const COLS: MetricKey[] = ['rev', 'orders', 'units', 'aov', 'spend', 'asales', 'organic', 'acos', 'tacos', 'roas', 'cpm', 'impr', 'clicks', 'ctr', 'cpc', 'atcr', 'cvr', 'mvp'];
 const SHARE: Array<{ value: MetricKey; label: string }> = [
   { value: 'rev', label: 'Sales' },
   { value: 'units', label: 'Units' },
   { value: 'spend', label: 'Spends' },
   { value: 'asales', label: 'Ad Sales' },
 ];
-const TREND: MetricKey[] = ['rev', 'orders', 'units', 'spend', 'asales', 'tacos', 'acos', 'roas', 'impr', 'cpm'];
+const TREND: MetricKey[] = ['rev', 'orders', 'units', 'spend', 'asales', 'tacos', 'acos', 'roas', 'impr', 'clicks', 'ctr', 'cpm'];
 
 /** Category / SKU performance (the mock-up's Main View + Comparison), with the period B deltas when comparing. */
 export function CategoryView(p: BkViewProps) {
+  const { api, flavour, show, label: mLabel } = useQc();
+  const cols = COLS.filter(show);
   const [groupBy, setGroupBy] = useState<'category' | 'sku'>('category');
   const [share, setShare] = useState<MetricKey>('rev');
   const [trend, setTrend] = useState<MetricKey>('rev');
   const cmp = p.compare;
-  const deps = [p.profileId, p.from, p.to, p.category, groupBy, cmp?.from, cmp?.to];
+  const deps = [p.profileId, p.from, p.to, p.category, groupBy, cmp?.from, cmp?.to, flavour.id];
   const { data, error, loading } = useLoad(
     () =>
       Promise.all([
-        bkGroups(p.profileId, p, groupBy),
-        cmp ? bkGroups(p.profileId, { ...cmp, category: p.category }, groupBy) : Promise.resolve(null),
-        bkDsr(p.profileId, p),
+        api.groups(p.profileId, p, groupBy),
+        cmp ? api.groups(p.profileId, { ...cmp, category: p.category }, groupBy) : Promise.resolve(null),
+        api.dsr(p.profileId, p),
       ]) as Promise<[BkGroupsResponse, BkGroupsResponse | null, BkDailyResponse]>,
     deps
   );
@@ -88,7 +90,7 @@ export function CategoryView(p: BkViewProps) {
           <Card
             title="Daily trend"
             right={
-              <Select label="Metric" value={trend} onChange={(v) => setTrend(v as MetricKey)} allLabel={null} options={TREND.map((k) => ({ value: k, label: METRICS[k].label }))} />
+              <Select label="Metric" value={trend} onChange={(v) => setTrend(v as MetricKey)} allLabel={null} options={TREND.filter(show).map((k) => ({ value: k, label: mLabel(k) }))} />
             }
           >
             <Columns
@@ -103,16 +105,16 @@ export function CategoryView(p: BkViewProps) {
                 <tr className="text-xs text-muted">
                   <th className={TH_LEFT}>{label}</th>
                   <th className={TH}>Sales share</th>
-                  {COLS.map((c) => (
+                  {cols.map((c) => (
                     <th key={c} className={TH}>
-                      {METRICS[c].label}
+                      {mLabel(c)}
                     </th>
                   ))}
                 </tr>
                 <tr className="border-b border-line bg-accent-soft font-semibold">
                   <td className="sticky left-0 z-30 bg-accent-soft px-3 py-1.5">TOTAL</td>
                   <td className="num px-3 py-1.5 text-right">100%</td>
-                  {COLS.map((c) => (
+                  {cols.map((c) => (
                     <BkCell key={c} k={c} s={cur.total} prev={prev?.total} comparing={comparing} daysA={dA} daysB={dB} />
                   ))}
                 </tr>
@@ -122,7 +124,7 @@ export function CategoryView(p: BkViewProps) {
                   <tr key={g.key} className={ROW}>
                     <td className={`${TD_LEFT} ${g.key === 'Unmapped' || g.key.endsWith('(no SKU)') ? 'text-warn' : ''}`}>{g.key}</td>
                     <td className="num px-3 py-1.5 text-right align-top">{cur.total.rev ? fmtPct((g.sums.rev / cur.total.rev) * 100) : '—'}</td>
-                    {COLS.map((c) => (
+                    {cols.map((c) => (
                       <BkCell key={c} k={c} s={g.sums} prev={prevBy.get(g.key)} comparing={comparing} daysA={dA} daysB={dB} />
                     ))}
                   </tr>
@@ -132,8 +134,10 @@ export function CategoryView(p: BkViewProps) {
           </div>
           <Notes
             notes={[
-              `Sales join to a ${label.toLowerCase()} through the SKU mapper (Item ID / product name); ads through the campaign mapper's ${groupBy === 'sku' ? 'SKU' : 'Category'}.`,
-              ...(groupBy === 'sku'
+              flavour.id === 'instamart'
+                ? `Sales join to a ${label.toLowerCase()} through the SKU mapper's Item Code block; ads through the product the ad row names (keyword ads), else the campaign name in the mapper.`
+                : `Sales join to a ${label.toLowerCase()} through the SKU mapper (Item ID / product name); ads through the campaign mapper's ${groupBy === 'sku' ? 'SKU' : 'Category'}.`,
+              ...(groupBy === 'sku' && flavour.id === 'blinkit'
                 ? ['Campaigns whose mapper SKU covers several products (e.g. "Jam", "FH & TH") or has no SKU stay as their own ad-only rows — never split.']
                 : []),
               ...(comparing && dA !== dB ? [`The two periods differ in length (${dA} vs ${dB} days), so volume changes are per day.`] : []),

@@ -22,11 +22,13 @@ export interface ShellTab<T extends string> {
   group?: string;
 }
 
-export type MarketplaceId = 'amazon' | 'blinkit';
+export type MarketplaceId = 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto';
 
 const MARK: Record<MarketplaceId, { label: string }> = {
   amazon: { label: 'Amazon' },
   blinkit: { label: 'Blinkit' },
+  swiggy_instamart: { label: 'Swiggy Instamart' },
+  zepto: { label: 'Zepto' },
 };
 
 const COLLAPSE_KEY = 'dash.sidebarCollapsed';
