@@ -4,6 +4,9 @@ import helmet from 'helmet';
 import { env } from './config/env';
 import { blinkitRouter } from './blinkit/blinkit.router';
 import { instamartRouter } from './instamart/instamart.router';
+import { opsRouter } from './ops/ops.router';
+import { productsRouter } from './products/products.router';
+import { scRouter } from './ops/sc/sc.router';
 import { sqlClient } from './db/client';
 import { gcsRouter } from './gcs/gcs.router';
 import { uploadsRouter } from './ingestion/uploads.router';
@@ -47,7 +50,7 @@ export function createApp() {
   // Per-user limits, checked before any body is read.
   app.use('/api', rateLimit({ limit: env.RATE_LIMIT_API_PER_MIN, windowMs: MINUTE, what: 'requests' }));
   app.post(
-    ['/api/uploads', '/api/blinkit/uploads', '/api/instamart/uploads'],
+    ['/api/uploads', '/api/blinkit/uploads', '/api/instamart/uploads', '/api/ops/uploads'],
     rateLimit({ limit: env.RATE_LIMIT_UPLOADS_PER_10MIN, windowMs: 10 * MINUTE, what: 'uploads' })
   );
   app.post(
@@ -66,6 +69,9 @@ export function createApp() {
   app.use('/api/gcs', gcsRouter);
   app.use('/api/blinkit', blinkitRouter);
   app.use('/api/instamart', instamartRouter);
+  app.use('/api/ops/sc', scRouter);
+  app.use('/api/ops', opsRouter);
+  app.use('/api/products', productsRouter);
 
   app.use(notFound);
   app.use(errorHandler);

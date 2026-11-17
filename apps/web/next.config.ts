@@ -12,7 +12,8 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob:",
+      // Amazon product images for the ASIN hover preview (loaded by ASIN).
+      "img-src 'self' data: blob: https://images-na.ssl-images-amazon.com https://m.media-amazon.com",
       "font-src 'self' data:",
       "connect-src 'self'",
       "object-src 'none'",
