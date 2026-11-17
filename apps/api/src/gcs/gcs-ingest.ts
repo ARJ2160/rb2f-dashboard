@@ -301,7 +301,7 @@ export interface DetectResult {
 }
 
 /** Swiggy Instamart exports are recognised by their own columns (sales / ads / SKU mapper). */
-const IM_FOLDER: Record<string, string> = { im_sales: 'sales', im_ads: 'ads', im_sku_mapper: 'sku_mapper' };
+const IM_FOLDER: Record<string, string> = { im_sales: 'sales', im_ads: 'ads', im_inventory: 'inventory', im_sku_mapper: 'sku_mapper' };
 
 /**
  * Inspect a file's columns and decide which warehouse report type it is.

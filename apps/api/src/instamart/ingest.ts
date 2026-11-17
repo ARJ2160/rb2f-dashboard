@@ -83,6 +83,9 @@ export function detectInstamart(s: Sheet): ImReportType {
   const has = (...c: string[]) => c.every((x) => h.has(x));
   if (has('ordered date', 'item code') && (h.has('units sold') || h.has('gmv'))) return 'im_sales';
   if (has('metrics date', 'campaign id') && (h.has('total budget burnt') || h.has('total impressions'))) return 'im_ads';
+  // Stock-on-hand export: warehouse/facility snapshot keyed by SKU code. Has no
+  // ordered/metrics date and no campaign id, so it can't collide with sales/ads.
+  if (h.has('skucode') && h.has('warehouseqtyavailable') && (h.has('facilityname') || h.has('daysonhand'))) return 'im_inventory';
   if (h.has('sku') && (h.has('item code') || h.has('product name')) && !h.has('units sold') && !h.has('campaign id')) return 'im_sku_mapper';
   return 'unknown';
 }
@@ -316,6 +319,10 @@ export async function ingestInstamartFile(profileId: string, filename: string, r
         const p = parseAds(s, profileId);
         ({ dates, warnings } = p);
         if (p.records.length) stored = await storeAds(profileId, p.dates, p.records);
+      } else if (type === 'im_inventory') {
+        // Recognised, but there is no inventory table yet (kept in the bucket only).
+        results.push({ ...base, status: 'skipped', message: `${IM_REPORT_LABEL[type]}: recognised but not ingested yet (no inventory store).` });
+        continue;
       } else {
         const p = parseSkuMapper(s, profileId);
         warnings = p.warnings;

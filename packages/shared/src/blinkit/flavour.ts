@@ -73,10 +73,11 @@ export const QC_FLAVOURS: Record<QcMarket, QcFlavour> = {
 export const IM_AD_TYPE_LABEL: Record<string, string> = Object.fromEntries(QC_FLAVOURS.instamart.adTypes.map((t) => [t.value, t.label]));
 
 /** Report types the Instamart ingest recognises (GCS sync / upload results). */
-export type ImReportType = 'im_sales' | 'im_ads' | 'im_sku_mapper' | 'unknown';
+export type ImReportType = 'im_sales' | 'im_ads' | 'im_inventory' | 'im_sku_mapper' | 'unknown';
 export const IM_REPORT_LABEL: Record<ImReportType, string> = {
   im_sales: 'Instamart Sales',
   im_ads: 'Instamart Ads',
+  im_inventory: 'Instamart Inventory',
   im_sku_mapper: 'Instamart SKU mapper',
   unknown: 'Not recognised',
 };

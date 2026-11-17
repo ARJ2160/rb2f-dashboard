@@ -32,6 +32,17 @@ const HEADER_TOKENS = [
   'keyword',
   'searchrank',
   'glanceviews',
+  // Swiggy Instamart exports (their header cells keep UNDERSCORE_CAPS; lower-cased
+  // here). Listed so the header scanner locks onto the real header row of an
+  // Instamart Ads/Sales export rather than an Amazon-token coincidence or a
+  // metadata preamble line. Each marketplace is routed by detectInstamart after.
+  'metrics_date',
+  'ordered_date',
+  'campaign_id',
+  'item_code',
+  'units_sold',
+  'skucode',
+  'warehouseqtyavailable',
 ];
 
 const HEADER_SCAN_ROWS = 20;
