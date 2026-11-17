@@ -527,3 +527,7 @@ export * from '../blinkit/schema';
 
 // ── Swiggy Instamart (im_* tables) ──
 export * from '../instamart/schema';
+
+// ── Amazon Inventory / PO / Shipment (brands, dim_warehouse, vc_* / sc_*) ──
+export * from '../ops/schema';
+export * from '../ops/sc-schema';

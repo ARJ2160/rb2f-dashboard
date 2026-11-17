@@ -16,6 +16,8 @@ import type { ReportType as FineReportType } from '@dash/shared';
 
 import { env } from '../config/env';
 import { detectReportType } from '../ingestion/detect-report';
+import { detectOpsFile } from '../ops/detect';
+import type { OpsFileType } from '@dash/shared';
 import { detectInstamart } from '../instamart/ingest';
 import { normKey } from '@dash/shared/blinkit';
 import { readWorkbook } from '../ingestion/sheet-reader';
@@ -117,6 +119,11 @@ export const AMAZON_REPORT_TYPES: readonly ReportType[] = [
     marketplace: 'amazon',
     hint: 'Keyword share of voice / CTR / CPC / ACoS (7 / 15 / 30 day)',
   },
+  { id: 'sc_ledger', label: 'Seller Central — Inventory Ledger', folder: 'sc_ledger', marketplace: 'amazon', hint: 'FBA Inventory Ledger (Summary or Detailed view)' },
+  { id: 'fba_inventory', label: 'Seller Central — FBA Inventory', folder: 'fba_inventory', marketplace: 'amazon', hint: 'FBA Inventory snapshot — available, inbound, ageing, sales T7/T30' },
+  { id: 'sc_shipments', label: 'Seller Central — Shipments', folder: 'sc_shipments', marketplace: 'amazon', hint: 'FBA shipments list / shipment contents' },
+  { id: 'vc_po', label: 'Vendor Central — PO Export', folder: 'vc_po', marketplace: 'amazon', hint: 'Purchase order items export' },
+  { id: 'vc_inventory', label: 'Vendor Central — Inventory', folder: 'vc_inventory', marketplace: 'amazon', hint: 'Retail Analytics inventory (Sellable On Hand Units)' },
 ];
 
 export const BLINKIT_REPORT_TYPES: readonly ReportType[] = [
@@ -286,6 +293,16 @@ const FINE_TO_COARSE: Partial<Record<FineReportType, string>> = {
   keyword_sov: 'keyword_sov',
 };
 
+const OPS_TO_FOLDER: Partial<Record<OpsFileType, string>> = {
+  sc_ledger_summary: 'sc_ledger',
+  sc_ledger_detail: 'sc_ledger',
+  sc_fba_inventory: 'fba_inventory',
+  sc_shipments: 'sc_shipments',
+  sc_shipment_contents: 'sc_shipments',
+  vc_po: 'vc_po',
+  vc_inventory: 'vc_inventory',
+};
+
 export interface DetectResult {
   filename: string;
   /** Coarse warehouse report type id (e.g. "campaign"), or null when unrecognised / unmapped. */
@@ -321,6 +338,13 @@ export function detectIngestType(buffer: Buffer, filename: string): DetectResult
     const im = detectInstamart({ fileName: filename, sheetName: sheet.sheetName, headers: sheet.headers.map((h) => normKey(h)), rows: [] });
     if (im !== 'unknown')
       return { filename, reportType: IM_FOLDER[im] ?? null, fineType: null, detectedBy: 'headers', marketplace: 'swiggy_instamart' };
+    // Inventory / PO / Shipment files are recognised by their own signatures and
+    // take priority over the ads detector (Vendor Central sales excepted).
+    const ops = detectOpsFile(sheet.headers, sheet.preamble);
+    if (ops && ops.fileType !== 'vc_sales') {
+      const folder = OPS_TO_FOLDER[ops.fileType];
+      if (folder) return { filename, reportType: folder, fineType: null, detectedBy: ops.detectedBy === 'metadata' ? 'headers' : ops.detectedBy };
+    }
     const hit = detectReportType(sheet.headers, sheet.sheetName, filename);
     if (!hit) continue;
     const coarse = FINE_TO_COARSE[hit.reportType];

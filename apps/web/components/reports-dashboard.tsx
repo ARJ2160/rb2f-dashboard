@@ -27,6 +27,7 @@ import { KeywordSovView } from '@/components/views/keyword-sov-view';
 // import { TargetingView } from '@/components/views/targeting-view';
 import type { Period } from '@/components/views/shared';
 import { AmazonOverview } from '@/components/views/overview-view';
+import { InventorySection, type InventorySub } from '@/components/inventory/sc-views';
 import { DashboardShell, FieldSelect, PeriodPicker, SideCard, presetRange, type ShellTab } from '@/components/shell/dashboard-shell';
 import { previousRange } from '@/components/shell/use-load';
 
@@ -48,7 +49,13 @@ type Tab =
   | 'placement'
   | 'state'
   | 'ads'
-  | 'hourly';
+  | 'hourly'
+  | 'inv_overview'
+  | 'inv_skus'
+  | 'inv_warehouses'
+  | 'inv_shipments'
+  | 'inv_skufc'
+  | 'inv_trend';
 
 const TABS: Array<ShellTab<Tab>> = [
   { id: 'summary', label: 'Account Overview', hint: 'Month-to-date vs last month, last 7 days vs the 7 before, and a custom period compare', icon: 'mom', group: 'Performance' },
@@ -70,7 +77,17 @@ const TABS: Array<ShellTab<Tab>> = [
   { id: 'gv', label: 'Glance Views', hint: 'Amazon Pi indexed glance views by ASIN and day', icon: 'eye', group: 'Keywords' },
   { id: 'searchrank', label: 'Search Rank', hint: 'Amazon Pi monthly organic search rank per ASIN (lower is better)', icon: 'rank', group: 'Keywords' },
   { id: 'keywordsov', label: 'Keyword SOV', hint: 'Amazon Pi keyword share of voice, CTR / CPC / ACoS across SP, SB and organic', icon: 'pie', group: 'Keywords' },
+  { id: 'inv_overview', label: 'Overview', hint: 'FBA stock, demand and shipments — Seller Central inventory', icon: 'overview', group: 'Inventory' },
+  { id: 'inv_skus', label: 'SKUs', hint: 'Sellable, DRR, days of cover and stock health per SKU', icon: 'dur', group: 'Inventory' },
+  { id: 'inv_warehouses', label: 'Warehouses', hint: 'Stock, sales and shipments per fulfilment centre', icon: 'map', group: 'Inventory' },
+  { id: 'inv_shipments', label: 'Shipments', hint: 'FBA shipments: units expected vs located, fill rate, flags', icon: 'dsr', group: 'Inventory' },
+  { id: 'inv_skufc', label: 'SKU × Warehouse', hint: 'Sellable, demand and cover per SKU × fulfilment centre', icon: 'category', group: 'Inventory' },
+  { id: 'inv_trend', label: 'Trend', hint: 'Daily stock vs units sold and weekly shipments', icon: 'dsr', group: 'Inventory' },
 ];
+
+const INV_SUB: Partial<Record<Tab, InventorySub>> = {
+  inv_overview: 'overview', inv_skus: 'skus', inv_warehouses: 'warehouses', inv_shipments: 'shipments', inv_skufc: 'skuFc', inv_trend: 'trend',
+};
 
 /** Latest / earliest day any source has data. */
 function bounds(c: CoverageResponse | null) {
@@ -149,7 +166,8 @@ export function ReportsDashboard({
   const isSummary = tab === 'summary' || tab === 'sqp' || tab === 'harvest' || tab === 'gv' || tab === 'searchrank' || tab === 'keywordsov';
   // Rule / negation / targeting pages use the selected range but have no comparison period.
   const isActionTab = tab === 'negations' || tab === 'termrules' || tab === 'targeting';
-  const isView = tab !== 'dsr' && tab !== 'dur' && tab !== 'overview' && !isSummary && !isActionTab;
+  const isInventory = tab.startsWith('inv_');
+  const isView = tab !== 'dsr' && tab !== 'dur' && tab !== 'overview' && !isSummary && !isActionTab && !isInventory;
   const compare: Period | null =
     isView && compareOn && compareRange && compareRange.from <= compareRange.to ? compareRange : null;
   const toggleCompare = () => {
@@ -159,7 +177,7 @@ export function ReportsDashboard({
 
   const toolbar = (
     <>
-      {range && !isSummary &&
+      {range && !isSummary && !isInventory &&
         (latest ? <PeriodPicker value={range} onChange={setRange} latest={latest} earliest={earliest} /> : <DateRangePicker value={range} onChange={setRange} />)}
 
       {(tab === 'overview' || tab === 'dsr' || tab === 'dur') && (
@@ -223,13 +241,14 @@ export function ReportsDashboard({
       heading={tab !== 'overview'}
       sideCard={coverage && hasAnyData ? <CoverageCard coverage={coverage} /> : null}
     >
-      {coverage && !hasAnyData && tab !== 'sqp' && tab !== 'gv' && tab !== 'searchrank' && tab !== 'keywordsov' && (
+      {coverage && !hasAnyData && tab !== 'sqp' && tab !== 'gv' && tab !== 'searchrank' && tab !== 'keywordsov' && !isInventory && (
         <div className="rounded-xl border border-line bg-side px-5 py-6 text-sm">{emptyState}</div>
       )}
       {error && <ErrorBox message={error} />}
 
       {tab === 'summary' && <SummaryView profileId={profileId} compareLoad={getSummaryCompare} />}
       {tab === 'sqp' && <SqpView profileId={profileId} />}
+      {isInventory && <InventorySection profileId={profileId} sub={INV_SUB[tab] ?? 'overview'} />}
       {tab === 'gv' && <GlanceViewsView profileId={profileId} />}
       {tab === 'searchrank' && <SearchRankView profileId={profileId} />}
       {tab === 'keywordsov' && <KeywordSovView profileId={profileId} />}

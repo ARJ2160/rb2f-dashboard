@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
 
-import { REPORT_TYPES, type FileUploadResult } from '@dash/shared';
+import { OPS_FILE_TYPES, REPORT_TYPES, type FileUploadResult } from '@dash/shared';
 
 import { db } from '../db/client';
 import { uploads } from '../db/schema';
 import { log as logger } from '../lib/logger';
 import { datesFromFilename } from '../lib/dates';
 import { detectAdChannel, detectReportType } from './detect-report';
+import { detectOpsFile } from '../ops/detect';
+import { ingestScFile } from '../ops/sc/ingest';
 
 const PREVIEW_ROWS = 30;
 import { parseAsinMapper } from './parsers/asin-mapper';
@@ -58,6 +60,10 @@ export async function ingestFile(profileId: string, filename: string, buffer: Bu
     // Cheap preview first; only parse every row if some sheet is a report we ingest.
     const preview = readWorkbook(buffer, { maxRows: PREVIEW_ROWS });
     const needsFull = preview.some((s) => {
+      // Inventory / PO / Shipment (ops) files are detected by their own column
+      // signatures, not the ads report registry — count them so the ledger is
+      // read in full, not just the preview rows.
+      if (detectOpsFile(s.headers, s.preamble)) return true;
       const d = detectReportType(s.headers, s.sheetName, filename);
       return d != null && REPORT_TYPES[d.reportType].inScope;
     });
@@ -97,6 +103,14 @@ async function ingestSheet(
   sheet: SheetData,
   uploadId: string
 ): Promise<FileUploadResult> {
+  // Inventory / PO / Shipment exports are recognised by their own column
+  // signatures and stored under this profile's inventory module. They take
+  // priority over the ads detector so a loose match (e.g. FBA Inventory vs the
+  // ASIN mapper) can't misroute them. Vendor Central *sales* stays with the ads
+  // pipeline (DSR/DUR), so it is excluded here.
+  const ops = detectOpsFile(sheet.headers, sheet.preamble);
+  if (ops && ops.fileType !== 'vc_sales') return ingestOpsSheet(profileId, filename, label, sheet);
+
   const detected = detectReportType(sheet.headers, sheet.sheetName, filename);
   if (!detected) {
     return {
@@ -226,6 +240,50 @@ async function ingestSheet(
     }
     default:
       throw new Error(`No ingester wired for in-scope report type "${reportType}"`);
+  }
+}
+
+/**
+ * Ingest a detected Inventory / PO / Shipment export. Seller Central files are
+ * parsed and stored under this profile; Vendor Central files are recognised and
+ * logged (their parser lands in the Vendor Central phase). The profile is the
+ * tenant key, so inventory data lives in the same brand as the ads/sales data.
+ */
+async function ingestOpsSheet(
+  profileId: string,
+  filename: string,
+  label: string,
+  sheet: SheetData
+): Promise<FileUploadResult> {
+  const ops = detectOpsFile(sheet.headers, sheet.preamble)!;
+  const base: Omit<FileUploadResult, 'status'> = {
+    filename: label,
+    ...(sheet.partial ? {} : { rowsRead: sheet.rows.length }),
+  };
+  const typeLabel = OPS_FILE_TYPES[ops.fileType].label;
+  if (!OPS_FILE_TYPES[ops.fileType].inScope) {
+    return { ...base, status: 'skipped', message: `${typeLabel} recognised — its parser lands in a later phase; nothing stored yet.` };
+  }
+  const uploadId = randomUUID();
+  const ctx: ParseContext = {
+    nameDates: datesFromFilename(sheet.sheetName) ?? datesFromFilename(filename),
+    preamble: sheet.preamble,
+  };
+  try {
+    const out = await db.transaction((tx) => ingestScFile(tx, profileId, uploadId, ops.fileType, sheet, ctx));
+    const warn = out.warnings.length ? { warnings: out.warnings } : {};
+    if (out.error) return { ...base, status: 'error', message: out.error, ...warn };
+    return {
+      ...base,
+      status: 'stored',
+      rowsStored: out.rows,
+      message: `Stored ${typeLabel}.`,
+      ...(out.from ? { from: out.from } : {}),
+      ...(out.to ? { to: out.to } : {}),
+      ...warn,
+    };
+  } catch (err) {
+    return { ...base, status: 'error', message: `Failed to store ${typeLabel}: ${(err as Error).message}` };
   }
 }
 

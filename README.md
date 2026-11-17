@@ -290,3 +290,113 @@ Setup: `bun install` (no new packages) → `bun run db:migrate` (0010) → put f
 2. Write a pure parser in `apps/api/src/ingestion/parsers/` + a test in `apps/api/test/`.
 3. Add a table in `db/schema.ts` → `bun run db:generate` → `bun run db:migrate`.
 4. Wire it in `ingest.service.ts` and `store.ts`.
+
+---
+
+## Inventory, PO & Shipment module (`ops`) — Phase 1 (foundation)
+
+A second Amazon pipeline alongside the ads/sales one, turning raw **Vendor
+Central (1P)** and **Seller Central / FBA (3P)** operational exports into PO,
+shipment, stock and warehouse views. Multi-brand from the start: every ops row
+is scoped by `brand_id` (the ops brand registry), the counterpart to the ads
+module's `profile_id`. No auth/RLS yet — brand scoping is by request parameter.
+
+**What Phase 1 ships (this foundation):**
+
+- **Brand registry** — `brands`, `brand_channels`, `brand_settings`. Channels
+  are recomputed after every upload and drive adaptive navigation (a VC-only
+  brand never sees Seller Central pages; both channels unlock the Combined view).
+- **FC warehouse master** — `dim_warehouse`, shared by every brand. Seeded with
+  the Amazon-Now quick-commerce node list (and HHS1 = Gurgaon); any FC code seen
+  in an upload is inserted automatically (network by the default rule) and
+  flagged for review.
+- **File-type detection** — the 8 operational exports are recognised by their
+  columns (and the Retail Analytics metadata preamble), never by file name:
+  `vc_po`, `vc_inventory`, `vc_sales`, `sc_ledger_summary`, `sc_ledger_detail`,
+  `sc_fba_inventory`, `sc_shipments`, `sc_shipment_contents`.
+- **Upload flow** — `POST /api/ops/uploads` detects each file, checks any
+  identifier it carries against the selected brand (warns on mismatch), records
+  it in `import_batches`, auto-registers new FC codes, and recomputes channels.
+  Per-file parsers (and the report views that read them) land in the Vendor
+  Central and Seller Central phases, so every file type is `inScope: false` here
+  — recognised and logged as "parser pending", never silently dropped.
+- **Web** — `/ops` admin page: brand switcher + create, upload with live
+  detection results, warehouse master (inline city/state/network edit), per-brand
+  settings, and upload history.
+
+**API** (all under `/api/ops`): `GET/POST /brands`, `GET/PATCH /brands/:id`,
+`GET /nav`, `GET /warehouses`, `PATCH /warehouses/:code`, `GET/PATCH /settings`,
+`GET/POST /uploads`.
+
+**Migration:** `drizzle/0015_ops_foundation.sql` (schema + warehouse seed). It
+was hand-authored to match drizzle's output because `drizzle-kit` could not run
+on the Linux bridge used to build this (the installed esbuild binary is
+Windows-only). Before applying, run `bun run db:generate` once to confirm there
+is no schema drift (it should report no changes), then `bun run db:migrate`.
+
+**Tests:** `apps/api/test/ops-detect.test.ts` (detection end-to-end through the
+sheet reader, including the real Seller Central sample headers) and
+`ops-foundation.test.ts` (warehouse rule, seed, settings defaults, identifier
+check). Run with `bun test`.
+
+**Next phases:** (2) Vendor Central module — PO/inventory/sales parsers,
+metrics and views; (3) Seller Central module — ledger/FBA/shipment parsers,
+metrics and views; (4) Combined + Portfolio views; (5) acceptance tests against
+the §7 sample fixtures.
+
+## Seller Central module (`sc`) — Phase 3
+
+Turns the Seller Central / FBA exports into stock, demand and shipment views.
+
+**Ingest** (wired into `POST /api/ops/uploads`; files detected by columns, stored transactionally):
+- Inventory Ledger — Summary (`sc_ledger_summary`), Detailed (`sc_ledger_detail`)
+- FBA Inventory (`sc_fba_inventory`, unknown columns kept in `extra` jsonb)
+- Shipments list (`sc_shipments` + dated `sc_shipments_history`) and Shipment contents
+- `dim_product` is built from every file; new FC codes auto-register in `dim_warehouse`.
+- Parsers handle Amazon's quirks: ledger `Date` is US MM/DD/YYYY; shipment ID is the
+  code in the last parentheses of the name; `27 Oct 2026` / `29 Sept 2026` both parse;
+  FBA accepts either column spelling (`units-shipped-t30` / `sales-shipped-last-30-days`).
+
+**Metrics** (`apps/api/src/ops/sc/metrics.ts`, pure + unit-tested): as-of date, sellable /
+unsellable by disposition, units sold 7d/30d over ledger dates, in-stock days, DRR, days on
+hand, days of cover incl. inbound, stock flags, shipment shortfall / fill rate / flags, and
+the §5.3 health status (Not working / Needs attention / Working) with Reasons.
+
+**Views** (`/api/ops/sc/*`: summary, skus, warehouses, shipments, sku-warehouse, trend, all):
+SQL loads the brand's rows; `build.ts` (pure) derives every view so the numbers are identical
+and testable. The frontend never recomputes.
+
+**Web**: `/ops/sc` — left sidebar (VC/SC groups), header with channel badge + "Data as of",
+health chips with counts, and the level tables with a health pill first column and a Reasons
+column, greyscale per §1.6. Overview has KPI tiles, SKU health, shipments-by-status and
+unsellable-by-disposition; Trend shows daily stock vs units sold and weekly shipments.
+
+**Tests**: `ops-sc-parse.test.ts` (parsers, incl. real sample headers) and
+`ops-sc-metrics.test.ts` (every flag + health rule, incl. the over-receipt-counts-as-0 case).
+Verified end-to-end against the real ledger + FBA samples (parse → build): sellable 11,240,
+unsellable by type, 25 SKUs, 13 FCs, flags + health computed. The §7.2 acceptance numbers
+need the full 29-date fixture set (this sample is a single ledger date, which inflates DRR).
+
+**Not yet built**: Vendor Central module (Phase 2), Combined + Portfolio (Phase 4),
+SKU/shipment drawers and the Action list page, ageing-based `aged_share` health (needs FBA
+inv-age buckets promoted out of `extra`).
+
+## Inventory inside the brand dashboard
+
+The inventory reports are part of each brand's dashboard, not a separate area:
+
+- **Where**: an **Inventory** tab group in `ReportsDashboard` (below the Keywords
+  group that holds SQP) — Overview, SKUs, Warehouses, Shipments, SKU × Warehouse,
+  Trend. Scoped to the selected brand's `profileId`, the same key as the rest of
+  the dashboard. The shared UI lives in `components/inventory/sc-views.tsx`.
+- **Upload / detection**: Vendor & Seller Central inventory files are detected by
+  their columns inside the normal ingest pipeline (`ingestSheet`), so whether a
+  file arrives by GCS sync or manual upload, it is recognised and stored under
+  that brand's profile. Seller Central files (ledger, FBA, shipments) are parsed
+  and stored; Vendor Central files are recognised and logged ("parser pending",
+  Phase 2). The ads detector and the inventory detector do not overlap (verified
+  against the real sample files).
+- Per-brand thresholds for dashboard brands currently fall back to the global
+  defaults; a settings UI keyed to the dashboard profile is a follow-up (the
+  `/ops` admin page still manages the FC warehouse master and its own brand
+  registry).
