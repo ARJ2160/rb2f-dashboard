@@ -12,6 +12,18 @@ import {
   type Marketplace,
   type ReportType,
 } from '@/lib/api';
+import { MarketplaceLogo } from '@/components/shell/marketplace-logo';
+
+/** Marketplaces a batch can be routed to — mirrors the GCS page toggle. */
+const MARKETPLACES: Array<{ id: Marketplace; label: string }> = [
+  { id: 'amazon', label: 'Amazon' },
+  { id: 'blinkit', label: 'Blinkit' },
+  { id: 'swiggy_instamart', label: 'Swiggy Instamart' },
+  { id: 'zepto', label: 'Zepto' },
+];
+
+/** Shared with the GCS page so the toggle remembers the same marketplace. */
+const MARKETPLACE_KEY = 'dash.gcsMarketplace';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,6 +58,7 @@ interface FileRow {
 export default function IngestPage() {
   const [brands, setBrands]           = useState<string[]>([]);
   const [brand, setBrand]             = useState('');
+  const [marketplace, setMarketplace] = useState<Marketplace>('amazon');
   const [allTypes, setAllTypes]       = useState<ReportType[]>([]);
   const [startDate, setStartDate]     = useState(isoDaysAgo(14));
   const [endDate, setEndDate]         = useState(today());
@@ -55,6 +68,14 @@ export default function IngestPage() {
   const [result, setResult]           = useState<BulkIngestResponse | null>(null);
   const [dragging, setDragging]       = useState(false);
   const inputRef                      = useRef<HTMLInputElement>(null);
+
+  // Restore the last-used marketplace (shared with the GCS page toggle).
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(MARKETPLACE_KEY) as Marketplace | null;
+      if (saved && MARKETPLACES.some((m) => m.id === saved)) setMarketplace(saved);
+    } catch { /* ignore */ }
+  }, []);
 
   // Load brands + the full report-type catalogue once.
   useEffect(() => {
@@ -84,7 +105,7 @@ export default function IngestPage() {
 
     const newRows: FileRow[] = fresh.map((file) => ({
       file,
-      marketplace: 'amazon',
+      marketplace,                     // default to the batch marketplace; detection may override below
       reportType: '',
       detectedBy: null,
       fineType: null,
@@ -100,13 +121,19 @@ export default function IngestPage() {
           if (!fresh.includes(r.file)) return r;
           const d = byName.get(r.file.name);
           if (!d) return { ...r, detecting: false };
+          // Detection can override the batch marketplace when a file plainly
+          // carries another marketplace's own columns (e.g. a Swiggy Instamart
+          // export dropped into an Amazon batch). Otherwise the batch wins.
+          const overrode = d.marketplace != null && d.marketplace !== marketplace;
           return {
             ...r,
-            marketplace: d.marketplace ?? 'amazon', // Amazon, or Instamart when its own columns were recognised
+            marketplace: d.marketplace ?? marketplace,
             reportType: d.reportType ?? '',
             detectedBy: d.detectedBy,
             fineType: d.fineType,
-            note: d.note,
+            note: overrode
+              ? `Detected as ${MARKETPLACES.find((m) => m.id === d.marketplace)?.label ?? d.marketplace} from its columns — routed there instead of ${MARKETPLACES.find((m) => m.id === marketplace)?.label ?? marketplace}.`
+              : d.note,
             detecting: false,
           };
         })
@@ -114,12 +141,21 @@ export default function IngestPage() {
     } catch {
       setRows((prev) => prev.map((r) => (fresh.includes(r.file) ? { ...r, detecting: false } : r)));
     }
-  }, [rows]);
+  }, [rows, marketplace]);
 
   const updateRow = (name: string, patch: Partial<FileRow>) =>
     setRows((prev) => prev.map((r) => (r.file.name === name ? { ...r, ...patch } : r)));
 
   const removeRow = (name: string) => setRows((prev) => prev.filter((r) => r.file.name !== name));
+
+  /** Switch the whole batch to another marketplace and re-base every row to it. */
+  const changeMarketplace = (m: Marketplace) => {
+    setMarketplace(m);
+    try { localStorage.setItem(MARKETPLACE_KEY, m); } catch { /* ignore */ }
+    setRows((prev) =>
+      prev.map((r) => ({ ...r, marketplace: m, reportType: '', detectedBy: null, fineType: null, note: undefined }))
+    );
+  };
 
   // Per-report-type suffixing for the live preview (mirrors the server).
   const previews = useMemo(() => {
@@ -218,6 +254,37 @@ export default function IngestPage() {
         </div>
       </section>
 
+      {/* ── Marketplace ── */}
+      <section className="space-y-2">
+        <label className="text-xs font-medium uppercase tracking-wide text-muted">Marketplace</label>
+        <div className="inline-flex flex-wrap gap-1 rounded-xl border border-line bg-side p-1" role="radiogroup" aria-label="Marketplace">
+          {MARKETPLACES.map((m) => {
+            const on = marketplace === m.id;
+            return (
+              <button
+                key={m.id}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                onClick={() => changeMarketplace(m.id)}
+                className={`flex h-9 items-center gap-2 rounded-lg pl-1.5 pr-3.5 text-sm transition-all ${
+                  on ? 'bg-surface font-semibold text-ink shadow-[0_1px_3px_rgb(20_23_28/0.12)] ring-1 ring-line' : 'text-ink/65 hover:text-ink'
+                }`}
+                title={`Route this batch to each brand's ${m.id}/ folder`}
+              >
+                <span className={on ? '' : 'opacity-60 grayscale-[35%]'}>
+                  <MarketplaceLogo id={m.id} size={24} />
+                </span>
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted">
+          All files in this batch upload to <span className="font-medium">{MARKETPLACES.find((m) => m.id === marketplace)?.label}</span>. If a file&apos;s columns clearly belong to another marketplace, it&apos;s routed there automatically and flagged below.
+        </p>
+      </section>
+
       {/* ── Dropzone ── */}
       <section className="space-y-2">
         <label className="text-xs font-medium uppercase tracking-wide text-muted">Files</label>
@@ -301,13 +368,28 @@ export default function IngestPage() {
 
                 {/* Line 2 â controls */}
                 <div className="mt-2 flex items-center gap-2">
+                  {/* Marketplace: defaults from the batch toggle (or auto-detection),
+                      but editable per file so a wrong guess can be corrected. A value
+                      differing from the batch toggle is highlighted. */}
                   <select
-                    className="select select-sm select-bordered shrink-0"
+                    className={`select select-sm select-bordered shrink-0 ${
+                      r.marketplace !== marketplace ? 'border-primary/50 text-primary' : ''
+                    }`}
                     value={r.marketplace}
-                    onChange={(e) => updateRow(r.file.name, { marketplace: e.target.value as Marketplace, reportType: '' })}
+                    onChange={(e) =>
+                      updateRow(r.file.name, {
+                        marketplace: e.target.value as Marketplace,
+                        reportType: '',
+                        detectedBy: null,
+                        fineType: null,
+                        note: undefined,
+                      })
+                    }
+                    title={r.marketplace !== marketplace ? 'Overrides the batch marketplace for this file' : undefined}
                   >
-                    <option value="amazon">Amazon</option>
-                    <option value="blinkit">Blinkit</option>
+                    {MARKETPLACES.map((m) => (
+                      <option key={m.id} value={m.id}>{m.label}</option>
+                    ))}
                   </select>
 
                   <select
