@@ -5,7 +5,15 @@ import { useState, type ReactNode } from 'react';
 import { fmtPct } from '@/lib/format';
 
 /** Categorical slots in fixed order (dataviz reference palette) — colour follows the entity, never its rank. */
-export const SERIES = ['var(--color-s1)', 'var(--color-s2)', 'var(--color-s3)', 'var(--color-s4)', 'var(--color-s5)', 'var(--color-s6)', 'var(--color-s7)'];
+export const SERIES = [
+  'var(--color-s1)',
+  'var(--color-s2)',
+  'var(--color-s3)',
+  'var(--color-s4)',
+  'var(--color-s5)',
+  'var(--color-s6)',
+  'var(--color-s7)',
+];
 const OTHER = '#9aa1ac';
 
 export interface ChartItem {
@@ -38,7 +46,13 @@ function deltaText(v: number, p: number | null | undefined) {
  * Legend always present with value + share (identity never by colour alone).
  * `colorKeys` keeps a slice's colour stable when filters change the set.
  */
-export function Donut({ items, fmt, colorKeys, comparing = false, size = 168 }: {
+export function Donut({
+  items,
+  fmt,
+  colorKeys,
+  comparing = false,
+  size = 168,
+}: {
   items: ChartItem[];
   fmt: (v: number | null) => string;
   colorKeys?: string[];
@@ -53,7 +67,11 @@ export function Donut({ items, fmt, colorKeys, comparing = false, size = 168 }: 
     const rest = positive.slice(6);
     slices = [
       ...positive.slice(0, 6),
-      { label: 'Other', value: rest.reduce((a, r) => a + r.value, 0), prev: rest.reduce((a, r) => a + (r.prev ?? 0), 0) },
+      {
+        label: 'Other',
+        value: rest.reduce((a, r) => a + r.value, 0),
+        prev: rest.reduce((a, r) => a + (r.prev ?? 0), 0),
+      },
     ];
   }
   const total = slices.reduce((a, s) => a + s.value, 0);
@@ -84,7 +102,10 @@ export function Donut({ items, fmt, colorKeys, comparing = false, size = 168 }: 
   });
   if (!total) return <p className="py-8 text-center text-xs text-muted">No data</p>;
   return (
-    <div className="relative flex flex-wrap items-center gap-5" onMouseLeave={() => (setHover(null), setTip(null))}>
+    <div
+      className="relative flex flex-wrap items-center gap-5"
+      onMouseLeave={() => (setHover(null), setTip(null))}
+    >
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Share chart">
         {arcs.map(({ d, s, i }) => (
           <path
@@ -94,7 +115,9 @@ export function Donut({ items, fmt, colorKeys, comparing = false, size = 168 }: 
             opacity={hover == null || hover === i ? 1 : 0.35}
             onMouseMove={(e) => {
               setHover(i);
-              const box = (e.currentTarget.ownerSVGElement?.parentElement as HTMLElement).getBoundingClientRect();
+              const box = (
+                e.currentTarget.ownerSVGElement?.parentElement as HTMLElement
+              ).getBoundingClientRect();
               setTip({
                 x: e.clientX - box.left,
                 y: e.clientY - box.top,
@@ -118,7 +141,12 @@ export function Donut({ items, fmt, colorKeys, comparing = false, size = 168 }: 
         <text x={r} y={r - 4} textAnchor="middle" className="fill-[var(--color-muted)] text-[10px]">
           Total
         </text>
-        <text x={r} y={r + 12} textAnchor="middle" className="num fill-[var(--color-ink)] text-[12px] font-semibold">
+        <text
+          x={r}
+          y={r + 12}
+          textAnchor="middle"
+          className="num fill-[var(--color-ink)] text-[12px] font-semibold"
+        >
           {fmt(total)}
         </text>
       </svg>
@@ -135,7 +163,9 @@ export function Donut({ items, fmt, colorKeys, comparing = false, size = 168 }: 
             </span>
             <span className="num">{fmt(s.value)}</span>
             <span className="num w-12 text-right text-muted">{fmtPct((s.value / total) * 100)}</span>
-            {comparing && <span className="num w-14 text-right text-muted">{deltaText(s.value, s.prev) ?? '—'}</span>}
+            {comparing && (
+              <span className="num w-14 text-right text-muted">{deltaText(s.value, s.prev) ?? '—'}</span>
+            )}
           </li>
         ))}
       </ul>
@@ -148,7 +178,15 @@ export function Donut({ items, fmt, colorKeys, comparing = false, size = 168 }: 
  * Horizontal bars (magnitude by category). With comparison, a thin grey bar
  * under each shows period B. Direct labels on every bar (few bars).
  */
-export function HBars({ items, fmt, comparing = false }: { items: ChartItem[]; fmt: (v: number | null) => string; comparing?: boolean }) {
+export function HBars({
+  items,
+  fmt,
+  comparing = false,
+}: {
+  items: ChartItem[];
+  fmt: (v: number | null) => string;
+  comparing?: boolean;
+}) {
   const [tip, setTip] = useState<{ x: number; y: number; body: ReactNode } | null>(null);
   const max = Math.max(1e-9, ...items.map((i) => Math.max(i.value, comparing ? (i.prev ?? 0) : 0)));
   if (!items.length) return <p className="py-8 text-center text-xs text-muted">No data</p>;
@@ -181,9 +219,15 @@ export function HBars({ items, fmt, comparing = false }: { items: ChartItem[]; f
             {it.label}
           </span>
           <div className="space-y-0.5">
-            <div className="h-3 rounded-r-[4px] bg-[var(--color-s1)]" style={{ width: `${Math.max(0.5, (Math.max(0, it.value) / max) * 100)}%` }} />
+            <div
+              className="h-3 rounded-r-[4px] bg-[var(--color-s1)]"
+              style={{ width: `${Math.max(0.5, (Math.max(0, it.value) / max) * 100)}%` }}
+            />
             {comparing && (
-              <div className="h-1.5 rounded-r-[4px] bg-[#b7bdc7]" style={{ width: `${Math.max(0.5, (Math.max(0, it.prev ?? 0) / max) * 100)}%` }} />
+              <div
+                className="h-1.5 rounded-r-[4px] bg-[#b7bdc7]"
+                style={{ width: `${Math.max(0.5, (Math.max(0, it.prev ?? 0) / max) * 100)}%` }}
+              />
             )}
           </div>
           <span className="num w-24 text-right">{fmt(it.value)}</span>
@@ -205,7 +249,12 @@ export function HBars({ items, fmt, comparing = false }: { items: ChartItem[]; f
 }
 
 /** Vertical columns (e.g. 24 hours). Comparison shown as a grey column beside each. */
-export function Columns({ items, fmt, comparing = false, height = 200 }: {
+export function Columns({
+  items,
+  fmt,
+  comparing = false,
+  height = 200,
+}: {
   items: ChartItem[];
   fmt: (v: number | null) => string;
   comparing?: boolean;
@@ -221,7 +270,9 @@ export function Columns({ items, fmt, comparing = false, height = 200 }: {
             key={it.label}
             className="flex h-full flex-1 items-end justify-center gap-[2px] hover:bg-canvas"
             onMouseMove={(e) => {
-              const box = (e.currentTarget.parentElement!.parentElement as HTMLElement).getBoundingClientRect();
+              const box = (
+                e.currentTarget.parentElement!.parentElement as HTMLElement
+              ).getBoundingClientRect();
               setTip({
                 x: e.clientX - box.left,
                 y: e.clientY - box.top,
@@ -239,9 +290,15 @@ export function Columns({ items, fmt, comparing = false, height = 200 }: {
               });
             }}
           >
-            <div className="w-full max-w-5 rounded-t-[4px] bg-[var(--color-s1)]" style={{ height: `${(Math.max(0, it.value) / max) * 100}%` }} />
+            <div
+              className="w-full max-w-5 rounded-t-[4px] bg-[var(--color-s1)]"
+              style={{ height: `${(Math.max(0, it.value) / max) * 100}%` }}
+            />
             {comparing && (
-              <div className="w-full max-w-3 rounded-t-[4px] bg-[#b7bdc7]" style={{ height: `${(Math.max(0, it.prev ?? 0) / max) * 100}%` }} />
+              <div
+                className="w-full max-w-3 rounded-t-[4px] bg-[#b7bdc7]"
+                style={{ height: `${(Math.max(0, it.prev ?? 0) / max) * 100}%` }}
+              />
             )}
           </div>
         ))}

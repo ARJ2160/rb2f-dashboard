@@ -35,8 +35,20 @@ function Manual({ on }: { on: boolean }) {
   );
 }
 
-const Th = ({ children, right = false, className = '' }: { children: ReactNode; right?: boolean; className?: string }) => (
-  <th className={`whitespace-nowrap px-3 py-2 font-medium ${right ? 'text-right' : 'text-left'} ${className}`}>{children}</th>
+const Th = ({
+  children,
+  right = false,
+  className = '',
+}: {
+  children: ReactNode;
+  right?: boolean;
+  className?: string;
+}) => (
+  <th
+    className={`whitespace-nowrap px-3 py-2 font-medium ${right ? 'text-right' : 'text-left'} ${className}`}
+  >
+    {children}
+  </th>
 );
 const Num = ({ children, className = '' }: { children: ReactNode; className?: string }) => (
   <td className={`num whitespace-nowrap px-3 py-1.5 text-right ${className}`}>{children}</td>
@@ -89,17 +101,38 @@ export function HarvestView({ profileId }: { profileId: string }) {
         <>
           <div className="join">
             {WINDOWS.map((d) => (
-              <button key={d} onClick={() => setDays(d)} className={`btn btn-sm join-item ${days === d ? 'btn-primary' : 'font-normal'}`}>
+              <button
+                key={d}
+                onClick={() => setDays(d)}
+                className={`btn btn-sm join-item ${days === d ? 'btn-primary' : 'font-normal'}`}
+              >
                 Last {d} days
               </button>
             ))}
           </div>
-          <Select label="Min orders" value={minOrders} onChange={setMinOrders} allLabel={null} options={MIN_ORDERS.map((m) => ({ value: m, label: `${m}+` }))} />
-          <input value={qDraft} onChange={(e) => setQDraft(e.target.value)} placeholder="Search terms…" className="input input-sm w-52" />
+          <Select
+            label="Min orders"
+            value={minOrders}
+            onChange={setMinOrders}
+            allLabel={null}
+            options={MIN_ORDERS.map((m) => ({ value: m, label: `${m}+` }))}
+          />
+          <input
+            value={qDraft}
+            onChange={(e) => setQDraft(e.target.value)}
+            placeholder="Search terms…"
+            className="input input-sm w-52"
+          />
           <Select label="Harvest into" value={harvestInto} onChange={setHarvestInto} options={CHANNELS} />
           <Select label="Orders from" value={performingIn} onChange={setPerformingIn} options={CHANNELS} />
           <Select label="Type" value={kind} onChange={setKind} options={['Keyword', 'ASIN']} />
-          <Select label="Sort by" value={sort} onChange={(v) => setSort(v as HarvestSort)} allLabel={null} options={SORTS} />
+          <Select
+            label="Sort by"
+            value={sort}
+            onChange={(v) => setSort(v as HarvestSort)}
+            allLabel={null}
+            options={SORTS}
+          />
           {data?.from && data.to && (
             <span className="text-xs text-muted">
               {fmtDateLong(data.from)} – {fmtDateLong(data.to)}
@@ -112,7 +145,11 @@ export function HarvestView({ profileId }: { profileId: string }) {
         <>
           <div className="stats stats-vertical w-full border border-line bg-base-100 shadow-sm sm:stats-horizontal">
             {[
-              { label: 'Terms to harvest', value: fmtInt(k.terms), desc: `${data.minOrders}+ orders, last ${data.days} days` },
+              {
+                label: 'Terms to harvest',
+                value: fmtInt(k.terms),
+                desc: `${data.minOrders}+ orders, last ${data.days} days`,
+              },
               { label: 'Into SP & SB', value: fmtInt(k.intoBoth), desc: 'not a manual target anywhere' },
               { label: 'Into SP only', value: fmtInt(k.intoSp), desc: 'already manual in SB' },
               { label: 'Into SB only', value: fmtInt(k.intoSb), desc: 'already manual in SP' },
@@ -151,15 +188,21 @@ export function HarvestView({ profileId }: { profileId: string }) {
                 {data.rows.length === 0 && (
                   <tr>
                     <td colSpan={15} className="px-3 py-8 text-center text-muted">
-                      Nothing to harvest — every search term with {data.minOrders}+ orders in this window is already a manual target in both SP and SB (or the filters exclude them).
+                      Nothing to harvest — every search term with {data.minOrders}+ orders in this window is
+                      already a manual target in both SP and SB (or the filters exclude them).
                     </td>
                   </tr>
                 )}
                 {data.rows.map((r: HarvestRow) => (
-                  <tr key={r.searchTerm} className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft">
+                  <tr
+                    key={r.searchTerm}
+                    className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft"
+                  >
                     <td className="sticky left-0 z-10 max-w-72 bg-inherit px-3 py-1.5 font-medium">
                       {r.searchTerm}
-                      {r.kind === 'ASIN' && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-muted">ASIN</span>}
+                      {r.kind === 'ASIN' && (
+                        <span className="ml-1.5 text-[10px] uppercase tracking-wide text-muted">ASIN</span>
+                      )}
                     </td>
                     <td className="px-3 py-1.5">
                       <ChannelBadge label={r.performingIn} />
@@ -188,7 +231,9 @@ export function HarvestView({ profileId }: { profileId: string }) {
                           {c}
                         </div>
                       ))}
-                      {r.campaignCount > r.campaigns.length && <div className="text-muted">+{r.campaignCount - r.campaigns.length} more</div>}
+                      {r.campaignCount > r.campaigns.length && (
+                        <div className="text-muted">+{r.campaignCount - r.campaigns.length} more</div>
+                      )}
                     </td>
                   </tr>
                 ))}

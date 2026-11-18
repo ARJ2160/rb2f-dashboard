@@ -1,4 +1,14 @@
-import { boolean, date, index, integer, jsonb, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core';
+import {
+  boolean,
+  date,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 /**
@@ -17,9 +27,15 @@ export const brands = pgTable('brands', {
   name: text('name').notNull(),
   logoUrl: text('logo_url'),
   /** Vendor Central vendor code(s). */
-  vendorCodes: text('vendor_codes').array().notNull().default(sql`'{}'::text[]`),
+  vendorCodes: text('vendor_codes')
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
   /** Seller Central seller / merchant ID(s). */
-  sellerIds: text('seller_ids').array().notNull().default(sql`'{}'::text[]`),
+  sellerIds: text('seller_ids')
+    .array()
+    .notNull()
+    .default(sql`'{}'::text[]`),
   marketplace: text('marketplace').notNull().default('Amazon.in'),
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -93,7 +109,10 @@ export const dimProduct = pgTable(
     extra: jsonb('extra').$type<Record<string, unknown>>(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.brandId, t.asin, t.msku, t.fnsku] }), index('dim_product_brand_idx').on(t.brandId)]
+  (t) => [
+    primaryKey({ columns: [t.brandId, t.asin, t.msku, t.fnsku] }),
+    index('dim_product_brand_idx').on(t.brandId),
+  ]
 );
 
 /** Ops upload audit trail — one row per uploaded file (the counterpart to `uploads` in the ads module). */

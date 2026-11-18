@@ -55,10 +55,10 @@ export function PerformanceOverview({
 }) {
   const [selected, setSelected] = useState<string[]>(defaultSelected);
   const toggle = (k: string) =>
-    setSelected((s) => (s.includes(k) ? (s.length > 1 ? s.filter((x) => x !== k) : s) : [...s, k].slice(-MAX_LINES)));
-  const lines = selected
-    .map((k) => metrics.find((m) => m.key === k))
-    .filter((m): m is OverviewMetric => !!m);
+    setSelected((s) =>
+      s.includes(k) ? (s.length > 1 ? s.filter((x) => x !== k) : s) : [...s, k].slice(-MAX_LINES)
+    );
+  const lines = selected.map((k) => metrics.find((m) => m.key === k)).filter((m): m is OverviewMetric => !!m);
 
   return (
     <section className="space-y-5">
@@ -68,7 +68,11 @@ export function PerformanceOverview({
           <p className="mt-0.5 text-[15px] text-muted">{subtitle}</p>
         </div>
         {loading && <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />}
-        <button onClick={() => downloadCsv(csvName, dates, metrics)} className="btn-quiet" disabled={!dates.length}>
+        <button
+          onClick={() => downloadCsv(csvName, dates, metrics)}
+          className="btn-quiet"
+          disabled={!dates.length}
+        >
           <Icon name="download" className="size-4" /> Download
         </button>
       </div>
@@ -85,11 +89,15 @@ export function PerformanceOverview({
               onClick={() => toggle(m.key)}
               title={m.hint}
               className={`group relative flex min-h-[100px] w-[214px] shrink-0 snap-start flex-col rounded-xl border bg-surface px-5 py-4 text-left transition-colors ${
-                on ? 'border-brand bg-brand-soft/40 shadow-[0_0_0_1px_var(--color-brand)]' : 'border-line hover:border-brand/40'
+                on
+                  ? 'border-brand bg-brand-soft/40 shadow-[0_0_0_1px_var(--color-brand)]'
+                  : 'border-line hover:border-brand/40'
               }`}
             >
               <span className="flex items-center gap-1.5 pr-7 text-[15px] text-ink/85">
-                {color && <span className="h-[3px] w-3 rounded-full" style={{ background: color }} aria-hidden />}
+                {color && (
+                  <span className="h-[3px] w-3 rounded-full" style={{ background: color }} aria-hidden />
+                )}
                 {m.label}
                 <span className="text-muted" aria-hidden>
                   <Icon name="info" className="size-3.5" />
@@ -102,12 +110,20 @@ export function PerformanceOverview({
                 aria-hidden
               >
                 {on && (
-                  <svg viewBox="0 0 16 16" className="size-3.5" fill="none" stroke="currentColor" strokeWidth={2.4}>
+                  <svg
+                    viewBox="0 0 16 16"
+                    className="size-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.4}
+                  >
                     <path d="M3.5 8.5 6.5 11.5 12.5 5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )}
               </span>
-              <span className="num mt-1.5 text-[22px] font-semibold leading-tight tracking-tight">{m.fmt(m.value)}</span>
+              <span className="num mt-1.5 text-[22px] font-semibold leading-tight tracking-tight">
+                {m.fmt(m.value)}
+              </span>
               <DeltaLine m={m} prevLabel={prevLabel} />
             </button>
           );
@@ -119,9 +135,15 @@ export function PerformanceOverview({
           <h3 className="mr-auto text-[21px] font-semibold tracking-tight">Trends</h3>
           {lines.map((l, i) => (
             <span key={l.key} className="flex items-center gap-1.5 text-sm">
-              <span className="h-[3px] w-4 rounded-full" style={{ background: TREND_COLORS[i] }} aria-hidden />
+              <span
+                className="h-[3px] w-4 rounded-full"
+                style={{ background: TREND_COLORS[i] }}
+                aria-hidden
+              />
               {l.label}
-              {lines.length > 1 && <span className="text-xs text-muted">({i === 0 ? 'left' : 'right'} axis)</span>}
+              {lines.length > 1 && (
+                <span className="text-xs text-muted">({i === 0 ? 'left' : 'right'} axis)</span>
+              )}
             </span>
           ))}
         </div>
@@ -129,7 +151,9 @@ export function PerformanceOverview({
           {dates.length ? (
             <TrendChart dates={dates} lines={lines} />
           ) : (
-            <div className="grid h-[300px] place-items-center text-sm text-muted">{loading ? 'Loading…' : 'No data in this period'}</div>
+            <div className="grid h-[300px] place-items-center text-sm text-muted">
+              {loading ? 'Loading…' : 'No data in this period'}
+            </div>
           )}
         </div>
         <p className="text-xs text-muted">Tick up to two cards to compare them on the chart.</p>
@@ -142,8 +166,14 @@ export function PerformanceOverview({
 
 function DeltaLine({ m, prevLabel }: { m: OverviewMetric; prevLabel?: string | undefined }) {
   if (m.prev === undefined) return null;
-  if (m.value == null || m.prev == null) return <span className="mt-1 text-xs text-muted">— vs {prevLabel}</span>;
-  if (m.prev === 0) return <span className="mt-1 text-xs text-muted">{m.value === 0 ? '±0%' : 'new'} vs {prevLabel}</span>;
+  if (m.value == null || m.prev == null)
+    return <span className="mt-1 text-xs text-muted">— vs {prevLabel}</span>;
+  if (m.prev === 0)
+    return (
+      <span className="mt-1 text-xs text-muted">
+        {m.value === 0 ? '±0%' : 'new'} vs {prevLabel}
+      </span>
+    );
   const d = ((m.value - m.prev) / Math.abs(m.prev)) * 100;
   const good = m.higherIsBetter ? d > 0 : d < 0;
   const cls = Math.abs(d) < 0.05 || m.neutral ? 'text-ink/70' : good ? 'text-good' : 'text-bad';
@@ -181,12 +211,20 @@ function CardStrip({ children }: { children: ReactNode }) {
         {children}
       </div>
       {edges.left && (
-        <button onClick={() => by(-460)} className="strip-arrow left-0 -translate-x-1/2" aria-label="Scroll cards left">
+        <button
+          onClick={() => by(-460)}
+          className="strip-arrow left-0 -translate-x-1/2"
+          aria-label="Scroll cards left"
+        >
           <Icon name="chevronL" className="size-4" />
         </button>
       )}
       {edges.right && (
-        <button onClick={() => by(460)} className="strip-arrow right-0 translate-x-1/2" aria-label="Scroll cards right">
+        <button
+          onClick={() => by(460)}
+          className="strip-arrow right-0 translate-x-1/2"
+          aria-label="Scroll cards right"
+        >
           <Icon name="chevronR" className="size-4" />
         </button>
       )}
@@ -225,14 +263,25 @@ export function compact(v: number, kind: AxisKind): string {
   if (kind === 'pct') s = `${trim(v)}%`;
   else if (kind === 'x') s = `${trim(v)}×`;
   else {
-    s = a >= 1e7 ? `${trim(a / 1e7)}Cr` : a >= 1e5 ? `${trim(a / 1e5)}L` : a >= 1e3 ? `${trim(a / 1e3)}K` : trim(a);
+    s =
+      a >= 1e7
+        ? `${trim(a / 1e7)}Cr`
+        : a >= 1e5
+          ? `${trim(a / 1e5)}L`
+          : a >= 1e3
+            ? `${trim(a / 1e3)}K`
+            : trim(a);
     s = `${v < 0 ? '-' : ''}${kind === 'inr' ? '₹' : ''}${s}`;
   }
   return s;
 }
 
 export const dayLabel = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
 
 function TrendChart({ dates, lines }: { dates: string[]; lines: OverviewMetric[] }) {
   const wrap = useRef<HTMLDivElement>(null);
@@ -258,7 +307,9 @@ function TrendChart({ dates, lines }: { dates: string[]; lines: OverviewMetric[]
   const grid = scales[0] ?? niceScale([0]);
 
   const every = Math.max(1, Math.ceil(n / Math.max(2, Math.floor(iw / 76))));
-  const xTicks = dates.map((d, i) => ({ d, i })).filter(({ i }) => i % every === 0 || (i === n - 1 && n > 1 && (n - 1) % every > every / 2));
+  const xTicks = dates
+    .map((d, i) => ({ d, i }))
+    .filter(({ i }) => i % every === 0 || (i === n - 1 && n > 1 && (n - 1) % every > every / 2));
 
   const path = (l: OverviewMetric, s: { lo: number; hi: number }) => {
     let d = '';
@@ -292,32 +343,75 @@ function TrendChart({ dates, lines }: { dates: string[]; lines: OverviewMetric[]
       >
         {grid.ticks.map((t, k) => (
           <g key={k}>
-            <line x1={M.l} x2={M.l + iw} y1={y(grid, t)} y2={y(grid, t)} stroke="var(--color-line)" strokeWidth={1} />
+            <line
+              x1={M.l}
+              x2={M.l + iw}
+              y1={y(grid, t)}
+              y2={y(grid, t)}
+              stroke="var(--color-line)"
+              strokeWidth={1}
+            />
             {lines[0] && (
               <text x={M.l - 10} y={y(grid, t) + 4} textAnchor="end" className="fill-muted text-[12px]">
                 {compact(t, lines[0].axis)}
               </text>
             )}
             {lines[1] && scales[1] && (
-              <text x={M.l + iw + 10} y={y(grid, t) + 4} textAnchor="start" className="fill-muted text-[12px]">
+              <text
+                x={M.l + iw + 10}
+                y={y(grid, t) + 4}
+                textAnchor="start"
+                className="fill-muted text-[12px]"
+              >
                 {compact(scales[1].ticks[k] ?? 0, lines[1].axis)}
               </text>
             )}
           </g>
         ))}
         {xTicks.map(({ d, i }) => (
-          <text key={d} x={x(i)} y={H - 8} textAnchor={n === 1 ? 'middle' : i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'} className="fill-muted text-[12px]">
+          <text
+            key={d}
+            x={x(i)}
+            y={H - 8}
+            textAnchor={n === 1 ? 'middle' : i === 0 ? 'start' : i === n - 1 ? 'end' : 'middle'}
+            className="fill-muted text-[12px]"
+          >
             {dayLabel(d)}
           </text>
         ))}
-        {hover != null && <line x1={x(hover)} x2={x(hover)} y1={M.t} y2={M.t + ih} stroke="var(--color-ink)" strokeOpacity={0.25} strokeDasharray="3 3" />}
+        {hover != null && (
+          <line
+            x1={x(hover)}
+            x2={x(hover)}
+            y1={M.t}
+            y2={M.t + ih}
+            stroke="var(--color-ink)"
+            strokeOpacity={0.25}
+            strokeDasharray="3 3"
+          />
+        )}
         {lines.map((l, k) => (
           <g key={l.key}>
-            <path d={path(l, scales[k]!)} fill="none" stroke={TREND_COLORS[k]} strokeWidth={2.25} strokeLinejoin="round" strokeLinecap="round" />
+            <path
+              d={path(l, scales[k]!)}
+              fill="none"
+              stroke={TREND_COLORS[k]}
+              strokeWidth={2.25}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
             {(n <= 14 || hover != null) &&
               l.series.map((v, i) =>
                 v == null || !Number.isFinite(v) || (n > 14 && i !== hover) ? null : (
-                  <circle key={i} cx={x(i)} cy={y(scales[k]!, v)} r={i === hover ? 4.5 : n <= 14 ? 2.5 : 0} fill={i === hover ? 'var(--color-surface)' : TREND_COLORS[k]} stroke={TREND_COLORS[k]} strokeWidth={i === hover ? 2.25 : 0} />
+                  <circle
+                    key={i}
+                    cx={x(i)}
+                    cy={y(scales[k]!, v)}
+                    r={i === hover ? 4.5 : n <= 14 ? 2.5 : 0}
+                    fill={i === hover ? 'var(--color-surface)' : TREND_COLORS[k]}
+                    stroke={TREND_COLORS[k]}
+                    strokeWidth={i === hover ? 2.25 : 0}
+                  />
                 )
               )}
           </g>
@@ -329,11 +423,21 @@ function TrendChart({ dates, lines }: { dates: string[]; lines: OverviewMetric[]
           style={x(hover) > w * 0.6 ? { right: w - x(hover) + 12 } : { left: x(hover) + 12 }}
         >
           <div className="mb-1 font-medium">
-            {new Date(`${dates[hover]}T00:00:00Z`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}
+            {new Date(`${dates[hover]}T00:00:00Z`).toLocaleDateString('en-IN', {
+              weekday: 'short',
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+              timeZone: 'UTC',
+            })}
           </div>
           {lines.map((l, k) => (
             <div key={l.key} className="flex items-center gap-2">
-              <span className="h-[3px] w-3 rounded-full" style={{ background: TREND_COLORS[k] }} aria-hidden />
+              <span
+                className="h-[3px] w-3 rounded-full"
+                style={{ background: TREND_COLORS[k] }}
+                aria-hidden
+              />
               <span className="text-muted">{l.label}</span>
               <span className="num ml-auto font-medium">{l.fmt(l.series[hover] ?? null)}</span>
             </div>
@@ -348,10 +452,13 @@ function downloadCsv(name: string, dates: string[], metrics: OverviewMetric[]) {
   const esc = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
   const rows = [
     ['Date', ...metrics.map((m) => m.label)],
-    ...dates.map((d, i) => [d, ...metrics.map((m) => {
-      const v = m.series[i];
-      return v == null || !Number.isFinite(v) ? '' : String(Math.round(v * 100) / 100);
-    })]),
+    ...dates.map((d, i) => [
+      d,
+      ...metrics.map((m) => {
+        const v = m.series[i];
+        return v == null || !Number.isFinite(v) ? '' : String(Math.round(v * 100) / 100);
+      }),
+    ]),
     ['Total', ...metrics.map((m) => (m.value == null ? '' : String(Math.round(m.value * 100) / 100)))],
   ];
   const blob = new Blob([rows.map((r) => r.map(esc).join(',')).join('\n')], { type: 'text/csv' });
@@ -363,7 +470,11 @@ function downloadCsv(name: string, dates: string[], metrics: OverviewMetric[]) {
 }
 
 /** Simple breakdown table under the chart (ad type / channel split). */
-export function BreakdownTable({ title, head, rows }: {
+export function BreakdownTable({
+  title,
+  head,
+  rows,
+}: {
   title: string;
   head: string[];
   rows: Array<{ key: string; cells: ReactNode[] }>;
@@ -376,7 +487,10 @@ export function BreakdownTable({ title, head, rows }: {
           <thead>
             <tr className="border-b border-line bg-side text-muted">
               {head.map((h, i) => (
-                <th key={h} className={`whitespace-nowrap px-4 py-2.5 font-medium ${i === 0 ? 'text-left' : 'text-right'}`}>
+                <th
+                  key={h}
+                  className={`whitespace-nowrap px-4 py-2.5 font-medium ${i === 0 ? 'text-left' : 'text-right'}`}
+                >
                   {h}
                 </th>
               ))}
@@ -386,7 +500,10 @@ export function BreakdownTable({ title, head, rows }: {
             {rows.map((r) => (
               <tr key={r.key} className="border-b border-line/70 last:border-0">
                 {r.cells.map((c, i) => (
-                  <td key={i} className={`num whitespace-nowrap px-4 py-2.5 ${i === 0 ? 'text-left font-medium' : 'text-right'}`}>
+                  <td
+                    key={i}
+                    className={`num whitespace-nowrap px-4 py-2.5 ${i === 0 ? 'text-left font-medium' : 'text-right'}`}
+                  >
                     {c}
                   </td>
                 ))}

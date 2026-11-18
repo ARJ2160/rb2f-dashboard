@@ -45,7 +45,15 @@ const FALLBACK: Record<LogoMarketplace, { bg: string; fg: string; path: string; 
   },
 };
 
-export function MarketplaceLogo({ id, size = 36, className = '' }: { id: LogoMarketplace; size?: number; className?: string }) {
+export function MarketplaceLogo({
+  id,
+  size = 36,
+  className = '',
+}: {
+  id: LogoMarketplace;
+  size?: number;
+  className?: string;
+}) {
   const sources = SOURCES(id);
   const [idx, setIdx] = useState(() => resolved.get(id) ?? 0);
   // hidden until it has loaded, so a missing file never flashes a broken-image icon
@@ -86,7 +94,13 @@ export function MarketplaceLogo({ id, size = 36, className = '' }: { id: LogoMar
           setIdx(next);
         }}
         className={`shrink-0 border border-line bg-white object-contain ${className}`}
-        style={{ width: size, height: size, borderRadius: radius, padding: Math.round(size * 0.12), opacity: loaded ? 1 : 0 }}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: radius,
+          padding: Math.round(size * 0.12),
+          opacity: loaded ? 1 : 0,
+        }}
       />
     );
   }
@@ -99,7 +113,17 @@ export function MarketplaceLogo({ id, size = 36, className = '' }: { id: LogoMar
       className={`grid shrink-0 place-items-center ${className}`}
       style={{ width: size, height: size, borderRadius: radius, background: f.bg, color: f.fg }}
     >
-      <svg viewBox="0 0 24 24" width={Math.round(size * 0.58)} height={Math.round(size * 0.58)} fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinejoin="round" strokeLinecap="round" aria-hidden>
+      <svg
+        viewBox="0 0 24 24"
+        width={Math.round(size * 0.58)}
+        height={Math.round(size * 0.58)}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.9}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+        aria-hidden
+      >
         <path d={f.path} fill={id === 'blinkit' ? 'currentColor' : 'none'} />
       </svg>
     </span>

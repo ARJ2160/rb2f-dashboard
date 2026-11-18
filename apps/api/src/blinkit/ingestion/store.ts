@@ -17,7 +17,9 @@ async function chunked<T>(rows: T[], size: number, fn: (part: T[]) => Promise<un
 
 export async function storeSales(profileId: string, dates: string[], rows: SalesLine[]) {
   await db.transaction(async (tx: Tx) => {
-    await tx.delete(bkSalesLines).where(and(eq(bkSalesLines.profileId, profileId), inArray(bkSalesLines.date, dates)));
+    await tx
+      .delete(bkSalesLines)
+      .where(and(eq(bkSalesLines.profileId, profileId), inArray(bkSalesLines.date, dates)));
     await chunked(rows, 1000, (part) =>
       tx
         .insert(bkSalesLines)
@@ -42,7 +44,13 @@ export async function storeAds(profileId: string, adType: AdType, dates: string[
   await db.transaction(async (tx: Tx) => {
     await tx
       .delete(bkDailyAds)
-      .where(and(eq(bkDailyAds.profileId, profileId), eq(bkDailyAds.adType, adType), inArray(bkDailyAds.date, dates)));
+      .where(
+        and(
+          eq(bkDailyAds.profileId, profileId),
+          eq(bkDailyAds.adType, adType),
+          inArray(bkDailyAds.date, dates)
+        )
+      );
     await chunked(rows, 1000, (part) => tx.insert(bkDailyAds).values(part.map((r) => ({ profileId, ...r }))));
   });
   return rows.length;
@@ -50,8 +58,12 @@ export async function storeAds(profileId: string, adType: AdType, dates: string[
 
 export async function storeInventory(profileId: string, snapshotDate: string, rows: InventoryRow[]) {
   await db.transaction(async (tx: Tx) => {
-    await tx.delete(bkInventory).where(and(eq(bkInventory.profileId, profileId), eq(bkInventory.snapshotDate, snapshotDate)));
-    await chunked(rows, 1000, (part) => tx.insert(bkInventory).values(part.map((r) => ({ profileId, ...r }))));
+    await tx
+      .delete(bkInventory)
+      .where(and(eq(bkInventory.profileId, profileId), eq(bkInventory.snapshotDate, snapshotDate)));
+    await chunked(rows, 1000, (part) =>
+      tx.insert(bkInventory).values(part.map((r) => ({ profileId, ...r })))
+    );
   });
   return rows.length;
 }
@@ -68,8 +80,12 @@ export async function storeSkuMap(profileId: string, rows: SkuMapRow[]) {
 /** Replaces only rows from the same mapper source, so a category mapper and a city mapper can both be loaded. */
 export async function storeCampaignMap(profileId: string, source: string, rows: CampaignMapRow[]) {
   await db.transaction(async (tx: Tx) => {
-    await tx.delete(bkCampaignMap).where(and(eq(bkCampaignMap.profileId, profileId), eq(bkCampaignMap.source, source)));
-    await chunked(rows, 1000, (part) => tx.insert(bkCampaignMap).values(part.map((r) => ({ profileId, source, ...r }))));
+    await tx
+      .delete(bkCampaignMap)
+      .where(and(eq(bkCampaignMap.profileId, profileId), eq(bkCampaignMap.source, source)));
+    await chunked(rows, 1000, (part) =>
+      tx.insert(bkCampaignMap).values(part.map((r) => ({ profileId, source, ...r })))
+    );
   });
   return rows.length;
 }

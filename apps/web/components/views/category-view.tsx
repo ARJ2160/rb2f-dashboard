@@ -8,9 +8,26 @@ import { COLUMNS } from '@/components/dsr-table';
 import { getCategory } from '@/lib/api';
 import { fmtInt, fmtPct } from '@/lib/format';
 
-import { Card, MCell, Select, THEAD, TABLE_WRAP, useCompareReport, ViewShell, type RangeProps } from './shared';
+import {
+  Card,
+  MCell,
+  Select,
+  THEAD,
+  TABLE_WRAP,
+  useCompareReport,
+  ViewShell,
+  type RangeProps,
+} from './shared';
 
-function DsrCells({ m, prev, comparing }: { m: DsrMetrics; prev?: DsrMetrics | undefined; comparing: boolean }) {
+function DsrCells({
+  m,
+  prev,
+  comparing,
+}: {
+  m: DsrMetrics;
+  prev?: DsrMetrics | undefined;
+  comparing: boolean;
+}) {
   return (
     <>
       {COLUMNS.map((c) => (
@@ -48,13 +65,27 @@ export function CategoryView(props: RangeProps) {
       error={error}
       loading={loading}
       notes={data?.notes}
-      toolbar={<Select label="Category (ASIN table)" value={category} onChange={setCategory} options={cats} allLabel="All categories" />}
+      toolbar={
+        <Select
+          label="Category (ASIN table)"
+          value={category}
+          onChange={setCategory}
+          options={cats}
+          allLabel="All categories"
+        />
+      }
     >
       {data && (
         <>
           <Card title="ACoS / TACoS by category (top 8 by Sales)">
             <HBars
-              items={data.rows.slice(0, 8).map((r) => ({ label: r.category, value: r.tacosPct ?? 0, prev: prevCat.get(r.category)?.tacosPct }))}
+              items={data.rows
+                .slice(0, 8)
+                .map((r) => ({
+                  label: r.category,
+                  value: r.tacosPct ?? 0,
+                  prev: prevCat.get(r.category)?.tacosPct,
+                }))}
               fmt={fmtPct}
               comparing={comparing}
             />
@@ -76,7 +107,9 @@ export function CategoryView(props: RangeProps) {
                 </tr>
                 <tr className="border-b border-line bg-accent-soft font-semibold">
                   <td className="sticky left-0 z-30 bg-accent-soft px-3 py-1.5">TOTAL</td>
-                  <td className="num px-3 py-1.5 text-right">{fmtInt(data.rows.reduce((a, r) => a + r.asins, 0))}</td>
+                  <td className="num px-3 py-1.5 text-right">
+                    {fmtInt(data.rows.reduce((a, r) => a + r.asins, 0))}
+                  </td>
                   <td className="num px-3 py-1.5 text-right">100%</td>
                   <DsrCells m={data.total} prev={prev?.total} comparing={comparing} />
                 </tr>
@@ -89,7 +122,9 @@ export function CategoryView(props: RangeProps) {
                     className={`cursor-pointer border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft ${r.category === category ? 'bg-accent-soft!' : ''}`}
                     title="Click to show this category's ASINs below"
                   >
-                    <td className={`sticky left-0 z-10 whitespace-nowrap bg-surface px-3 py-1.5 align-top ${r.category === 'Unmapped' || r.category.startsWith('(') ? 'text-warn' : ''}`}>
+                    <td
+                      className={`sticky left-0 z-10 whitespace-nowrap bg-surface px-3 py-1.5 align-top ${r.category === 'Unmapped' || r.category.startsWith('(') ? 'text-warn' : ''}`}
+                    >
                       {r.category}
                     </td>
                     <td className="num px-3 py-1.5 text-right align-top">{fmtInt(r.asins)}</td>
@@ -112,7 +147,9 @@ export function CategoryView(props: RangeProps) {
             <table className="table table-sm">
               <thead className={THEAD}>
                 <tr className="text-xs text-muted">
-                  <th className="sticky left-0 z-30 w-32 min-w-32 bg-base-200 px-3 py-2 text-left font-medium">ASIN</th>
+                  <th className="sticky left-0 z-30 w-32 min-w-32 bg-base-200 px-3 py-2 text-left font-medium">
+                    ASIN
+                  </th>
                   <th className="min-w-64 px-3 py-2 text-left font-medium">Item-name</th>
                   <th className="px-3 py-2 text-left font-medium">Category</th>
                   {COLUMNS.map((c) => (
@@ -124,14 +161,23 @@ export function CategoryView(props: RangeProps) {
               </thead>
               <tbody>
                 {data.asinRows.map((r) => (
-                  <tr key={r.asin || '__missing'} className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft">
-                    <td className="sticky left-0 z-10 w-32 min-w-32 bg-inherit px-3 py-1.5 align-top font-mono text-xs">{r.asin || 'null'}</td>
+                  <tr
+                    key={r.asin || '__missing'}
+                    className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft"
+                  >
+                    <td className="sticky left-0 z-10 w-32 min-w-32 bg-inherit px-3 py-1.5 align-top font-mono text-xs">
+                      {r.asin || 'null'}
+                    </td>
                     <td className="max-w-80 px-3 py-1.5 align-top">
                       <div className="truncate" title={r.title ?? ''}>
                         {r.title ?? '—'}
                       </div>
                     </td>
-                    <td className={`whitespace-nowrap px-3 py-1.5 align-top ${r.category === 'Unmapped' ? 'text-warn' : ''}`}>{r.category}</td>
+                    <td
+                      className={`whitespace-nowrap px-3 py-1.5 align-top ${r.category === 'Unmapped' ? 'text-warn' : ''}`}
+                    >
+                      {r.category}
+                    </td>
                     <DsrCells m={r} prev={prevAsin.get(r.asin)} comparing={comparing} />
                   </tr>
                 ))}

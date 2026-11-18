@@ -247,7 +247,9 @@ export const dailySearchTerms = pgTable(
     uploadId: uuid('upload_id'),
   },
   (t) => [
-    primaryKey({ columns: [t.profileId, t.date, t.channel, t.campaignName, t.target, t.matchType, t.searchTerm] }),
+    primaryKey({
+      columns: [t.profileId, t.date, t.channel, t.campaignName, t.target, t.matchType, t.searchTerm],
+    }),
     index('daily_search_terms_profile_date_idx').on(t.profileId, t.date),
   ]
 );
@@ -338,7 +340,9 @@ export const dailyPiCitySales = pgTable(
     grossUnits: integer('gross_units').notNull().default(0),
     netSales: numeric('net_sales', { precision: 14, scale: 2, mode: 'number' }).notNull().default(0),
     netUnits: integer('net_units').notNull().default(0),
-    indexedGlanceViews: numeric('indexed_glance_views', { precision: 16, scale: 2, mode: 'number' }).notNull().default(0),
+    indexedGlanceViews: numeric('indexed_glance_views', { precision: 16, scale: 2, mode: 'number' })
+      .notNull()
+      .default(0),
     uploadId: uuid('upload_id'),
   },
   (t) => [
@@ -362,7 +366,10 @@ export const productSearchRank = pgTable(
     title: text('title'),
     uploadId: uuid('upload_id'),
   },
-  (t) => [primaryKey({ columns: [t.profileId, t.asin, t.period] }), index('product_search_rank_profile_idx').on(t.profileId)]
+  (t) => [
+    primaryKey({ columns: [t.profileId, t.asin, t.period] }),
+    index('product_search_rank_profile_idx').on(t.profileId),
+  ]
 );
 
 /** Amazon Pi "Total Indexed Glance Views — ASIN level" — one snapshot day per ASIN. */
@@ -378,7 +385,10 @@ export const dailyAsinGv = pgTable(
     brand: text('brand'),
     uploadId: uuid('upload_id'),
   },
-  (t) => [primaryKey({ columns: [t.profileId, t.date, t.asin] }), index('daily_asin_gv_profile_date_idx').on(t.profileId, t.date)]
+  (t) => [
+    primaryKey({ columns: [t.profileId, t.date, t.asin] }),
+    index('daily_asin_gv_profile_date_idx').on(t.profileId, t.date),
+  ]
 );
 
 /**

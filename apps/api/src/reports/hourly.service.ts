@@ -29,10 +29,16 @@ export async function getHourly(
   const total = [...byHour.values()].reduce((a, b) => addAdBase(a, b), emptyAdBase());
   const notes: string[] = [];
   const have = new Set(channels.map((c) => c.channel));
-  if (!have.size) notes.push('No hourly data in this range. Export SP / SB / SD campaign reports with the hourly time unit ("Start Time" column).');
+  if (!have.size)
+    notes.push(
+      'No hourly data in this range. Export SP / SB / SD campaign reports with the hourly time unit ("Start Time" column).'
+    );
   else {
     const missing = (['sp', 'sb', 'sd'] as const).filter((c) => !have.has(c)).map((c) => c.toUpperCase());
-    if (missing.length) notes.push(`No hourly export uploaded for ${missing.join(' / ')} in this range — hours cover ${[...have].map((c) => c.toUpperCase()).join(' + ')} only.`);
+    if (missing.length)
+      notes.push(
+        `No hourly export uploaded for ${missing.join(' / ')} in this range — hours cover ${[...have].map((c) => c.toUpperCase()).join(' + ')} only.`
+      );
   }
   return {
     profileId,

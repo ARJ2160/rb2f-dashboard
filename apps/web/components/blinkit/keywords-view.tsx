@@ -10,14 +10,33 @@ import { BkCell, bkShow, days, ROW, TD_LEFT, TH, TH_LEFT, type BkViewProps } fro
 import { useLoad } from './dsr-dur';
 import { useQc } from './qc-context';
 
-const ALL: MetricKey[] = ['impr', 'clicks', 'ctr', 'cpc', 'spend', 'cpm', 'atc', 'atcr', 'aunits', 'cvr', 'asales', 'dsales', 'acos', 'roas', 'mvp', 'nu'];
+const ALL: MetricKey[] = [
+  'impr',
+  'clicks',
+  'ctr',
+  'cpc',
+  'spend',
+  'cpm',
+  'atc',
+  'atcr',
+  'aunits',
+  'cvr',
+  'asales',
+  'dsales',
+  'acos',
+  'roas',
+  'mvp',
+  'nu',
+];
 const SORTABLE = new Set<MetricKey>(['spend', 'impr', 'clicks', 'atc', 'aunits', 'asales', 'dsales', 'nu']);
 
 /** Product Listing / Banner keywords and Recommendation placements; city filter = campaigns that target exactly that city. */
 export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
   const { api, flavour, show, label } = useQc();
   const native = flavour.nativeAdCity;
-  const [shown, setShown] = useState<MetricKey[]>(native ? ['impr', 'clicks', 'ctr', 'spend', 'acos', 'roas'] : ['impr', 'spend', 'mvp', 'acos', 'roas']);
+  const [shown, setShown] = useState<MetricKey[]>(
+    native ? ['impr', 'clicks', 'ctr', 'spend', 'acos', 'roas'] : ['impr', 'spend', 'mvp', 'acos', 'roas']
+  );
   const [q, setQ] = useState('');
   const [geo, setGeo] = useState('');
   const [campaignId, setCampaignId] = useState('');
@@ -31,9 +50,26 @@ export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
     () =>
       Promise.all([
         api.keywords(p.profileId, p, f),
-        cmp ? api.keywords(p.profileId, { ...cmp, category: p.category }, { ...f, limit: 5000 }) : Promise.resolve(null),
+        cmp
+          ? api.keywords(p.profileId, { ...cmp, category: p.category }, { ...f, limit: 5000 })
+          : Promise.resolve(null),
       ]) as Promise<[BkKeywordsResponse, BkKeywordsResponse | null]>,
-    [p.profileId, p.from, p.to, p.category, cmp?.from, cmp?.to, q, geo, campaignId, adType, grain, minImpr, sort, flavour.id]
+    [
+      p.profileId,
+      p.from,
+      p.to,
+      p.category,
+      cmp?.from,
+      cmp?.to,
+      q,
+      geo,
+      campaignId,
+      adType,
+      grain,
+      minImpr,
+      sort,
+      flavour.id,
+    ]
   );
   const [cur, prev] = data ?? [null, null];
   const comparing = !!cmp;
@@ -41,12 +77,19 @@ export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
   const prevBy = new Map(prev?.rows.map((r) => [key(r), r.sums]) ?? []);
   const cityUnits = p.meta.geoUnits.filter((u) => u.kind === 'city');
   const camps = p.meta.campaigns.filter((c) => !p.category || c.category === p.category);
-  const dA = days(p), dB = cmp ? days(cmp) : 1;
+  const dA = days(p),
+    dB = cmp ? days(cmp) : 1;
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
-        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search keyword…" className="input input-sm w-48" />
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search keyword…"
+          className="input input-sm w-48"
+        />
         <Select
           label="City"
           value={geo}
@@ -54,13 +97,13 @@ export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
           allLabel={cityUnits.length || native ? 'All' : 'All (no city-targeted campaigns)'}
           options={cityUnits.map((u) => ({ value: u.key, label: u.label }))}
         />
-        <Select label="Campaign" value={campaignId} onChange={setCampaignId} options={camps.map((c) => ({ value: c.id, label: c.name }))} />
         <Select
-          label="Ad type"
-          value={adType}
-          onChange={setAdType}
-          options={flavour.adTypes}
+          label="Campaign"
+          value={campaignId}
+          onChange={setCampaignId}
+          options={camps.map((c) => ({ value: c.id, label: c.name }))}
         />
+        <Select label="Ad type" value={adType} onChange={setAdType} options={flavour.adTypes} />
         <Select
           label="Rows"
           value={grain}
@@ -71,7 +114,13 @@ export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
             { value: 'kwc', label: 'Keyword × campaign' },
           ]}
         />
-        <Select label="Min impressions" value={minImpr} onChange={setMinImpr} allLabel={null} options={['0', '100', '500', '1000', '5000']} />
+        <Select
+          label="Min impressions"
+          value={minImpr}
+          onChange={setMinImpr}
+          allLabel={null}
+          options={['0', '100', '500', '1000', '5000']}
+        />
         {loading && <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />}
       </div>
       <div className="flex flex-wrap gap-1">
@@ -89,7 +138,11 @@ export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
       {cur && (
         <>
           <div className="stats stats-vertical w-full border border-line bg-base-100 shadow-sm sm:stats-horizontal">
-            {((native ? ['spend', 'impr', 'clicks', 'ctr', 'cpc', 'asales', 'acos', 'roas'] : ['spend', 'impr', 'cpm', 'atcr', 'cvr', 'asales', 'acos', 'roas']) as MetricKey[]).map((k) => (
+            {(
+              (native
+                ? ['spend', 'impr', 'clicks', 'ctr', 'cpc', 'asales', 'acos', 'roas']
+                : ['spend', 'impr', 'cpm', 'atcr', 'cvr', 'asales', 'acos', 'roas']) as MetricKey[]
+            ).map((k) => (
               <div key={k} className="stat px-4 py-3">
                 <div className="stat-title text-xs">{label(k)}</div>
                 <div className="stat-value num text-lg">{bkShow(k, cur.total)}</div>
@@ -121,14 +174,31 @@ export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
                 {cur.rows.map((r) => (
                   <tr key={key(r)} className={ROW}>
                     <td className={TD_LEFT}>{r.keyword}</td>
-                    <td className="max-w-64 truncate px-3 py-1.5 text-xs text-muted" title={r.campaigns.join('\n')}>
-                      {r.campaign ?? (r.campaigns.length === 1 ? r.campaigns[0] : `${r.campaigns.length} campaigns`)}
+                    <td
+                      className="max-w-64 truncate px-3 py-1.5 text-xs text-muted"
+                      title={r.campaigns.join('\n')}
+                    >
+                      {r.campaign ??
+                        (r.campaigns.length === 1 ? r.campaigns[0] : `${r.campaigns.length} campaigns`)}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-1.5 text-xs text-muted" title={r.categories.join(', ')}>
-                      {r.categories.length > 1 ? `${r.categories[0]} +${r.categories.length - 1}` : r.categories[0]}
+                    <td
+                      className="whitespace-nowrap px-3 py-1.5 text-xs text-muted"
+                      title={r.categories.join(', ')}
+                    >
+                      {r.categories.length > 1
+                        ? `${r.categories[0]} +${r.categories.length - 1}`
+                        : r.categories[0]}
                     </td>
                     {shown.filter(show).map((k) => (
-                      <BkCell key={k} k={k} s={r.sums} prev={prevBy.get(key(r))} comparing={comparing} daysA={dA} daysB={dB} />
+                      <BkCell
+                        key={k}
+                        k={k}
+                        s={r.sums}
+                        prev={prevBy.get(key(r))}
+                        comparing={comparing}
+                        daysA={dA}
+                        daysB={dB}
+                      />
                     ))}
                   </tr>
                 ))}
@@ -137,10 +207,14 @@ export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
           </div>
           <Notes
             notes={[
-              ...(cur.truncated ? [`Showing the top ${cur.rows.length} rows by ${label(sort)}; the totals above cover every row. Narrow with search, city, campaign or impressions.`] : []),
+              ...(cur.truncated
+                ? [
+                    `Showing the top ${cur.rows.length} rows by ${label(sort)}; the totals above cover every row. Narrow with search, city, campaign or impressions.`,
+                  ]
+                : []),
               ...(native
                 ? [
-                    'Instamart reports every keyword per city, so the City filter is exact: it keeps that city\'s rows of every campaign. Ad Sales = TOTAL_GMV; Ad Conversions = TOTAL_CONVERSIONS; Avg Ad Rank is impression-weighted.',
+                    "Instamart reports every keyword per city, so the City filter is exact: it keeps that city's rows of every campaign. Ad Sales = TOTAL_GMV; Ad Conversions = TOTAL_CONVERSIONS; Avg Ad Rank is impression-weighted.",
                   ]
                 : [
                     'Blinkit gives no clicks for listing ads, so there is no CTR / CPC. ATC, units and sales are direct + indirect. Recommendation ads have no keyword and appear as "[Reco] <placement>".',

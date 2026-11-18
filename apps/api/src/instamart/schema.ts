@@ -28,7 +28,10 @@ export const imSales = pgTable(
     gmv: doublePrecision('gmv').notNull().default(0),
   },
   (t) => [
-    primaryKey({ name: 'im_sales_pk', columns: [t.profileId, t.date, t.city, t.area, t.storeId, t.itemCode, t.comboItemCode] }),
+    primaryKey({
+      name: 'im_sales_pk',
+      columns: [t.profileId, t.date, t.city, t.area, t.storeId, t.itemCode, t.comboItemCode],
+    }),
     index('im_sales_date_idx').on(t.profileId, t.date),
   ]
 );

@@ -128,7 +128,10 @@ function submit(req: DistributiveOmit<Req, 'id'>): Promise<unknown> {
 }
 
 /** Parse an Amazon / Seller-Central workbook off-thread (falls back to the main thread on any failure). */
-export async function parseAmazonWorkbook(buffer: Buffer, opts: { maxRows?: number } = {}): Promise<SheetData[]> {
+export async function parseAmazonWorkbook(
+  buffer: Buffer,
+  opts: { maxRows?: number } = {}
+): Promise<SheetData[]> {
   try {
     return (await submit({ kind: 'amazon', buffer, opts })) as SheetData[];
   } catch (err) {

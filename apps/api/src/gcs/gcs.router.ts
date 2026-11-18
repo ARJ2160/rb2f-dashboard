@@ -91,8 +91,13 @@ const ingestUpload = multer({
  * Returns the list of supported report types for the given marketplace.
  */
 gcsRouter.get('/report-types', (req, res) => {
-  const marketplace = z.enum(MARKETPLACES).optional().parse(req.query.marketplace || undefined);
-  const types = marketplace ? ALL_REPORT_TYPES.filter((t) => t.marketplace === marketplace) : ALL_REPORT_TYPES;
+  const marketplace = z
+    .enum(MARKETPLACES)
+    .optional()
+    .parse(req.query.marketplace || undefined);
+  const types = marketplace
+    ? ALL_REPORT_TYPES.filter((t) => t.marketplace === marketplace)
+    : ALL_REPORT_TYPES;
   res.json(types);
 });
 
@@ -111,18 +116,31 @@ gcsRouter.post('/ingest', ingestUpload, async (req, res) => {
   const brand = brandSchema.parse(req.body?.brand ?? undefined);
   const marketplace = marketplaceSchema.parse(req.body?.marketplace ?? undefined);
 
-  const reportTypeId = z.string().trim().min(1).parse(req.body?.reportType ?? '');
+  const reportTypeId = z
+    .string()
+    .trim()
+    .min(1)
+    .parse(req.body?.reportType ?? '');
   const reportType = findReportType(marketplace, reportTypeId);
   if (!reportType) {
     throw new HttpError(400, `Unknown report type "${reportTypeId}" for marketplace "${marketplace}".`);
   }
 
   // ── Date range (required for canonical filename) ────────────────────────────
-  const startDate = z.string().trim().min(1, 'startDate is required').parse(req.body?.startDate ?? '');
-  const endDate   = z.string().trim().min(1, 'endDate is required').parse(req.body?.endDate   ?? '');
-  if (!isValidDate(startDate)) throw new HttpError(400, `Invalid startDate "${startDate}" — expected YYYY-MM-DD.`);
-  if (!isValidDate(endDate))   throw new HttpError(400, `Invalid endDate "${endDate}" — expected YYYY-MM-DD.`);
-  if (endDate < startDate)     throw new HttpError(400, 'endDate must be on or after startDate.');
+  const startDate = z
+    .string()
+    .trim()
+    .min(1, 'startDate is required')
+    .parse(req.body?.startDate ?? '');
+  const endDate = z
+    .string()
+    .trim()
+    .min(1, 'endDate is required')
+    .parse(req.body?.endDate ?? '');
+  if (!isValidDate(startDate))
+    throw new HttpError(400, `Invalid startDate "${startDate}" — expected YYYY-MM-DD.`);
+  if (!isValidDate(endDate)) throw new HttpError(400, `Invalid endDate "${endDate}" — expected YYYY-MM-DD.`);
+  if (endDate < startDate) throw new HttpError(400, 'endDate must be on or after startDate.');
 
   const files = (req.files as Express.Multer.File[] | undefined) ?? [];
   if (files.length === 0) {
@@ -136,13 +154,18 @@ gcsRouter.post('/ingest', ingestUpload, async (req, res) => {
 
   const ingestFiles = validFiles.map((f, i) => ({
     // Add "_2", "_3" … suffix when multiple files share the same date range.
-    name: buildFilename(brand, reportTypeId, startDate, endDate, f.original, validFiles.length > 1 ? `_${i + 1}` : ''),
+    name: buildFilename(
+      brand,
+      reportTypeId,
+      startDate,
+      endDate,
+      f.original,
+      validFiles.length > 1 ? `_${i + 1}` : ''
+    ),
     buffer: f.buffer,
   }));
 
-  const uploadResults = await guard(() =>
-    uploadFilesToGcs(brand, reportType, ingestFiles)
-  , res);
+  const uploadResults = await guard(() => uploadFilesToGcs(brand, reportType, ingestFiles), res);
 
   // Kick off a background sync so the uploaded files are ingested into the
   // dashboard immediately. We don't wait for it — just return the job id.
@@ -157,7 +180,6 @@ gcsRouter.post('/ingest', ingestUpload, async (req, res) => {
 
   res.json({ files: uploadResults, sync: syncJob });
 });
-
 
 /**
  * POST /api/gcs/detect  (multipart/form-data)
@@ -199,11 +221,20 @@ const assignmentSchema = z.array(
 gcsRouter.post('/ingest-bulk', ingestUpload, async (req, res) => {
   const brand = brandSchema.parse(req.body?.brand ?? undefined);
 
-  const startDate = z.string().trim().min(1, 'startDate is required').parse(req.body?.startDate ?? '');
-  const endDate   = z.string().trim().min(1, 'endDate is required').parse(req.body?.endDate   ?? '');
-  if (!isValidDate(startDate)) throw new HttpError(400, `Invalid startDate "${startDate}" — expected YYYY-MM-DD.`);
-  if (!isValidDate(endDate))   throw new HttpError(400, `Invalid endDate "${endDate}" — expected YYYY-MM-DD.`);
-  if (endDate < startDate)     throw new HttpError(400, 'endDate must be on or after startDate.');
+  const startDate = z
+    .string()
+    .trim()
+    .min(1, 'startDate is required')
+    .parse(req.body?.startDate ?? '');
+  const endDate = z
+    .string()
+    .trim()
+    .min(1, 'endDate is required')
+    .parse(req.body?.endDate ?? '');
+  if (!isValidDate(startDate))
+    throw new HttpError(400, `Invalid startDate "${startDate}" — expected YYYY-MM-DD.`);
+  if (!isValidDate(endDate)) throw new HttpError(400, `Invalid endDate "${endDate}" — expected YYYY-MM-DD.`);
+  if (endDate < startDate) throw new HttpError(400, 'endDate must be on or after startDate.');
 
   let assignments: z.infer<typeof assignmentSchema>;
   try {
@@ -218,18 +249,41 @@ gcsRouter.post('/ingest-bulk', ingestUpload, async (req, res) => {
   if (files.length === 0) throw new HttpError(400, 'Attach at least one file in the "files" field.');
 
   const items: BulkIngestItem[] = [];
-  const skipped: Array<{ filename: string; objectName: string; size: number; status: 'error'; message: string }> = [];
+  const skipped: Array<{
+    filename: string;
+    objectName: string;
+    size: number;
+    status: 'error';
+    message: string;
+  }> = [];
   for (const f of files) {
     const a = byName.get(f.originalname);
     if (!a) {
-      skipped.push({ filename: f.originalname, objectName: f.originalname, size: f.buffer.length, status: 'error', message: 'No report type assigned.' });
+      skipped.push({
+        filename: f.originalname,
+        objectName: f.originalname,
+        size: f.buffer.length,
+        status: 'error',
+        message: 'No report type assigned.',
+      });
       continue;
     }
     if (!(looksLikeSpreadsheet(f.buffer) || /\.csv$/i.test(f.originalname))) {
-      skipped.push({ filename: f.originalname, objectName: f.originalname, size: f.buffer.length, status: 'error', message: 'Not a readable spreadsheet.' });
+      skipped.push({
+        filename: f.originalname,
+        objectName: f.originalname,
+        size: f.buffer.length,
+        status: 'error',
+        message: 'Not a readable spreadsheet.',
+      });
       continue;
     }
-    items.push({ original: f.originalname, buffer: f.buffer, marketplace: a.marketplace, reportTypeId: a.reportType });
+    items.push({
+      original: f.originalname,
+      buffer: f.buffer,
+      marketplace: a.marketplace,
+      reportTypeId: a.reportType,
+    });
   }
 
   if (items.length === 0) {

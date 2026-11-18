@@ -1,6 +1,7 @@
 import type { HarvestChannel } from '@dash/shared';
 
-const join = (sp: boolean, sb: boolean): HarvestChannel | null => (sp && sb ? 'SP & SB' : sp ? 'SP' : sb ? 'SB' : null);
+const join = (sp: boolean, sb: boolean): HarvestChannel | null =>
+  sp && sb ? 'SP & SB' : sp ? 'SP' : sb ? 'SB' : null;
 
 /**
  * Keyword harvesting rule: a search term qualifies when it has at least

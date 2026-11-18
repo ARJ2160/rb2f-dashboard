@@ -7,7 +7,10 @@ import { getScViews } from './reports';
 /** Seller Central report endpoints — /api/ops/sc/*. All views derive from one build per request. */
 export const scRouter = Router();
 
-const brandIdSchema = z.string().trim().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/);
+const brandIdSchema = z
+  .string()
+  .trim()
+  .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/);
 const isoDate = z.string().refine(isIsoDate, 'Expected YYYY-MM-DD');
 const querySchema = z.object({
   brandId: brandIdSchema,

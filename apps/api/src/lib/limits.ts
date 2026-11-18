@@ -24,7 +24,11 @@ export class RateLimiter {
       if (this.windows.size > 10_000) this.sweep(t);
     }
     w.count++;
-    return { allowed: w.count <= this.limit, remaining: Math.max(0, this.limit - w.count), resetAt: w.resetAt };
+    return {
+      allowed: w.count <= this.limit,
+      remaining: Math.max(0, this.limit - w.count),
+      resetAt: w.resetAt,
+    };
   }
 
   private sweep(t: number): void {

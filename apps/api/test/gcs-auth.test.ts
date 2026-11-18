@@ -26,11 +26,19 @@ test('GcsClient without a key uses the metadata server token', async () => {
   await new Promise<void>((r) => server.listen(0, r));
   const port = (server.address() as { port: number }).port;
   try {
-    const c = new GcsClient('bkt', null, `http://127.0.0.1:${port}/storage/v1`, `http://127.0.0.1:${port}/token`);
+    const c = new GcsClient(
+      'bkt',
+      null,
+      `http://127.0.0.1:${port}/storage/v1`,
+      `http://127.0.0.1:${port}/token`
+    );
     assert.deepEqual(await c.listPrefixes(''), ['eatopia/']);
     assert.deepEqual(await c.listPrefixes(''), ['eatopia/']);
     assert.equal(tokenCalls, 1, 'token is cached');
-    await assert.rejects(c.download('nope.csv'), /403.*denied.*the API's service account.*Storage Object Viewer/);
+    await assert.rejects(
+      c.download('nope.csv'),
+      /403.*denied.*the API's service account.*Storage Object Viewer/
+    );
   } finally {
     server.close();
   }
@@ -44,7 +52,12 @@ test('GcsClient reports a metadata server without a token', async () => {
   await new Promise<void>((r) => server.listen(0, r));
   const port = (server.address() as { port: number }).port;
   try {
-    const c = new GcsClient('bkt', null, `http://127.0.0.1:${port}/storage/v1`, `http://127.0.0.1:${port}/token`);
+    const c = new GcsClient(
+      'bkt',
+      null,
+      `http://127.0.0.1:${port}/storage/v1`,
+      `http://127.0.0.1:${port}/token`
+    );
     await assert.rejects(c.listPrefixes(''), /GCS auth failed \(404\)/);
   } finally {
     server.close();

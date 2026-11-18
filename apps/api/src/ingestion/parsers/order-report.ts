@@ -14,7 +14,14 @@ export interface StateRecord {
 }
 
 function orderDate(r: Row): string | null {
-  const raw = pick(r, ['purchase-date', 'Purchase Date', 'purchase date', 'order-date', 'Order Date', 'Date']);
+  const raw = pick(r, [
+    'purchase-date',
+    'Purchase Date',
+    'purchase date',
+    'order-date',
+    'Order Date',
+    'Date',
+  ]);
   if (raw == null || raw === '') return null;
   const iso = String(raw).match(/^(\d{4}-\d{2}-\d{2})/);
   return iso ? iso[1]! : plausible(parseDateCell(raw));
@@ -43,7 +50,9 @@ export function parseOrderReport(rows: Row[], ctx: ParseContext): ParseResult<St
       continue;
     }
     const asin = normalizeAsin(pick(r, ['asin', 'ASIN']));
-    const state = normalizeIndianState(pick(r, ['ship-state', 'Ship State', 'ship state', 'shipping-state', 'State']));
+    const state = normalizeIndianState(
+      pick(r, ['ship-state', 'Ship State', 'ship state', 'shipping-state', 'State'])
+    );
     const key = `${date}|${state}|${asin}`;
     const cur = acc.get(key) ?? { date, state, asin, units: 0, sales: 0, orders: 0, unpricedUnits: 0 };
     cur.units += num(pick(r, ['quantity', 'Quantity', 'quantity-purchased', 'quantity-shipped'])) || 1;
@@ -51,9 +60,11 @@ export function parseOrderReport(rows: Row[], ctx: ParseContext): ParseResult<St
     cur.orders = (cur.orders ?? 0) + 1;
     acc.set(key, cur);
   }
-  if (excluded) warnings.push(`${excluded} cancelled / pending line(s) excluded (only Shipped / Shipping count).`);
+  if (excluded)
+    warnings.push(`${excluded} cancelled / pending line(s) excluded (only Shipped / Shipping count).`);
   if (undated) warnings.push(`${undated} line(s) skipped: no purchase date.`);
   const records = [...acc.values()].map((r) => ({ ...r, sales: round2(r.sales) }));
-  if (!records.length && rows.length) return { records, rowsRead: rows.length, warnings, error: 'No shipped order lines.' };
+  if (!records.length && rows.length)
+    return { records, rowsRead: rows.length, warnings, error: 'No shipped order lines.' };
   return { records, rowsRead: rows.length, warnings };
 }

@@ -41,7 +41,14 @@ export interface BkMetaResponse {
   inventory: { snapshots: string[] };
   categories: string[];
   skus: string[];
-  campaigns: { id: string; name: string; adType: string; category: string; geoKind: string; geoLabel: string }[];
+  campaigns: {
+    id: string;
+    name: string;
+    adType: string;
+    category: string;
+    geoKind: string;
+    geoLabel: string;
+  }[];
   geoUnits: { key: string; label: string; cities: string[]; kind: 'city' | 'multi' }[];
   unmappedItems: { itemId: string; name: string; revenue: number }[];
   unmappedCampaigns: { id: string; name: string; spend: number }[];
@@ -70,7 +77,16 @@ export interface BkDailyResponse {
   series: Sums[];
   total: Sums;
   /** Spend split by ad type (PL / PR / BL) — the DSR rows combine all three. */
-  byAdType: { adType: string; spend: number; asales: number; impr: number; atc: number; aunits: number; clicks?: number; days: number }[];
+  byAdType: {
+    adType: string;
+    spend: number;
+    asales: number;
+    impr: number;
+    atc: number;
+    aunits: number;
+    clicks?: number;
+    days: number;
+  }[];
   notes: string[];
 }
 

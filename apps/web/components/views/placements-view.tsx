@@ -1,6 +1,13 @@
 'use client';
 
-import { addAdBase, deriveAd, emptyAdBase, type AdBase, type AdMetrics, type PlacementRow } from '@dash/shared';
+import {
+  addAdBase,
+  deriveAd,
+  emptyAdBase,
+  type AdBase,
+  type AdMetrics,
+  type PlacementRow,
+} from '@dash/shared';
 import { useState } from 'react';
 
 import { HBars } from '@/components/charts';
@@ -25,7 +32,11 @@ import {
   type RangeProps,
 } from './shared';
 
-const NAMES: Record<string, string> = { TOS: 'Top of Search (TOS)', ROS: 'Rest of Search (ROS)', PDP: 'Product Pages (PDP)' };
+const NAMES: Record<string, string> = {
+  TOS: 'Top of Search (TOS)',
+  ROS: 'Rest of Search (ROS)',
+  PDP: 'Product Pages (PDP)',
+};
 const label = (ch: string, p: string) => `${ch.toUpperCase()} · ${NAMES[p] ?? p}`;
 
 /** Placements: SP + SB by TOS / ROS / PDP with every ad metric, a metric bar chart, and the shared filters. */
@@ -50,7 +61,15 @@ export function PlacementsView(props: RangeProps) {
       notes={data?.notes}
       toolbar={
         <>
-          <Select label="Channel" value={channel} onChange={setChannel} options={[{ value: 'sp', label: 'SP' }, { value: 'sb', label: 'SB' }]} />
+          <Select
+            label="Channel"
+            value={channel}
+            onChange={setChannel}
+            options={[
+              { value: 'sp', label: 'SP' },
+              { value: 'sb', label: 'SB' },
+            ]}
+          />
           <AdFilterBar value={filters} onChange={setFilters} options={data?.filterOptions} />
         </>
       }
@@ -59,7 +78,15 @@ export function PlacementsView(props: RangeProps) {
         <>
           <Card
             title="Placements"
-            right={<Select label="Metric" value={metric} onChange={(v) => setMetric(v as keyof AdMetrics)} options={CHART_METRICS} allLabel={null} />}
+            right={
+              <Select
+                label="Metric"
+                value={metric}
+                onChange={(v) => setMetric(v as keyof AdMetrics)}
+                options={CHART_METRICS}
+                allLabel={null}
+              />
+            }
           >
             <HBars
               items={data.rows.map((r) => ({
@@ -90,7 +117,13 @@ export function PlacementsView(props: RangeProps) {
 }
 
 /** One table per channel so SP and SB placements are shown separately, each with its own TOTAL. */
-function ChannelTable({ channel, rows, prevBy, keyOf, comparing }: {
+function ChannelTable({
+  channel,
+  rows,
+  prevBy,
+  keyOf,
+  comparing,
+}: {
   channel: 'sp' | 'sb';
   rows: PlacementRow[];
   prevBy: Map<string, PlacementRow>;
@@ -127,10 +160,18 @@ function ChannelTable({ channel, rows, prevBy, keyOf, comparing }: {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={keyOf(r)} className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft">
+              <tr
+                key={keyOf(r)}
+                className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft"
+              >
                 <td className="whitespace-nowrap px-3 py-1.5">{NAMES[r.placement] ?? r.placement}</td>
                 <td className="num px-3 py-1.5 text-right">{fmtInt(r.campaigns)}</td>
-                <MCell v={r.spendSharePct} prev={prevBy.get(keyOf(r))?.spendSharePct} fmt={fmtPct} comparing={comparing} />
+                <MCell
+                  v={r.spendSharePct}
+                  prev={prevBy.get(keyOf(r))?.spendSharePct}
+                  fmt={fmtPct}
+                  comparing={comparing}
+                />
                 <AdCells m={r} prev={prevBy.get(keyOf(r))} comparing={comparing} />
               </tr>
             ))}

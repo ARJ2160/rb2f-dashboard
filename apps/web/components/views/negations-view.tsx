@@ -18,7 +18,17 @@ function ReasonBadge({ r }: { r: TermActionRow }) {
 }
 
 /** Small labelled number input for a threshold. */
-function NumField({ label, value, onChange, step = '1' }: { label: string; value: string; onChange: (v: string) => void; step?: string }) {
+function NumField({
+  label,
+  value,
+  onChange,
+  step = '1',
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  step?: string;
+}) {
   return (
     <label className="field">
       <span className="text-xs text-muted">{label}</span>

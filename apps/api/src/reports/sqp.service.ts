@@ -1,4 +1,12 @@
-import type { SqpLaunch, SqpPeriod, SqpResponse, SqpSort, SqpStrength, SqpTargeted, SqpView } from '@dash/shared';
+import type {
+  SqpLaunch,
+  SqpPeriod,
+  SqpResponse,
+  SqpSort,
+  SqpStrength,
+  SqpTargeted,
+  SqpView,
+} from '@dash/shared';
 import { sql } from 'drizzle-orm';
 
 import { db } from '../db/client';
@@ -32,7 +40,11 @@ export async function getSqp(profileId: string, o: SqpOptions): Promise<SqpRespo
     select period_start::text as "from", period_end::text as "to", count(*) as queries
     from search_query_performance where profile_id = ${profileId}
     group by 1, 2 order by 1 desc, 2 desc`);
-  const periods: SqpPeriod[] = periodRows.map((p) => ({ from: p.from, to: p.to, queries: Number(p.queries) }));
+  const periods: SqpPeriod[] = periodRows.map((p) => ({
+    from: p.from,
+    to: p.to,
+    queries: Number(p.queries),
+  }));
 
   const empty: SqpResponse = {
     profileId,
@@ -40,7 +52,16 @@ export async function getSqp(profileId: string, o: SqpOptions): Promise<SqpRespo
     period: null,
     accountAcosPct: null,
     minBrandClicks: o.minClicks,
-    kpis: { opportunities: 0, strong: 0, medium: 0, low: 0, launchSp: 0, launchSb: 0, launchBoth: 0, queries: 0 },
+    kpis: {
+      opportunities: 0,
+      strong: 0,
+      medium: 0,
+      low: 0,
+      launchSp: 0,
+      launchSb: 0,
+      launchBoth: 0,
+      queries: 0,
+    },
     rows: [],
     totalRows: 0,
     truncated: false,
@@ -133,8 +154,11 @@ export async function getSqp(profileId: string, o: SqpOptions): Promise<SqpRespo
       `No SP / SB search-term data for ${period.from} – ${period.to}, so every query shows as Not Targeted and spend / ACoS are blank. Upload the search-term reports for this period to see targeting.`
     );
   else if (stDays < pDays)
-    notes.push(`Search-term data covers ${stDays} of the period's ${pDays} days — targeting, spend and ACoS only count those days.`);
-  if (filtered.length > o.limit) notes.push(`Showing the first ${o.limit} of ${filtered.length} queries. Use search to find others.`);
+    notes.push(
+      `Search-term data covers ${stDays} of the period's ${pDays} days — targeting, spend and ACoS only count those days.`
+    );
+  if (filtered.length > o.limit)
+    notes.push(`Showing the first ${o.limit} of ${filtered.length} queries. Use search to find others.`);
   notes.push(
     //`Opportunity strength = how many of the brand's CTR, add-to-cart % and purchase % beat the category for that query: 1 = Low, 2 = Medium, all 3 = Strong. Brand clicks must be above ${o.minClicks}, and queries already targeted in both SP and SB are left out.`,
     //'Targeted = the query is bid on as a keyword (SP / SB "Targeting"), not merely shown as a triggered search term. Spend and ACoS are that keyword\'s own and are blank when it isn\'t targeted; ACoS is green / red against the account ACoS for the period.'

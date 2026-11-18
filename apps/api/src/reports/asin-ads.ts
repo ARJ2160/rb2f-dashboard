@@ -9,15 +9,33 @@ import { campaignKeySql } from './filters';
  * SP / SD Advertised Product + SB Attributed Purchases with SB spend /
  * impressions / clicks prorated from the SB Campaign report (§5).
  */
-export async function getAdsByAsin(profileId: string, from: string, to: string): Promise<Map<string, AdBase>> {
+export async function getAdsByAsin(
+  profileId: string,
+  from: string,
+  to: string
+): Promise<Map<string, AdBase>> {
   const [spsd, sb] = await Promise.all([
-    db.execute<{ asin: string; impressions: string; clicks: string; spend: string; ad_sales: string; ad_units: string }>(sql`
+    db.execute<{
+      asin: string;
+      impressions: string;
+      clicks: string;
+      spend: string;
+      ad_sales: string;
+      ad_units: string;
+    }>(sql`
       select asin, sum(impressions) as impressions, sum(clicks) as clicks, sum(spend) as spend,
              sum(ad_sales) as ad_sales, sum(ad_units) as ad_units
       from daily_asin_campaign_ads
       where profile_id = ${profileId} and date between ${from} and ${to}
       group by asin`),
-    db.execute<{ asin: string; impressions: string; clicks: string; spend: string; ad_sales: string; ad_units: string }>(sql`
+    db.execute<{
+      asin: string;
+      impressions: string;
+      clicks: string;
+      spend: string;
+      ad_sales: string;
+      ad_units: string;
+    }>(sql`
       with attr as (
         select date, ${campaignKeySql('campaign_name')} as ck, asin, ad_sales, ad_units
         from sb_attributed_daily where profile_id = ${profileId} and date between ${from} and ${to}

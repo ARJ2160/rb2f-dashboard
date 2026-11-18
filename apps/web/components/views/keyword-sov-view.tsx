@@ -42,7 +42,13 @@ export function KeywordSovView({ profileId }: { profileId: string }) {
         if (!duration) setDuration(d.duration);
         if (d.date && d.date !== date) setDate(d.date);
         if (!seeded && d.metricDefs.length) {
-          setMetricCsv(d.metricDefs.filter((m) => m.default).slice(0, MAX_METRICS).map((m) => m.key).join(','));
+          setMetricCsv(
+            d.metricDefs
+              .filter((m) => m.default)
+              .slice(0, MAX_METRICS)
+              .map((m) => m.key)
+              .join(',')
+          );
           setSeeded(true);
         }
       })
@@ -55,8 +61,13 @@ export function KeywordSovView({ profileId }: { profileId: string }) {
 
   const defs = data?.metricDefs ?? [];
   const selectedKeys = useMemo(() => metricCsv.split(',').filter(Boolean), [metricCsv]);
-  const selectedDefs = selectedKeys.map((k) => defs.find((d) => d.key === k)).filter((d): d is KeywordMetricDef => !!d);
-  const metricOptions = defs.map((d) => ({ value: d.key, label: `${d.label}${d.group === 'sb' ? ' · SB' : d.group === 'organic' ? ' · Org' : ''}` }));
+  const selectedDefs = selectedKeys
+    .map((k) => defs.find((d) => d.key === k))
+    .filter((d): d is KeywordMetricDef => !!d);
+  const metricOptions = defs.map((d) => ({
+    value: d.key,
+    label: `${d.label}${d.group === 'sb' ? ' · SB' : d.group === 'organic' ? ' · Org' : ''}`,
+  }));
 
   const onMetrics = (csv: string) => {
     const keys = csv.split(',').filter(Boolean);
@@ -96,7 +107,13 @@ export function KeywordSovView({ profileId }: { profileId: string }) {
               allLabel={null}
             />
           )}
-          <MultiSelect label={`Metrics (max ${MAX_METRICS})`} value={metricCsv} onChange={onMetrics} options={metricOptions} allLabel="None" />
+          <MultiSelect
+            label={`Metrics (max ${MAX_METRICS})`}
+            value={metricCsv}
+            onChange={onMetrics}
+            options={metricOptions}
+            allLabel="None"
+          />
         </>
       }
     >
@@ -120,33 +137,59 @@ export function KeywordSovView({ profileId }: { profileId: string }) {
             <table className="table table-sm">
               <thead className={THEAD}>
                 <tr className="text-xs text-muted">
-                  <th className="sticky left-0 z-30 min-w-56 bg-side px-3 py-2 text-left font-medium">Keyword</th>
+                  <th className="sticky left-0 z-30 min-w-56 bg-side px-3 py-2 text-left font-medium">
+                    Keyword
+                  </th>
                   <th className="px-3 py-2 text-right font-medium"># Searches</th>
                   <th className="px-3 py-2 text-right font-medium">Rank</th>
                   <th className="px-3 py-2 text-left font-medium">Most Clicked Organic</th>
                   <th className="px-3 py-2 text-left font-medium">Most Clicked SP</th>
                   {selectedDefs.map((d) => (
-                    <th key={d.key} className="whitespace-nowrap px-3 py-2 text-right font-medium">{d.label}</th>
+                    <th key={d.key} className="whitespace-nowrap px-3 py-2 text-right font-medium">
+                      {d.label}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {data.rows.map((r) => (
-                  <tr key={r.keyword} className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft">
-                    <td className="sticky left-0 z-10 max-w-72 truncate bg-inherit px-3 py-1.5 font-medium" title={r.keyword}>{r.keyword}</td>
+                  <tr
+                    key={r.keyword}
+                    className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft"
+                  >
+                    <td
+                      className="sticky left-0 z-10 max-w-72 truncate bg-inherit px-3 py-1.5 font-medium"
+                      title={r.keyword}
+                    >
+                      {r.keyword}
+                    </td>
                     <td className="num whitespace-nowrap px-3 py-1.5 text-right">{r.searches ?? '—'}</td>
                     <td className="num px-3 py-1.5 text-right">{r.rank ?? '—'}</td>
-                    <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{r.mostClickedOrganicAsin ?? '—'}</td>
-                    <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">{r.mostClickedSpAsin ?? '—'}</td>
+                    <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">
+                      {r.mostClickedOrganicAsin ?? '—'}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-1.5 font-mono text-xs">
+                      {r.mostClickedSpAsin ?? '—'}
+                    </td>
                     {selectedDefs.map((d) => (
-                      <td key={d.key} className={`num whitespace-nowrap px-3 py-1.5 text-right ${d.format === 'asin' ? 'font-mono text-xs' : ''}`}>
+                      <td
+                        key={d.key}
+                        className={`num whitespace-nowrap px-3 py-1.5 text-right ${d.format === 'asin' ? 'font-mono text-xs' : ''}`}
+                      >
                         {fmtMetric(d, r.metrics[d.key] ?? null)}
                       </td>
                     ))}
                   </tr>
                 ))}
                 {data.rows.length === 0 && (
-                  <tr><td colSpan={5 + selectedDefs.length} className="px-3 py-6 text-center text-sm text-muted">No keywords for this duration / tab.</td></tr>
+                  <tr>
+                    <td
+                      colSpan={5 + selectedDefs.length}
+                      className="px-3 py-6 text-center text-sm text-muted"
+                    >
+                      No keywords for this duration / tab.
+                    </td>
+                  </tr>
                 )}
               </tbody>
             </table>

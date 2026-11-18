@@ -14,7 +14,11 @@ import { API_URL } from './api';
 
 /* Quick-commerce report endpoints (/api/blinkit/*, /api/instamart/*) — same conventions as lib/api.ts. */
 
-async function get<T>(base: string, path: string, p: Record<string, string | number | undefined>): Promise<T> {
+async function get<T>(
+  base: string,
+  path: string,
+  p: Record<string, string | number | undefined>
+): Promise<T> {
   const q = new URLSearchParams(
     Object.entries(p)
       .filter((e): e is [string, string | number] => e[1] !== undefined && e[1] !== '')
@@ -41,16 +45,22 @@ export interface BkRange {
 export function qcApi(base: string) {
   return {
     meta: (profileId: string) => get<BkMetaResponse>(base, '/meta', { profileId }),
-    mom: (profileId: string, f: { asOf?: string; category?: string } = {}) => get<SummaryResponse>(base, '/mom', { profileId, ...f }),
+    mom: (profileId: string, f: { asOf?: string; category?: string } = {}) =>
+      get<SummaryResponse>(base, '/mom', { profileId, ...f }),
     dsr: (profileId: string, r: BkRange) => get<BkDailyResponse>(base, '/dsr', { profileId, ...r }),
-    dur: (profileId: string, r: BkRange, metric: 'units' | 'orders' | 'revenue') => get<DurResponse>(base, '/dur', { profileId, ...r, metric }),
-    groups: (profileId: string, r: BkRange, groupBy: 'category' | 'sku') => get<BkGroupsResponse>(base, '/groups', { profileId, ...r, groupBy }),
+    dur: (profileId: string, r: BkRange, metric: 'units' | 'orders' | 'revenue') =>
+      get<DurResponse>(base, '/dur', { profileId, ...r, metric }),
+    groups: (profileId: string, r: BkRange, groupBy: 'category' | 'sku') =>
+      get<BkGroupsResponse>(base, '/groups', { profileId, ...r, groupBy }),
     geo: (profileId: string, r: BkRange) => get<BkGeoResponse>(base, '/geo', { profileId, ...r }),
-    cityAds: (profileId: string, r: BkRange) => get<BkCityAdsResponse>(base, '/city-ads', { profileId, ...r }),
+    cityAds: (profileId: string, r: BkRange) =>
+      get<BkCityAdsResponse>(base, '/city-ads', { profileId, ...r }),
     keywords: (profileId: string, r: BkRange, f: Record<string, string | number | undefined>) =>
       get<BkKeywordsResponse>(base, '/keywords', { profileId, ...r, ...f }),
-    inventory: (profileId: string, f: { snapshot?: string; category?: string }) => get<BkInventoryResponse>(base, '/inventory', { profileId, ...f }),
-    inventoryTrend: (profileId: string, f: { category?: string }) => get<BkInventoryTrendResponse>(base, '/inventory/trend', { profileId, ...f }),
+    inventory: (profileId: string, f: { snapshot?: string; category?: string }) =>
+      get<BkInventoryResponse>(base, '/inventory', { profileId, ...f }),
+    inventoryTrend: (profileId: string, f: { category?: string }) =>
+      get<BkInventoryTrendResponse>(base, '/inventory/trend', { profileId, ...f }),
   };
 }
 export type QcApi = ReturnType<typeof qcApi>;

@@ -88,6 +88,12 @@ export async function ingestScFile(
       return done(p);
     }
     default:
-      return { rows: 0, from: null, to: null, warnings: [], error: `No Seller Central ingester for "${fileType}".` };
+      return {
+        rows: 0,
+        from: null,
+        to: null,
+        warnings: [],
+        error: `No Seller Central ingester for "${fileType}".`,
+      };
   }
 }

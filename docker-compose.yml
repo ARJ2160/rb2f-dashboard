@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: rb2f_admin
       POSTGRES_PASSWORD: MyStrongPass123 # password
-      POSTGRES_DB: amazon_dashboard      # database name
+      POSTGRES_DB: amazon_dashboard # database name
     ports:
       - '5432:5432'
     volumes:

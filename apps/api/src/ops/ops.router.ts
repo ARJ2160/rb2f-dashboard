@@ -44,7 +44,10 @@ export const opsRouter = Router();
 const brandIdSchema = z
   .string()
   .trim()
-  .regex(/^[a-z0-9][a-z0-9_-]{0,63}$/, 'brandId: lower-case letters, digits, - and _ (max 64), starting alphanumeric');
+  .regex(
+    /^[a-z0-9][a-z0-9_-]{0,63}$/,
+    'brandId: lower-case letters, digits, - and _ (max 64), starting alphanumeric'
+  );
 const codeList = z.array(z.string().trim().min(1)).max(50).optional();
 
 // ── Brands ────────────────────────────────────────────────────────────────
@@ -139,7 +142,13 @@ opsRouter.patch('/warehouses/:code', async (req, res) => {
   if (Object.keys(set).length === 0) throw new HttpError(400, 'Nothing to update.');
   const [row] = await db.update(dimWarehouse).set(set).where(eq(dimWarehouse.code, code)).returning();
   if (!row) throw new HttpError(404, `Warehouse "${code}" not found.`);
-  res.json({ code: row.code, network: row.network, city: row.city, state: row.state, needsReview: row.needsReview });
+  res.json({
+    code: row.code,
+    network: row.network,
+    city: row.city,
+    state: row.state,
+    needsReview: row.needsReview,
+  });
 });
 
 // ── Per-brand settings ───────────────────────────────────────────────────────
@@ -259,9 +268,15 @@ opsRouter.post('/uploads', receiveFiles, async (req, res) => {
   if (!brand) throw new HttpError(404, `Brand "${brandId}" not found \u2014 create it first.`);
 
   const files = (req.files as Express.Multer.File[] | undefined) ?? [];
-  if (files.length === 0) throw new HttpError(400, 'Attach at least one .xlsx, .xls or .csv file in the "files" field.');
+  if (files.length === 0)
+    throw new HttpError(400, 'Attach at least one .xlsx, .xls or .csv file in the "files" field.');
 
-  interface Pending { label: string; sheet: SheetData; fileType: OpsFileType; channel: 'vc' | 'sc'; }
+  interface Pending {
+    label: string;
+    sheet: SheetData;
+    fileType: OpsFileType;
+    channel: 'vc' | 'sc';
+  }
   const pending: Pending[] = [];
   const preResults: OpsUploadResult[] = [];
   const preBatches: (typeof importBatches.$inferInsert)[] = [];
@@ -269,12 +284,24 @@ opsRouter.post('/uploads', receiveFiles, async (req, res) => {
 
   const fail = (label: string, message: string) => {
     preResults.push({ filename: label, fileType: null, channel: null, status: 'error', message });
-    preBatches.push({ id: randomUUID(), brandId, filename: label, fileType: null, channel: null, status: 'error', rows: 0, message });
+    preBatches.push({
+      id: randomUUID(),
+      brandId,
+      filename: label,
+      fileType: null,
+      channel: null,
+      status: 'error',
+      rows: 0,
+      message,
+    });
   };
 
   for (const f of files) {
     const name = cleanFilename(f.originalname);
-    if (!looksLikeSpreadsheet(f.buffer)) { fail(name, 'Not a spreadsheet or CSV file.'); continue; }
+    if (!looksLikeSpreadsheet(f.buffer)) {
+      fail(name, 'Not a spreadsheet or CSV file.');
+      continue;
+    }
     let sheets: SheetData[];
     try {
       sheets = await ingestSlots.run(() => parseAmazonWorkbook(f.buffer));
@@ -286,8 +313,25 @@ opsRouter.post('/uploads', receiveFiles, async (req, res) => {
       const label = sheets.length > 1 ? `${name} \u203a ${sheet.sheetName.trim()}` : name;
       const detected = detectOpsFile(sheet.headers, sheet.preamble);
       if (!detected) {
-        preResults.push({ filename: label, fileType: null, channel: null, status: 'skipped', headersFound: sheet.headers.length, message: 'Not an Inventory / PO / Shipment export \u2014 not recognised from its columns.' });
-        preBatches.push({ id: randomUUID(), brandId, filename: label, fileType: null, channel: null, status: 'skipped', rows: sheet.rows.length, headersFound: sheet.headers.length, message: 'Unrecognised columns.' });
+        preResults.push({
+          filename: label,
+          fileType: null,
+          channel: null,
+          status: 'skipped',
+          headersFound: sheet.headers.length,
+          message: 'Not an Inventory / PO / Shipment export \u2014 not recognised from its columns.',
+        });
+        preBatches.push({
+          id: randomUUID(),
+          brandId,
+          filename: label,
+          fileType: null,
+          channel: null,
+          status: 'skipped',
+          rows: sheet.rows.length,
+          headersFound: sheet.headers.length,
+          message: 'Unrecognised columns.',
+        });
         continue;
       }
       pending.push({ label, sheet, fileType: detected.fileType, channel: detected.channel });
@@ -306,14 +350,67 @@ opsRouter.post('/uploads', receiveFiles, async (req, res) => {
       if (OPS_FILE_TYPES[p.fileType].inScope) {
         const out = await ingestScFile(tx, brandId, id, p.fileType, p.sheet, ctx);
         const status = out.error ? 'error' : 'stored';
-        txResults.push({ filename: p.label, fileType: p.fileType, channel: p.channel, status, rows: out.rows, headersFound: p.sheet.headers.length, dateFrom: out.from, dateTo: out.to, identifierWarning: idWarn, message: out.error ?? 'Stored.', ...(out.warnings.length ? { warnings: out.warnings } : {}) });
-        txBatches.push({ id, brandId, filename: p.label, fileType: p.fileType, channel: p.channel, status, rows: out.rows, headersFound: p.sheet.headers.length, dateFrom: out.from, dateTo: out.to, identifierWarning: idWarn, message: out.error ?? ([...out.warnings].join(' | ') || 'Stored.') });
+        txResults.push({
+          filename: p.label,
+          fileType: p.fileType,
+          channel: p.channel,
+          status,
+          rows: out.rows,
+          headersFound: p.sheet.headers.length,
+          dateFrom: out.from,
+          dateTo: out.to,
+          identifierWarning: idWarn,
+          message: out.error ?? 'Stored.',
+          ...(out.warnings.length ? { warnings: out.warnings } : {}),
+        });
+        txBatches.push({
+          id,
+          brandId,
+          filename: p.label,
+          fileType: p.fileType,
+          channel: p.channel,
+          status,
+          rows: out.rows,
+          headersFound: p.sheet.headers.length,
+          dateFrom: out.from,
+          dateTo: out.to,
+          identifierWarning: idWarn,
+          message: out.error ?? ([...out.warnings].join(' | ') || 'Stored.'),
+        });
       } else {
         const range = previewDateRange(p.fileType, p.sheet.rows, p.sheet.preamble);
         const cols = WH_CODE_COLUMNS[p.fileType];
-        if (cols) for (const r of p.sheet.rows) { const c = normalizeFcCode(pick(r, cols)); if (c) vcWarehouseCodes.add(c); }
-        txResults.push({ filename: p.label, fileType: p.fileType, channel: p.channel, status: 'recognized', rows: p.sheet.rows.length, headersFound: p.sheet.headers.length, dateFrom: range.from, dateTo: range.to, identifierWarning: idWarn, message: 'Recognised \u2014 Vendor Central parser lands in the next phase; nothing stored yet.' });
-        txBatches.push({ id, brandId, filename: p.label, fileType: p.fileType, channel: p.channel, status: 'recognized', rows: p.sheet.rows.length, headersFound: p.sheet.headers.length, dateFrom: range.from, dateTo: range.to, identifierWarning: idWarn, message: 'Recognised (parser pending).' });
+        if (cols)
+          for (const r of p.sheet.rows) {
+            const c = normalizeFcCode(pick(r, cols));
+            if (c) vcWarehouseCodes.add(c);
+          }
+        txResults.push({
+          filename: p.label,
+          fileType: p.fileType,
+          channel: p.channel,
+          status: 'recognized',
+          rows: p.sheet.rows.length,
+          headersFound: p.sheet.headers.length,
+          dateFrom: range.from,
+          dateTo: range.to,
+          identifierWarning: idWarn,
+          message: 'Recognised \u2014 Vendor Central parser lands in the next phase; nothing stored yet.',
+        });
+        txBatches.push({
+          id,
+          brandId,
+          filename: p.label,
+          fileType: p.fileType,
+          channel: p.channel,
+          status: 'recognized',
+          rows: p.sheet.rows.length,
+          headersFound: p.sheet.headers.length,
+          dateFrom: range.from,
+          dateTo: range.to,
+          identifierWarning: idWarn,
+          message: 'Recognised (parser pending).',
+        });
       }
     }
     const allBatches = [...preBatches, ...txBatches];

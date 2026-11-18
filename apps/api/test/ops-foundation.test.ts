@@ -3,9 +3,22 @@ import { test } from 'node:test';
 
 import { OPS_SETTINGS_DEFAULTS } from '@dash/shared';
 import { identifierWarning } from '../src/ops/brands';
-import { AMAZON_NOW_CODES, classifyWarehouse, normalizeFcCode, seedWarehouseRows } from '../src/ops/warehouses';
+import {
+  AMAZON_NOW_CODES,
+  classifyWarehouse,
+  normalizeFcCode,
+  seedWarehouseRows,
+} from '../src/ops/warehouses';
 
-const brand = { id: 'eatopia', name: 'Eatopia', logoUrl: null, vendorCodes: ['ABCDE'], sellerIds: ['A1SELLER'], marketplace: 'Amazon.in', active: true };
+const brand = {
+  id: 'eatopia',
+  name: 'Eatopia',
+  logoUrl: null,
+  vendorCodes: ['ABCDE'],
+  sellerIds: ['A1SELLER'],
+  marketplace: 'Amazon.in',
+  active: true,
+};
 
 test('warehouse network rule: Amazon-Now list vs Core', () => {
   assert.equal(classifyWarehouse('HLK1'), 'Amazon Now');
@@ -35,7 +48,10 @@ test('settings defaults match the spec (§1.4)', () => {
 test('identifier warning only fires on a real mismatch', () => {
   assert.equal(identifierWarning(brand, { kind: 'vendorCode', value: 'ABCDE' }), null); // matches
   assert.equal(identifierWarning(brand, null), null); // nothing to check
-  assert.equal(identifierWarning({ ...brand, vendorCodes: [] }, { kind: 'vendorCode', value: 'ZZZZZ' }), null); // no pool
+  assert.equal(
+    identifierWarning({ ...brand, vendorCodes: [] }, { kind: 'vendorCode', value: 'ZZZZZ' }),
+    null
+  ); // no pool
   const warn = identifierWarning(brand, { kind: 'vendorCode', value: 'ZZZZZ' });
   assert.ok(warn && warn.includes('ZZZZZ') && warn.includes('Eatopia'));
 });

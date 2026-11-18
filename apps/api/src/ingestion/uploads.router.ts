@@ -40,7 +40,11 @@ uploadsRouter.post('/', receiveFiles, async (req, res) => {
   for (const f of files) {
     const name = cleanFilename(f.originalname);
     if (!looksLikeSpreadsheet(f.buffer)) {
-      results.push({ filename: name, status: 'error', message: 'Not a spreadsheet or CSV file — nothing was stored.' });
+      results.push({
+        filename: name,
+        status: 'error',
+        message: 'Not a spreadsheet or CSV file — nothing was stored.',
+      });
       continue;
     }
     results.push(...(await ingestSlots.run(() => ingestFile(profileId, name, f.buffer))));

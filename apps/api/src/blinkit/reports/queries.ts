@@ -15,7 +15,8 @@ type Raw = Record<string, unknown>;
 
 export function adsRow(r: Raw): Sums {
   const a = blank();
-  for (const k of ['impr', 'atc', 'aunits', 'asales', 'dsales', 'spend', 'nu', 'mvpw', 'mvpi'] as const) a[k] = Number(r[k] ?? 0);
+  for (const k of ['impr', 'atc', 'aunits', 'asales', 'dsales', 'spend', 'nu', 'mvpw', 'mvpi'] as const)
+    a[k] = Number(r[k] ?? 0);
   return a;
 }
 export function salesRow(r: Raw): Sums {
@@ -27,7 +28,8 @@ export function salesRow(r: Raw): Sums {
 }
 
 /** `and <col> = any($n::text[])` — or nothing when ids is null (no filter). */
-export const inList = (col: string, idx: number, ids: string[] | null) => (ids ? ` and ${col} = any($${idx}::text[])` : '');
+export const inList = (col: string, idx: number, ids: string[] | null) =>
+  ids ? ` and ${col} = any($${idx}::text[])` : '';
 
 /** Run parameterised SQL; numeric / bigint come back as strings, so callers wrap with Number(). */
 export async function q<T = Raw>(text: string, params: unknown[]): Promise<T[]> {

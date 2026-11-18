@@ -1,4 +1,12 @@
-import { daysInRange, deriveDsr, emptyDsrBase, addDsrBase, pct, type CategoryResponse, type DsrBase } from '@dash/shared';
+import {
+  daysInRange,
+  deriveDsr,
+  emptyDsrBase,
+  addDsrBase,
+  pct,
+  type CategoryResponse,
+  type DsrBase,
+} from '@dash/shared';
 import { sql } from 'drizzle-orm';
 
 import { db } from '../db/client';
@@ -8,7 +16,13 @@ import { piActive } from './pi-sales';
 
 const MISSING = '(missing ASIN)';
 
-type CatSalesRow = { asin: string; sales: string; units: string; page_views: string | null; unvalued: string };
+type CatSalesRow = {
+  asin: string;
+  sales: string;
+  units: string;
+  page_views: string | null;
+  unvalued: string;
+};
 
 /**
  * Category-wise view (rule book §10.4): DSR columns grouped by the ASIN-mapper
@@ -56,7 +70,8 @@ export async function getCategoryView(
   const catOf = new Map(cats.map((c) => [c.asin, c.category]));
   const titleOf = new Map(cats.map((c) => [c.asin, c.title]));
   const perAsin = new Map<string, DsrBase>();
-  const addAsin = (asin: string, b: DsrBase) => perAsin.set(asin, addDsrBase(perAsin.get(asin) ?? emptyDsrBase(), b));
+  const addAsin = (asin: string, b: DsrBase) =>
+    perAsin.set(asin, addDsrBase(perAsin.get(asin) ?? emptyDsrBase(), b));
   const category = (asin: string) => (asin === '' ? MISSING : (catOf.get(asin) ?? 'Unmapped'));
 
   const acc = new Map<string, { base: DsrBase; asins: Set<string> }>();
@@ -97,7 +112,12 @@ export async function getCategoryView(
   let total = emptyDsrBase();
   for (const v of acc.values()) total = addDsrBase(total, v.base);
   const rows = [...acc.entries()]
-    .map(([cat, v]) => ({ category: cat, asins: v.asins.size, salesSharePct: pct(v.base.sales, total.sales), ...deriveDsr(v.base) }))
+    .map(([cat, v]) => ({
+      category: cat,
+      asins: v.asins.size,
+      salesSharePct: pct(v.base.sales, total.sales),
+      ...deriveDsr(v.base),
+    }))
     .sort((a, b) => b.sales - a.sales || b.spends - a.spends);
 
   const notes: string[] = [];
@@ -105,18 +125,33 @@ export async function getCategoryView(
   const unmapped = rows.find((r) => r.category === 'Unmapped');
   if (unmapped && total.sales > 0) {
     const share = (unmapped.sales / total.sales) * 100;
-    notes.push(`${unmapped.asins} ASIN(s) are not in the ASIN mapper — ${share.toFixed(1)}% of Sales is "Unmapped".${share > 50 ? ' Match rate is under 50% — refresh the mapper.' : ''}`);
+    notes.push(
+      `${unmapped.asins} ASIN(s) are not in the ASIN mapper — ${share.toFixed(1)}% of Sales is "Unmapped".${share > 50 ? ' Match rate is under 50% — refresh the mapper.' : ''}`
+    );
   }
-  if (unvalued > 0) notes.push(`${unvalued} Vendor shipped unit(s) have no selling price in the mapper — counted in Units, not Sales.`);
+  if (unvalued > 0)
+    notes.push(
+      `${unvalued} Vendor shipped unit(s) have no selling price in the mapper — counted in Units, not Sales.`
+    );
   if (dayAds.sbUnallocatedSpend > 0.5)
-    notes.push(`₹${dayAds.sbUnallocatedSpend.toFixed(2)} SB spend on campaign-days with no attributed purchase can't be given to a category (rule book §5).`);
+    notes.push(
+      `₹${dayAds.sbUnallocatedSpend.toFixed(2)} SB spend on campaign-days with no attributed purchase can't be given to a category (rule book §5).`
+    );
   let campaignOnly = 0;
-  for (const m of dayAds.byDate.values()) for (const v of Object.values(m)) if (v?.source === 'campaign') campaignOnly += v.spend;
+  for (const m of dayAds.byDate.values())
+    for (const v of Object.values(m)) if (v?.source === 'campaign') campaignOnly += v.spend;
   if (campaignOnly > 0.5)
-    notes.push(`₹${campaignOnly.toFixed(2)} spend comes only from campaign reports (no Advertised Product / SB Attributed Purchases for those days) and can't be split by category.`);
+    notes.push(
+      `₹${campaignOnly.toFixed(2)} spend comes only from campaign reports (no Advertised Product / SB Attributed Purchases for those days) and can't be split by category.`
+    );
 
   const allAsins = [...perAsin.entries()]
-    .map(([asin, b]) => ({ asin, title: asin ? (titleOf.get(asin) ?? null) : '(ASIN missing in source report)', category: category(asin), ...deriveDsr(b) }))
+    .map(([asin, b]) => ({
+      asin,
+      title: asin ? (titleOf.get(asin) ?? null) : '(ASIN missing in source report)',
+      category: category(asin),
+      ...deriveDsr(b),
+    }))
     .filter((r) => !opts.category || r.category === opts.category)
     .sort((a, b) => b.sales - a.sales || b.spends - a.spends || a.asin.localeCompare(b.asin));
 

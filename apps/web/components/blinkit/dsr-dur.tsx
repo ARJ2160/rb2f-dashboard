@@ -75,11 +75,15 @@ function AdTypeSplit({ data }: { data: BkDailyResponse }) {
         <div key={c.adType} className="stat px-4 py-3">
           <div className="stat-title flex items-baseline justify-between gap-3 text-xs">
             <span className="font-semibold text-ink">{AD_TYPE_LABEL[c.adType] ?? c.adType}</span>
-            <span className={c.days ? 'text-muted' : 'text-warn'}>{c.days ? `${c.days}/${data.dates.length} days` : 'no data'}</span>
+            <span className={c.days ? 'text-muted' : 'text-warn'}>
+              {c.days ? `${c.days}/${data.dates.length} days` : 'no data'}
+            </span>
           </div>
           <div className="stat-value num text-xl">
             {fmtMoney(c.spend)}
-            <span className="ml-1.5 text-sm font-normal text-muted">{total ? fmtPct((c.spend / total) * 100) : '—'} of spend</span>
+            <span className="ml-1.5 text-sm font-normal text-muted">
+              {total ? fmtPct((c.spend / total) * 100) : '—'} of spend
+            </span>
           </div>
           <div className="stat-desc num">
             {c.adType === 'BL' && flavour.id === 'blinkit'
@@ -94,11 +98,19 @@ function AdTypeSplit({ data }: { data: BkDailyResponse }) {
 
 export function DsrView(p: RangeProps) {
   const { api, flavour, show } = useQc();
-  const { data, error, loading } = useLoad(() => api.dsr(p.profileId, p), [p.profileId, p.from, p.to, p.category, flavour.id]);
+  const { data, error, loading } = useLoad(
+    () => api.dsr(p.profileId, p),
+    [p.profileId, p.from, p.to, p.category, flavour.id]
+  );
   // Avg Ad Rank only where the report has one (Instamart); Blinkit's "most viewed position" stays in Keywords.
-  const cols = DSR_COLS.filter((c) => show(c.k) && (c.k !== 'mvp' || flavour.id === 'instamart')).map((c) => ({ ...c, label: flavour.labels[c.k] ?? c.label }));
+  const cols = DSR_COLS.filter((c) => show(c.k) && (c.k !== 'mvp' || flavour.id === 'instamart')).map(
+    (c) => ({ ...c, label: flavour.labels[c.k] ?? c.label })
+  );
   if (error) return <ErrorBox message={error} />;
-  if (!data) return loading ? <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" /> : null;
+  if (!data)
+    return loading ? (
+      <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />
+    ) : null;
   const n = data.dates.length || 1;
   const avg = blank();
   for (const k of Object.keys(avg) as (keyof typeof avg)[]) avg[k] = data.total[k] / n;
@@ -130,7 +142,12 @@ export function DsrView(p: RangeProps) {
               {/* volumes ÷ days; ratios are the TOTAL ratio (computed from sums, never averaged) */}
               {cols.map((c) => (
                 <td key={c.k} className="num whitespace-nowrap px-3 py-1.5 text-right">
-                  {bkShow(c.k, ['aov', 'atcr', 'cpm', 'cvr', 'acos', 'tacos', 'roas', 'ctr', 'cpc', 'mvp'].includes(c.k) ? data.total : avg)}
+                  {bkShow(
+                    c.k,
+                    ['aov', 'atcr', 'cpm', 'cvr', 'acos', 'tacos', 'roas', 'ctr', 'cpc', 'mvp'].includes(c.k)
+                      ? data.total
+                      : avg
+                  )}
                 </td>
               ))}
             </tr>
@@ -164,24 +181,37 @@ export function DsrView(p: RangeProps) {
 export function DurView(p: RangeProps) {
   const { api, flavour, show } = useQc();
   const [metric, setMetric] = useState<'units' | 'orders' | 'revenue'>('units');
-  const { data, error, loading } = useLoad<DurResponse>(() => api.dur(p.profileId, p, metric), [p.profileId, p.from, p.to, p.category, metric, flavour.id]);
+  const { data, error, loading } = useLoad<DurResponse>(
+    () => api.dur(p.profileId, p, metric),
+    [p.profileId, p.from, p.to, p.category, metric, flavour.id]
+  );
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm">
         <span className="text-xs text-muted">Values</span>
         <div className="join">
-          {(['units', 'orders', 'revenue'] as const).filter((m) => m !== 'orders' || show('orders')).map((m) => (
-            <button key={m} onClick={() => setMetric(m)} className={`btn btn-sm join-item ${metric === m ? 'btn-primary' : 'font-normal'}`}>
-              {m === 'units' ? 'Units sold' : m === 'orders' ? 'Orders' : 'Sales'}
-            </button>
-          ))}
+          {(['units', 'orders', 'revenue'] as const)
+            .filter((m) => m !== 'orders' || show('orders'))
+            .map((m) => (
+              <button
+                key={m}
+                onClick={() => setMetric(m)}
+                className={`btn btn-sm join-item ${metric === m ? 'btn-primary' : 'font-normal'}`}
+              >
+                {m === 'units' ? 'Units sold' : m === 'orders' ? 'Orders' : 'Sales'}
+              </button>
+            ))}
         </div>
         {loading && <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />}
       </div>
       {error && <ErrorBox message={error} />}
       {data && (
         <>
-          <DurTable data={data} idLabel={flavour.id === 'instamart' ? 'Item Code' : 'Item ID'} nameLabel="SKU · item name" />
+          <DurTable
+            data={data}
+            idLabel={flavour.id === 'instamart' ? 'Item Code' : 'Item ID'}
+            nameLabel="SKU · item name"
+          />
           <Notes notes={data.notes} />
         </>
       )}

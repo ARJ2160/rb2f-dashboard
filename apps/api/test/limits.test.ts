@@ -42,7 +42,10 @@ test('semaphore: never runs more than `max` tasks and runs queued ones in order'
 
 test('semaphore: a failing task releases its slot', async () => {
   const sem = new Semaphore(1);
-  await assert.rejects(sem.run(() => Promise.reject(new Error('boom'))), /boom/);
+  await assert.rejects(
+    sem.run(() => Promise.reject(new Error('boom'))),
+    /boom/
+  );
   assert.equal(await sem.run(async () => 'next'), 'next');
 });
 

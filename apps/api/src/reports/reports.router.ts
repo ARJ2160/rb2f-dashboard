@@ -23,10 +23,27 @@ import { getKeywordSov } from './keyword-sov.service';
 
 export const reportsRouter = Router();
 
-const optText = z.string().trim().max(200).optional().transform((v) => (v ? v : undefined));
+const optText = z
+  .string()
+  .trim()
+  .max(200)
+  .optional()
+  .transform((v) => (v ? v : undefined));
 const adFilters = z.object({ category: optText, adType: optText, targeting: optText, branding: optText });
 
-const ruleMetric = z.enum(['impressions', 'clicks', 'spend', 'adSales', 'adUnits', 'orders', 'ctrPct', 'cpc', 'crPct', 'acosPct', 'roas']);
+const ruleMetric = z.enum([
+  'impressions',
+  'clicks',
+  'spend',
+  'adSales',
+  'adUnits',
+  'orders',
+  'ctrPct',
+  'cpc',
+  'crPct',
+  'acosPct',
+  'roas',
+]);
 const ruleSchema = z.object({ metric: ruleMetric, op: z.enum(['gte', 'lte']), value: z.number().finite() });
 /** `rules` arrives as a JSON array string on the query; parse then validate (empty / malformed → []). */
 function parseRules(raw: string | undefined) {
@@ -46,7 +63,10 @@ const num = (def: number, min: number, max: number) => z.coerce.number().min(min
 async function withDims<T extends { notes: string[] }>(profileId: string, run: () => Promise<T>): Promise<T> {
   const err = await ensureDims(profileId);
   const out = await run();
-  if (err) out.notes.unshift(`Couldn't build the campaign filters / Branded-Competitor-Generic classes (${err}). Filters and branding may be incomplete — check the API log.`);
+  if (err)
+    out.notes.unshift(
+      `Couldn't build the campaign filters / Branded-Competitor-Generic classes (${err}). Filters and branding may be incomplete — check the API log.`
+    );
   return out;
 }
 
@@ -60,7 +80,9 @@ reportsRouter.get('/dsr', async (req, res) => {
 /** GET /api/reports/dur?profileId&from&to&metric=units|orders&category */
 reportsRouter.get('/dur', async (req, res) => {
   const q = rangeQuerySchema.parse(req.query);
-  const { metric, category } = z.object({ metric: z.enum(['units', 'orders']).default('units'), category: optText }).parse(req.query);
+  const { metric, category } = z
+    .object({ metric: z.enum(['units', 'orders']).default('units'), category: optText })
+    .parse(req.query);
   res.json(await getDur(q.profileId, q.from, q.to, metric, category));
 });
 
@@ -69,11 +91,17 @@ reportsRouter.get('/summary', async (req, res) => {
   const o = z
     .object({
       profileId: profileIdSchema,
-      asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'asOf must be YYYY-MM-DD').optional().or(z.literal('').transform(() => undefined)),
+      asOf: z
+        .string()
+        .regex(/^\d{4}-\d{2}-\d{2}$/, 'asOf must be YYYY-MM-DD')
+        .optional()
+        .or(z.literal('').transform(() => undefined)),
       category: optText,
     })
     .parse(req.query);
-  res.json(await withDims(o.profileId, () => getSummary(o.profileId, { asOf: o.asOf, category: o.category })));
+  res.json(
+    await withDims(o.profileId, () => getSummary(o.profileId, { asOf: o.asOf, category: o.category }))
+  );
 });
 
 /** GET /api/reports/summary-compare?profileId&aFrom&aTo&bFrom&bTo&category — MoM / WoW custom A-vs-B compare. */
@@ -93,14 +121,19 @@ reportsRouter.get('/search-rank', async (req, res) => {
 
 /** GET /api/reports/glance-views?profileId&from&to&category — Amazon Pi ASIN glance views. */
 reportsRouter.get('/glance-views', async (req, res) => {
-  const iso = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional();
+  const iso = z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional();
   const o = z.object({ profileId: profileIdSchema, from: iso, to: iso, category: optText }).parse(req.query);
   res.json(await getGlanceViews(o.profileId, o));
 });
 
 /** GET /api/reports/keyword-sov?profileId&duration&date&keywordType — Amazon Pi keyword SOV. */
 reportsRouter.get('/keyword-sov', async (req, res) => {
-  const o = z.object({ profileId: profileIdSchema, duration: optText, date: optText, keywordType: optText }).parse(req.query);
+  const o = z
+    .object({ profileId: profileIdSchema, duration: optText, date: optText, keywordType: optText })
+    .parse(req.query);
   res.json(await getKeywordSov(o.profileId, o));
 });
 
@@ -136,7 +169,11 @@ reportsRouter.get('/search-terms', async (req, res) => {
  * Search Query Performance by whole reporting period (newest when none given).
  */
 reportsRouter.get('/sqp', async (req, res) => {
-  const isoOpt = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().or(z.literal('').transform(() => undefined));
+  const isoOpt = z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional()
+    .or(z.literal('').transform(() => undefined));
   const o = z
     .object({
       profileId: profileIdSchema,
@@ -144,11 +181,30 @@ reportsRouter.get('/sqp', async (req, res) => {
       periodEnd: isoOpt,
       view: z.enum(['opportunities', 'report']).default('opportunities'),
       q: optText,
-      launchIn: z.enum(['SP', 'SB', 'SP & SB']).optional().or(z.literal('').transform(() => undefined)),
-      targeted: z.enum(['Not Targeted', 'SP', 'SB', 'SP & SB']).optional().or(z.literal('').transform(() => undefined)),
-      strength: z.enum(['Strong', 'Medium', 'Low']).optional().or(z.literal('').transform(() => undefined)),
+      launchIn: z
+        .enum(['SP', 'SB', 'SP & SB'])
+        .optional()
+        .or(z.literal('').transform(() => undefined)),
+      targeted: z
+        .enum(['Not Targeted', 'SP', 'SB', 'SP & SB'])
+        .optional()
+        .or(z.literal('').transform(() => undefined)),
+      strength: z
+        .enum(['Strong', 'Medium', 'Low'])
+        .optional()
+        .or(z.literal('').transform(() => undefined)),
       sort: z
-        .enum(['strength', 'volume', 'acos', 'spend', 'impressionShare', 'clickShare', 'cartAddShare', 'purchaseShare', 'purchasesBrand'])
+        .enum([
+          'strength',
+          'volume',
+          'acos',
+          'spend',
+          'impressionShare',
+          'clickShare',
+          'cartAddShare',
+          'purchaseShare',
+          'purchasesBrand',
+        ])
         .default('strength'),
       // Clamped: 0 would turn every one-click fluke into an "opportunity".
       minClicks: z.coerce.number().int().min(1).max(500).default(DEFAULT_MIN_BRAND_CLICKS),
@@ -161,16 +217,25 @@ reportsRouter.get('/sqp', async (req, res) => {
 
 /** GET /api/reports/harvest?profileId&days=7|30|60&minOrders&q&harvestInto&performingIn&kind&sort&limit — keyword harvesting. */
 reportsRouter.get('/harvest', async (req, res) => {
-  const ch = z.enum(['SP', 'SB', 'SP & SB']).optional().or(z.literal('').transform(() => undefined));
+  const ch = z
+    .enum(['SP', 'SB', 'SP & SB'])
+    .optional()
+    .or(z.literal('').transform(() => undefined));
   const o = z
     .object({
       profileId: profileIdSchema,
-      days: z.coerce.number().pipe(z.union([z.literal(7), z.literal(30), z.literal(60)])).default(30),
+      days: z.coerce
+        .number()
+        .pipe(z.union([z.literal(7), z.literal(30), z.literal(60)]))
+        .default(30),
       minOrders: z.coerce.number().int().min(1).max(1000).default(2),
       q: optText,
       harvestInto: ch,
       performingIn: ch,
-      kind: z.enum(['Keyword', 'ASIN']).optional().or(z.literal('').transform(() => undefined)),
+      kind: z
+        .enum(['Keyword', 'ASIN'])
+        .optional()
+        .or(z.literal('').transform(() => undefined)),
       sort: z.enum(['orders', 'adSales', 'spend', 'acos', 'cvr']).default('orders'),
       limit: z.coerce.number().int().min(1).max(2000).default(500),
     })
@@ -210,9 +275,17 @@ reportsRouter.get('/negations', async (req, res) => {
 reportsRouter.get('/term-rules', async (req, res) => {
   const q = rangeQuerySchema.parse(req.query);
   const o = adFilters
-    .extend({ grain: z.enum(['term', 'target']).default('term'), rules: z.string().optional(), limit: num(1000, 1, 5000) })
+    .extend({
+      grain: z.enum(['term', 'target']).default('term'),
+      rules: z.string().optional(),
+      limit: num(1000, 1, 5000),
+    })
     .parse(req.query);
-  res.json(await withDims(q.profileId, () => getTermRules(q.profileId, q.from, q.to, o.grain, parseRules(o.rules), o, o)));
+  res.json(
+    await withDims(q.profileId, () =>
+      getTermRules(q.profileId, q.from, q.to, o.grain, parseRules(o.rules), o, o)
+    )
+  );
 });
 
 /** GET /api/reports/bid-actions?…&reduceAcosMultiple&reduceMinClicks&scaleAcosMultiple&scaleMinOrders&limit — target bid moves (range > 3 days). */
@@ -240,7 +313,9 @@ reportsRouter.get('/hourly', async (req, res) => {
 /** GET /api/reports/states?profileId&from&to&source&category — "State Wise Data" */
 reportsRouter.get('/states', async (req, res) => {
   const q = rangeQuerySchema.parse(req.query);
-  const o = z.object({ source: z.enum(['all', 'seller', 'vendor']).default('all'), category: optText }).parse(req.query);
+  const o = z
+    .object({ source: z.enum(['all', 'seller', 'vendor']).default('all'), category: optText })
+    .parse(req.query);
   res.json(await getStates(q.profileId, q.from, q.to, o));
 });
 

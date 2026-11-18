@@ -16,8 +16,20 @@ export interface PlacementRecord {
 }
 
 const SPEND = ['Spend', 'Spend (₹)', 'Cost'];
-const SALES = ['7 Day Total Sales', '7 Day Total Sales (₹)', '14 Day Total Sales', '14 Day Total Sales (₹)', 'Total Sales'];
-const UNITS = ['7 Day Total Units (#)', '14 Day Total Units (#)', '7 Day Total Units', '14 Day Total Units', 'Total Units'];
+const SALES = [
+  '7 Day Total Sales',
+  '7 Day Total Sales (₹)',
+  '14 Day Total Sales',
+  '14 Day Total Sales (₹)',
+  'Total Sales',
+];
+const UNITS = [
+  '7 Day Total Units (#)',
+  '14 Day Total Units (#)',
+  '7 Day Total Units',
+  '14 Day Total Units',
+  'Total Units',
+];
 const ORDERS = ['7 Day Total Orders (#)', '14 Day Total Orders (#)', 'Total Orders (#)'];
 
 /** TOS / ROS / PDP (ported from eigen). Unrecognised labels are kept as-is, never dropped. */
@@ -58,20 +70,18 @@ export function parsePlacements(
       continue;
     }
     const key = `${date}|${campaignName}|${rawPlacement}`;
-    const cur =
-      acc.get(key) ??
-      {
-        date,
-        channel,
-        campaignName,
-        placement: normalizePlacement(rawPlacement),
-        rawPlacement,
-        impressions: 0,
-        clicks: 0,
-        spend: 0,
-        adSales: 0,
-        adUnits: 0,
-      };
+    const cur = acc.get(key) ?? {
+      date,
+      channel,
+      campaignName,
+      placement: normalizePlacement(rawPlacement),
+      rawPlacement,
+      impressions: 0,
+      clicks: 0,
+      spend: 0,
+      adSales: 0,
+      adUnits: 0,
+    };
     cur.impressions += num(pick(r, ['Impressions']));
     cur.clicks += num(pick(r, ['Clicks']));
     cur.spend += num(pick(r, SPEND));
@@ -80,7 +90,12 @@ export function parsePlacements(
     acc.set(key, cur);
   }
   if (undated) warnings.push(`${undated} row(s) skipped: no single-day date.`);
-  const records = [...acc.values()].map((r) => ({ ...r, spend: round2(r.spend), adSales: round2(r.adSales) }));
-  if (!records.length && rows.length) return { records, rowsRead: rows.length, warnings, error: 'No dated placement rows.' };
+  const records = [...acc.values()].map((r) => ({
+    ...r,
+    spend: round2(r.spend),
+    adSales: round2(r.adSales),
+  }));
+  if (!records.length && rows.length)
+    return { records, rowsRead: rows.length, warnings, error: 'No dated placement rows.' };
   return { records, rowsRead: rows.length, warnings };
 }

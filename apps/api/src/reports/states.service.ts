@@ -30,7 +30,9 @@ export async function getStates(
     : sql`coalesce(sum(s.sales), 0) + coalesce(sum(s.unpriced_units * p.selling_price), 0)`;
   const unitsExpr = pi ? sql`coalesce(sum(s.gross_units), 0)` : sql`coalesce(sum(s.units), 0)`;
   const ordersExpr = pi ? sql`null::int` : sql`sum(s.orders)`;
-  const unvaluedExpr = pi ? sql`0` : sql`coalesce(sum(case when p.selling_price is null then s.unpriced_units else 0 end), 0)`;
+  const unvaluedExpr = pi
+    ? sql`0`
+    : sql`coalesce(sum(case when p.selling_price is null then s.unpriced_units else 0 end), 0)`;
 
   const conds: SQL[] = [sql`s.profile_id = ${profileId}`, sql`s.date between ${from} and ${to}`];
   if (!pi && opts.source !== 'all') conds.push(sql`s.source = ${opts.source}`);
@@ -68,13 +70,19 @@ export async function getStates(
   const notes: string[] = [];
   const src = new Map(sources.map((s) => [s.source, Number(s.days)]));
   if (pi) {
-    notes.push('Geography comes from Amazon Pi — delivery cities rolled up to state (gross sales/units). The Seller/Vendor source filter and order counts do not apply.');
+    notes.push(
+      'Geography comes from Amazon Pi — delivery cities rolled up to state (gross sales/units). The Seller/Vendor source filter and order counts do not apply.'
+    );
   } else {
     if (!src.get('seller'))
-      notes.push('No Seller Central Order report in this range — Seller sales have no state breakdown (Business Report totals carry none). Upload the Order report to include them.');
+      notes.push(
+        'No Seller Central Order report in this range — Seller sales have no state breakdown (Business Report totals carry none). Upload the Order report to include them.'
+      );
     if (!src.get('vendor')) notes.push('No Vendor Central State-view data in this range.');
     if (Number(t?.unvalued ?? 0) > 0)
-      notes.push(`${Number(t!.unvalued)} Vendor shipped unit(s) have no selling price in the ASIN mapper — counted in Units, not Sales.`);
+      notes.push(
+        `${Number(t!.unvalued)} Vendor shipped unit(s) have no selling price in the ASIN mapper — counted in Units, not Sales.`
+      );
     if (src.get('vendor')) notes.push('Vendor Central has no order count, so Orders covers Seller only.');
   }
 

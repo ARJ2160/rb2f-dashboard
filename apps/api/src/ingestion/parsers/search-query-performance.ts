@@ -62,7 +62,9 @@ export function rekeyTwoRowHeader(headers: string[], rows: Row[]): { headers: st
   const first = rows[0];
   if (!first || headers.some((h) => /^search query$/i.test(h.trim()))) return { headers, rows };
   const values = headers.map((h) => str(first[h]));
-  const looksLikeHeader = values.some((v) => /^search query$/i.test(v)) && values.some((v) => /count$/i.test(v) || /^search query volume$/i.test(v));
+  const looksLikeHeader =
+    values.some((v) => /^search query$/i.test(v)) &&
+    values.some((v) => /count$/i.test(v) || /^search query volume$/i.test(v));
   if (!looksLikeHeader) return { headers, rows };
 
   let group = '';
@@ -94,9 +96,12 @@ export function periodFromPreamble(preamble: string[]): { from: string; to: stri
   const isoPair = text.match(/(20\d{2}-\d{2}-\d{2})\s*(?:-|–|to)\s*(20\d{2}-\d{2}-\d{2})/i);
   if (isoPair) return order(isoPair[1]!, isoPair[2]!);
 
-  const quarter = text.match(/\bQ([1-4])\s*[-/ ]?\s*(20\d{2})\b/i) ?? text.match(/\b(20\d{2})\s*[-/ ]?\s*Q([1-4])\b/i);
+  const quarter =
+    text.match(/\bQ([1-4])\s*[-/ ]?\s*(20\d{2})\b/i) ?? text.match(/\b(20\d{2})\s*[-/ ]?\s*Q([1-4])\b/i);
   if (quarter && /quarter/i.test(text)) {
-    const [q, y] = /^20/.test(quarter[1]!) ? [Number(quarter[2]), Number(quarter[1])] : [Number(quarter[1]), Number(quarter[2])];
+    const [q, y] = /^20/.test(quarter[1]!)
+      ? [Number(quarter[2]), Number(quarter[1])]
+      : [Number(quarter[1]), Number(quarter[2])];
     const m1 = (q - 1) * 3 + 1;
     return { from: isoOf(y, m1, 1), to: isoOf(y, m1 + 2, lastDay(y, m1 + 2)) };
   }
@@ -158,22 +163,20 @@ export function parseSearchQueryPerformance(
     ) as Record<CountKey, number>;
     if (Object.values(counts).some((v) => v > 0)) sawMetric = true;
 
-    const cur =
-      acc.get(searchQuery) ??
-      {
-        periodStart: period.from,
-        periodEnd: period.to,
-        searchQuery,
-        volume: 0,
-        impressionsTotal: 0,
-        impressionsBrand: 0,
-        clicksTotal: 0,
-        clicksBrand: 0,
-        cartAddsTotal: 0,
-        cartAddsBrand: 0,
-        purchasesTotal: 0,
-        purchasesBrand: 0,
-      };
+    const cur = acc.get(searchQuery) ?? {
+      periodStart: period.from,
+      periodEnd: period.to,
+      searchQuery,
+      volume: 0,
+      impressionsTotal: 0,
+      impressionsBrand: 0,
+      clicksTotal: 0,
+      clicksBrand: 0,
+      cartAddsTotal: 0,
+      cartAddsBrand: 0,
+      purchasesTotal: 0,
+      purchasesBrand: 0,
+    };
     // Volume belongs to the query, not the row: casing variants of one query report the same volume.
     cur.volume = Math.max(cur.volume, num(pick(r, VOLUME)));
     for (const k of Object.keys(COLUMNS) as CountKey[]) cur[k] += counts[k];
@@ -182,7 +185,8 @@ export function parseSearchQueryPerformance(
 
   const records = [...acc.values()].map((r) => {
     const out = { ...r };
-    for (const k of ['volume', ...Object.keys(COLUMNS)] as Array<'volume' | CountKey>) out[k] = Math.round(out[k]);
+    for (const k of ['volume', ...Object.keys(COLUMNS)] as Array<'volume' | CountKey>)
+      out[k] = Math.round(out[k]);
     return out;
   });
   if (records.length && !sawMetric) {

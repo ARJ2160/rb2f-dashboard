@@ -9,7 +9,15 @@ const TITLE = ['Title', 'Product Title', 'Item Name'];
  * price and only used when BAU is blank. MRP is deliberately NOT used — it is
  * a list price, not what the customer paid.
  */
-export const PRICE_COLUMNS = ['Selling Price', 'Selling price', 'SP', 'Price', 'BAU', 'BAU Price', 'Event Price'] as const;
+export const PRICE_COLUMNS = [
+  'Selling Price',
+  'Selling price',
+  'SP',
+  'Price',
+  'BAU',
+  'BAU Price',
+  'Event Price',
+] as const;
 const ASIN_RE = /^[A-Z0-9]{10}$/;
 const JUNK = /^(#n\/a|n\/a|na|-|—|0)$/i;
 
@@ -42,7 +50,8 @@ export function parseAsinMapper(headers: string[], rows: Row[]): ParseResult<Map
       error: `No category column found. Expected one of: ${CATEGORY_COLUMNS.join(', ')}.`,
     };
   }
-  if (categoryCol !== 'Category') warnings.push(`No "Category" column — using "${categoryCol}" as the category.`);
+  if (categoryCol !== 'Category')
+    warnings.push(`No "Category" column — using "${categoryCol}" as the category.`);
 
   const seen = new Map<string, MapperRecord>();
   let blankCategory = 0;
@@ -88,11 +97,24 @@ export function parseAsinMapper(headers: string[], rows: Row[]): ParseResult<Map
     if (m.sellingPrice == null) noPrice++;
   }
   const priceCol = PRICE_COLUMNS.filter((c) => hasColumn(headers, [c]));
-  if (priceCol.length === 0) warnings.push('No selling-price column (Selling Price / Price / BAU / Event Price) — Vendor shipped units with ₹0 revenue cannot be valued.');
-  else if (noPrice) warnings.push(`${noPrice} of ${seen.size} ASIN(s) have no selling price in ${priceCol.join(' / ')} — Vendor shipped units for them can't be valued.`);
-  if (notAsin) warnings.push(`${notAsin} row(s) skipped: the ASIN cell isn't a 10-character ASIN (repeated headers, notes…).`);
-  if (conflicting) warnings.push(`${conflicting} ASIN(s) appear more than once with different categories — the first one was kept.`);
-  if (blankCategory) warnings.push(`${blankCategory} ASIN(s) have no ${categoryCol} — they will show as "Unmapped".`);
+  if (priceCol.length === 0)
+    warnings.push(
+      'No selling-price column (Selling Price / Price / BAU / Event Price) — Vendor shipped units with ₹0 revenue cannot be valued.'
+    );
+  else if (noPrice)
+    warnings.push(
+      `${noPrice} of ${seen.size} ASIN(s) have no selling price in ${priceCol.join(' / ')} — Vendor shipped units for them can't be valued.`
+    );
+  if (notAsin)
+    warnings.push(
+      `${notAsin} row(s) skipped: the ASIN cell isn't a 10-character ASIN (repeated headers, notes…).`
+    );
+  if (conflicting)
+    warnings.push(
+      `${conflicting} ASIN(s) appear more than once with different categories — the first one was kept.`
+    );
+  if (blankCategory)
+    warnings.push(`${blankCategory} ASIN(s) have no ${categoryCol} — they will show as "Unmapped".`);
   if (seen.size === 0) return { records: [], rowsRead: rows.length, warnings, error: 'No ASIN rows found.' };
   return { records: [...seen.values()], rowsRead: rows.length, warnings };
 }

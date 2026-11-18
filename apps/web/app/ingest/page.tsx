@@ -37,7 +37,14 @@ const today = () => isoDaysAgo(0);
 const toYYYYMMDD = (iso: string) => iso.replace(/-/g, '');
 
 /** Mirrors the server-side buildFilename logic. */
-function previewFilename(brand: string, reportTypeId: string, startDate: string, endDate: string, originalName: string, suffix = ''): string {
+function previewFilename(
+  brand: string,
+  reportTypeId: string,
+  startDate: string,
+  endDate: string,
+  originalName: string,
+  suffix = ''
+): string {
   if (!brand || !reportTypeId || !startDate || !endDate) return '';
   const ext = originalName.includes('.') ? '.' + originalName.split('.').pop()!.toLowerCase() : '.csv';
   return `${brand}_${reportTypeId}_${toYYYYMMDD(startDate)}_${toYYYYMMDD(endDate)}${suffix}${ext}`;
@@ -46,7 +53,7 @@ function previewFilename(brand: string, reportTypeId: string, startDate: string,
 interface FileRow {
   file: File;
   marketplace: Marketplace;
-  reportType: string;               // coarse id, '' if unassigned
+  reportType: string; // coarse id, '' if unassigned
   detectedBy: 'headers' | 'filename' | null;
   fineType: string | null;
   note?: string;
@@ -56,25 +63,27 @@ interface FileRow {
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function IngestPage() {
-  const [brands, setBrands]           = useState<string[]>([]);
-  const [brand, setBrand]             = useState('');
+  const [brands, setBrands] = useState<string[]>([]);
+  const [brand, setBrand] = useState('');
   const [marketplace, setMarketplace] = useState<Marketplace>('amazon');
-  const [allTypes, setAllTypes]       = useState<ReportType[]>([]);
-  const [startDate, setStartDate]     = useState(isoDaysAgo(14));
-  const [endDate, setEndDate]         = useState(today());
-  const [rows, setRows]               = useState<FileRow[]>([]);
-  const [busy, setBusy]               = useState(false);
-  const [error, setError]             = useState<string | null>(null);
-  const [result, setResult]           = useState<BulkIngestResponse | null>(null);
-  const [dragging, setDragging]       = useState(false);
-  const inputRef                      = useRef<HTMLInputElement>(null);
+  const [allTypes, setAllTypes] = useState<ReportType[]>([]);
+  const [startDate, setStartDate] = useState(isoDaysAgo(14));
+  const [endDate, setEndDate] = useState(today());
+  const [rows, setRows] = useState<FileRow[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<BulkIngestResponse | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Restore the last-used marketplace (shared with the GCS page toggle).
   useEffect(() => {
     try {
       const saved = localStorage.getItem(MARKETPLACE_KEY) as Marketplace | null;
       if (saved && MARKETPLACES.some((m) => m.id === saved)) setMarketplace(saved);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   // Load brands + the full report-type catalogue once.
@@ -87,61 +96,61 @@ export default function IngestPage() {
       .catch(() => setAllTypes([]));
   }, []);
 
-  const typesFor = useCallback(
-    (m: Marketplace) => allTypes.filter((t) => t.marketplace === m),
-    [allTypes]
-  );
+  const typesFor = useCallback((m: Marketplace) => allTypes.filter((t) => t.marketplace === m), [allTypes]);
 
   // Add files → create rows immediately, then run auto-detect to fill them in.
-  const addFiles = useCallback(async (list: FileList | null) => {
-    if (!list) return;
-    const picked = [...list].filter((f) => /\.(xlsx|xls|csv)$/i.test(f.name));
-    if (!picked.length) return;
+  const addFiles = useCallback(
+    async (list: FileList | null) => {
+      if (!list) return;
+      const picked = [...list].filter((f) => /\.(xlsx|xls|csv)$/i.test(f.name));
+      if (!picked.length) return;
 
-    // Skip names already queued.
-    const existing = new Set(rows.map((r) => r.file.name));
-    const fresh = picked.filter((f) => !existing.has(f.name));
-    if (!fresh.length) return;
+      // Skip names already queued.
+      const existing = new Set(rows.map((r) => r.file.name));
+      const fresh = picked.filter((f) => !existing.has(f.name));
+      if (!fresh.length) return;
 
-    const newRows: FileRow[] = fresh.map((file) => ({
-      file,
-      marketplace,                     // default to the batch marketplace; detection may override below
-      reportType: '',
-      detectedBy: null,
-      fineType: null,
-      detecting: true,
-    }));
-    setRows((prev) => [...prev, ...newRows]);
+      const newRows: FileRow[] = fresh.map((file) => ({
+        file,
+        marketplace, // default to the batch marketplace; detection may override below
+        reportType: '',
+        detectedBy: null,
+        fineType: null,
+        detecting: true,
+      }));
+      setRows((prev) => [...prev, ...newRows]);
 
-    try {
-      const { detections } = await gcsDetect(fresh);
-      const byName = new Map(detections.map((d) => [d.filename, d]));
-      setRows((prev) =>
-        prev.map((r) => {
-          if (!fresh.includes(r.file)) return r;
-          const d = byName.get(r.file.name);
-          if (!d) return { ...r, detecting: false };
-          // Detection can override the batch marketplace when a file plainly
-          // carries another marketplace's own columns (e.g. a Swiggy Instamart
-          // export dropped into an Amazon batch). Otherwise the batch wins.
-          const overrode = d.marketplace != null && d.marketplace !== marketplace;
-          return {
-            ...r,
-            marketplace: d.marketplace ?? marketplace,
-            reportType: d.reportType ?? '',
-            detectedBy: d.detectedBy,
-            fineType: d.fineType,
-            note: overrode
-              ? `Detected as ${MARKETPLACES.find((m) => m.id === d.marketplace)?.label ?? d.marketplace} from its columns — routed there instead of ${MARKETPLACES.find((m) => m.id === marketplace)?.label ?? marketplace}.`
-              : d.note,
-            detecting: false,
-          };
-        })
-      );
-    } catch {
-      setRows((prev) => prev.map((r) => (fresh.includes(r.file) ? { ...r, detecting: false } : r)));
-    }
-  }, [rows, marketplace]);
+      try {
+        const { detections } = await gcsDetect(fresh);
+        const byName = new Map(detections.map((d) => [d.filename, d]));
+        setRows((prev) =>
+          prev.map((r) => {
+            if (!fresh.includes(r.file)) return r;
+            const d = byName.get(r.file.name);
+            if (!d) return { ...r, detecting: false };
+            // Detection can override the batch marketplace when a file plainly
+            // carries another marketplace's own columns (e.g. a Swiggy Instamart
+            // export dropped into an Amazon batch). Otherwise the batch wins.
+            const overrode = d.marketplace != null && d.marketplace !== marketplace;
+            return {
+              ...r,
+              marketplace: d.marketplace ?? marketplace,
+              reportType: d.reportType ?? '',
+              detectedBy: d.detectedBy,
+              fineType: d.fineType,
+              note: overrode
+                ? `Detected as ${MARKETPLACES.find((m) => m.id === d.marketplace)?.label ?? d.marketplace} from its columns — routed there instead of ${MARKETPLACES.find((m) => m.id === marketplace)?.label ?? marketplace}.`
+                : d.note,
+              detecting: false,
+            };
+          })
+        );
+      } catch {
+        setRows((prev) => prev.map((r) => (fresh.includes(r.file) ? { ...r, detecting: false } : r)));
+      }
+    },
+    [rows, marketplace]
+  );
 
   const updateRow = (name: string, patch: Partial<FileRow>) =>
     setRows((prev) => prev.map((r) => (r.file.name === name ? { ...r, ...patch } : r)));
@@ -151,9 +160,20 @@ export default function IngestPage() {
   /** Switch the whole batch to another marketplace and re-base every row to it. */
   const changeMarketplace = (m: Marketplace) => {
     setMarketplace(m);
-    try { localStorage.setItem(MARKETPLACE_KEY, m); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(MARKETPLACE_KEY, m);
+    } catch {
+      /* ignore */
+    }
     setRows((prev) =>
-      prev.map((r) => ({ ...r, marketplace: m, reportType: '', detectedBy: null, fineType: null, note: undefined }))
+      prev.map((r) => ({
+        ...r,
+        marketplace: m,
+        reportType: '',
+        detectedBy: null,
+        fineType: null,
+        note: undefined,
+      }))
     );
   };
 
@@ -174,12 +194,30 @@ export default function IngestPage() {
   const unassigned = rows.filter((r) => !r.reportType).length;
 
   const submit = useCallback(async () => {
-    if (!brand.trim())       { setError('Pick or enter a brand name.'); return; }
-    if (!startDate)          { setError('Enter a start date.'); return; }
-    if (!endDate)            { setError('Enter an end date.'); return; }
-    if (endDate < startDate) { setError('End date must be on or after start date.'); return; }
-    if (!rows.length)        { setError('Add at least one file.'); return; }
-    if (unassigned > 0)      { setError(`${unassigned} file(s) have no report type — pick one for each.`); return; }
+    if (!brand.trim()) {
+      setError('Pick or enter a brand name.');
+      return;
+    }
+    if (!startDate) {
+      setError('Enter a start date.');
+      return;
+    }
+    if (!endDate) {
+      setError('Enter an end date.');
+      return;
+    }
+    if (endDate < startDate) {
+      setError('End date must be on or after start date.');
+      return;
+    }
+    if (!rows.length) {
+      setError('Add at least one file.');
+      return;
+    }
+    if (unassigned > 0) {
+      setError(`${unassigned} file(s) have no report type — pick one for each.`);
+      return;
+    }
 
     setBusy(true);
     setError(null);
@@ -190,7 +228,13 @@ export default function IngestPage() {
         marketplace: r.marketplace,
         reportType: r.reportType,
       }));
-      const res = await gcsIngestBulk(brand.trim(), startDate, endDate, assignments, rows.map((r) => r.file));
+      const res = await gcsIngestBulk(
+        brand.trim(),
+        startDate,
+        endDate,
+        assignments,
+        rows.map((r) => r.file)
+      );
       setResult(res);
       setRows([]);
     } catch (e) {
@@ -205,8 +249,8 @@ export default function IngestPage() {
       <div>
         <h1 className="text-lg font-semibold tracking-tight">Ingest to warehouse</h1>
         <p className="mt-1 text-sm text-muted">
-          Drop all your report files at once — each one&apos;s type is detected from its columns. Files are renamed to the
-          standard format and routed to the right folder before upload.
+          Drop all your report files at once — each one&apos;s type is detected from its columns. Files are
+          renamed to the standard format and routed to the right folder before upload.
         </p>
       </div>
 
@@ -214,9 +258,17 @@ export default function IngestPage() {
       <section className="space-y-2">
         <label className="text-xs font-medium uppercase tracking-wide text-muted">Account / brand</label>
         {brands.length > 0 ? (
-          <select className="select select-bordered w-full" value={brand} onChange={(e) => setBrand(e.target.value)}>
+          <select
+            className="select select-bordered w-full"
+            value={brand}
+            onChange={(e) => setBrand(e.target.value)}
+          >
             <option value="">— select brand —</option>
-            {brands.map((b) => <option key={b} value={b}>{b}</option>)}
+            {brands.map((b) => (
+              <option key={b} value={b}>
+                {b}
+              </option>
+            ))}
           </select>
         ) : (
           <input
@@ -231,23 +283,52 @@ export default function IngestPage() {
 
       {/* ── Date range ── */}
       <section className="space-y-2">
-        <label className="text-xs font-medium uppercase tracking-wide text-muted">Date range covered by these files</label>
+        <label className="text-xs font-medium uppercase tracking-wide text-muted">
+          Date range covered by these files
+        </label>
         <div className="flex items-center gap-3">
           <div className="flex flex-1 flex-col gap-1">
             <label className="text-xs text-muted">Start date</label>
-            <input type="date" className="input w-full" value={startDate} max={endDate || today()} onChange={(e) => setStartDate(e.target.value)} />
+            <input
+              type="date"
+              className="input w-full"
+              value={startDate}
+              max={endDate || today()}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
           </div>
           <span className="mt-5 text-muted">→</span>
           <div className="flex flex-1 flex-col gap-1">
             <label className="text-xs text-muted">End date</label>
-            <input type="date" className="input w-full" value={endDate} min={startDate} max={today()} onChange={(e) => setEndDate(e.target.value)} />
+            <input
+              type="date"
+              className="input w-full"
+              value={endDate}
+              min={startDate}
+              max={today()}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
           </div>
         </div>
         <div className="flex items-center gap-3 text-xs text-muted">
-          <button type="button" className="underline hover:text-base-content" onClick={() => { setStartDate(isoDaysAgo(14)); setEndDate(today()); }}>
+          <button
+            type="button"
+            className="underline hover:text-base-content"
+            onClick={() => {
+              setStartDate(isoDaysAgo(14));
+              setEndDate(today());
+            }}
+          >
             Last 14 days
           </button>
-          <button type="button" className="underline hover:text-base-content" onClick={() => { setStartDate(today()); setEndDate(today()); }}>
+          <button
+            type="button"
+            className="underline hover:text-base-content"
+            onClick={() => {
+              setStartDate(today());
+              setEndDate(today());
+            }}
+          >
             Today only
           </button>
           <span>Default is the last 14 days (the Amazon attribution window).</span>
@@ -257,7 +338,11 @@ export default function IngestPage() {
       {/* ── Marketplace ── */}
       <section className="space-y-2">
         <label className="text-xs font-medium uppercase tracking-wide text-muted">Marketplace</label>
-        <div className="inline-flex flex-wrap gap-1 rounded-xl border border-line bg-side p-1" role="radiogroup" aria-label="Marketplace">
+        <div
+          className="inline-flex flex-wrap gap-1 rounded-xl border border-line bg-side p-1"
+          role="radiogroup"
+          aria-label="Marketplace"
+        >
           {MARKETPLACES.map((m) => {
             const on = marketplace === m.id;
             return (
@@ -268,7 +353,9 @@ export default function IngestPage() {
                 aria-checked={on}
                 onClick={() => changeMarketplace(m.id)}
                 className={`flex h-9 items-center gap-2 rounded-lg pl-1.5 pr-3.5 text-sm transition-all ${
-                  on ? 'bg-surface font-semibold text-ink shadow-[0_1px_3px_rgb(20_23_28/0.12)] ring-1 ring-line' : 'text-ink/65 hover:text-ink'
+                  on
+                    ? 'bg-surface font-semibold text-ink shadow-[0_1px_3px_rgb(20_23_28/0.12)] ring-1 ring-line'
+                    : 'text-ink/65 hover:text-ink'
                 }`}
                 title={`Route this batch to each brand's ${m.id}/ folder`}
               >
@@ -281,7 +368,10 @@ export default function IngestPage() {
           })}
         </div>
         <p className="text-xs text-muted">
-          All files in this batch upload to <span className="font-medium">{MARKETPLACES.find((m) => m.id === marketplace)?.label}</span>. If a file&apos;s columns clearly belong to another marketplace, it&apos;s routed there automatically and flagged below.
+          All files in this batch upload to{' '}
+          <span className="font-medium">{MARKETPLACES.find((m) => m.id === marketplace)?.label}</span>. If a
+          file&apos;s columns clearly belong to another marketplace, it&apos;s routed there automatically and
+          flagged below.
         </p>
       </section>
 
@@ -289,16 +379,24 @@ export default function IngestPage() {
       <section className="space-y-2">
         <label className="text-xs font-medium uppercase tracking-wide text-muted">Files</label>
         <div
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
           onDragLeave={() => setDragging(false)}
-          onDrop={(e) => { e.preventDefault(); setDragging(false); addFiles(e.dataTransfer.files); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragging(false);
+            addFiles(e.dataTransfer.files);
+          }}
           onClick={() => inputRef.current?.click()}
           className={`flex min-h-[90px] cursor-pointer items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
             dragging ? 'border-primary bg-primary/5' : 'border-line hover:border-primary/50'
           }`}
         >
           <span className="text-sm text-muted">
-            Drop all your <span className="font-medium">.xlsx / .xls / .csv</span> reports here, or click to browse
+            Drop all your <span className="font-medium">.xlsx / .xls / .csv</span> reports here, or click to
+            browse
           </span>
         </div>
         <input
@@ -307,7 +405,10 @@ export default function IngestPage() {
           accept=".xlsx,.xls,.csv"
           multiple
           className="hidden"
-          onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
+          onChange={(e) => {
+            addFiles(e.target.files);
+            e.target.value = '';
+          }}
         />
       </section>
 
@@ -319,7 +420,11 @@ export default function IngestPage() {
               {rows.length} file{rows.length > 1 ? 's' : ''}
               {unassigned > 0 && <span className="ml-2 text-warning">· {unassigned} need a type</span>}
             </label>
-            <button type="button" className="text-xs text-muted underline hover:text-error" onClick={() => setRows([])}>
+            <button
+              type="button"
+              className="text-xs text-muted underline hover:text-error"
+              onClick={() => setRows([])}
+            >
               Clear all
             </button>
           </div>
@@ -344,7 +449,9 @@ export default function IngestPage() {
                   ) : r.detectedBy ? (
                     <span
                       className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                        r.detectedBy === 'headers' ? 'bg-success/15 text-success' : 'bg-primary/15 text-primary'
+                        r.detectedBy === 'headers'
+                          ? 'bg-success/15 text-success'
+                          : 'bg-primary/15 text-primary'
                       }`}
                       title={r.fineType ? `Detected as ${r.fineType} by ${r.detectedBy}` : undefined}
                     >
@@ -385,10 +492,16 @@ export default function IngestPage() {
                         note: undefined,
                       })
                     }
-                    title={r.marketplace !== marketplace ? 'Overrides the batch marketplace for this file' : undefined}
+                    title={
+                      r.marketplace !== marketplace
+                        ? 'Overrides the batch marketplace for this file'
+                        : undefined
+                    }
                   >
                     {MARKETPLACES.map((m) => (
-                      <option key={m.id} value={m.id}>{m.label}</option>
+                      <option key={m.id} value={m.id}>
+                        {m.label}
+                      </option>
                     ))}
                   </select>
 
@@ -399,7 +512,9 @@ export default function IngestPage() {
                   >
                     <option value="">{r.detecting ? 'detecting…' : '— pick report type —'}</option>
                     {typesFor(r.marketplace).map((t) => (
-                      <option key={t.id} value={t.id}>{t.label}</option>
+                      <option key={t.id} value={t.id}>
+                        {t.label}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -413,7 +528,9 @@ export default function IngestPage() {
                 ) : r.note ? (
                   <p className="mt-1.5 text-xs text-warning">{r.note}</p>
                 ) : !r.detecting ? (
-                  <p className="mt-1.5 text-xs text-muted">Couldn&apos;t detect this report — pick its type above.</p>
+                  <p className="mt-1.5 text-xs text-muted">
+                    Couldn&apos;t detect this report — pick its type above.
+                  </p>
                 ) : null}
               </div>
             ))}
@@ -423,7 +540,9 @@ export default function IngestPage() {
 
       {/* ── Error ── */}
       {error && (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">{error}</div>
+        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+          {error}
+        </div>
       )}
 
       {/* ── Submit ── */}
@@ -433,7 +552,9 @@ export default function IngestPage() {
         disabled={busy || !rows.length || !brand || unassigned > 0}
         className="btn btn-primary w-full"
       >
-        {busy ? 'Uploading…' : `Upload ${rows.length ? `${rows.length} file${rows.length > 1 ? 's' : ''} ` : ''}to GCS`}
+        {busy
+          ? 'Uploading…'
+          : `Upload ${rows.length ? `${rows.length} file${rows.length > 1 ? 's' : ''} ` : ''}to GCS`}
       </button>
 
       {/* ── Results ── */}
@@ -443,7 +564,9 @@ export default function IngestPage() {
           <ul className="space-y-1">
             {result.files.map((f) => (
               <li key={f.objectName} className="flex items-start gap-2 text-sm">
-                <span className={`mt-0.5 shrink-0 ${f.status === 'uploaded' ? 'text-success' : 'text-error'}`}>
+                <span
+                  className={`mt-0.5 shrink-0 ${f.status === 'uploaded' ? 'text-success' : 'text-error'}`}
+                >
                   {f.status === 'uploaded' ? '✓' : '✗'}
                 </span>
                 <span className="flex-1">
@@ -456,12 +579,16 @@ export default function IngestPage() {
           {result.sync.length > 0 ? (
             <p className="text-sm text-muted">
               Sync started ({result.sync.length} marketplace{result.sync.length > 1 ? 's' : ''}).{' '}
-              <a href="/" className="text-primary underline">View on GCS page →</a>
+              <a href="/" className="text-primary underline">
+                View on GCS page →
+              </a>
             </p>
           ) : result.files.some((f) => f.status === 'uploaded') ? (
             <p className="text-sm text-muted">
               Files uploaded.{' '}
-              <a href="/" className="text-primary underline">Go to GCS → Sync now</a>
+              <a href="/" className="text-primary underline">
+                Go to GCS → Sync now
+              </a>
             </p>
           ) : null}
         </section>

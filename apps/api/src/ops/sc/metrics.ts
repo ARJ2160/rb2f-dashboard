@@ -24,7 +24,8 @@ export const drr = (units: number, days: number): number | null => (days > 0 ? u
 export const daysOnHand = (stock: number, rate: number | null): number | null =>
   rate != null && rate > 0 ? stock / rate : null;
 /** Percent change from a→b; null when the base is 0 ("New"). */
-export const changePct = (base: number, now: number): number | null => (base === 0 ? null : ((now - base) / base) * 100);
+export const changePct = (base: number, now: number): number | null =>
+  base === 0 ? null : ((now - base) / base) * 100;
 
 export type ScStockFlag =
   | 'No sales'
@@ -64,7 +65,15 @@ export function skuFcFlag(
 }
 
 /** Statuses that count as "closed" for shortfall, and the active (inbound) set. */
-export const SHIPMENT_INBOUND_STATUSES = ['Working', 'Ready to ship', 'Shipped', 'In transit', 'Delivered', 'Checked-in', 'Receiving'];
+export const SHIPMENT_INBOUND_STATUSES = [
+  'Working',
+  'Ready to ship',
+  'Shipped',
+  'In transit',
+  'Delivered',
+  'Checked-in',
+  'Receiving',
+];
 const norm = (s: string) => s.trim().toLowerCase();
 const isStatus = (status: string, name: string) => norm(status) === norm(name);
 
@@ -83,7 +92,8 @@ export function shipmentFlag(
 ): ScShipmentFlag {
   const d = p.daysSinceCreated ?? 0;
   if (isStatus(p.status, 'Cancelled')) return 'Cancelled';
-  if (isStatus(p.status, 'Closed')) return p.shortfall > 0 ? 'Closed - short received (raise case)' : 'Closed - OK';
+  if (isStatus(p.status, 'Closed'))
+    return p.shortfall > 0 ? 'Closed - short received (raise case)' : 'Closed - OK';
   if (isStatus(p.status, 'Receiving') && d > t.stuckReceivingDays) return 'Receiving - stuck';
   if (isStatus(p.status, 'In transit') && d > t.inTransitTooLongDays) return 'In transit - delayed';
   if (isStatus(p.status, 'Working') && d > t.workingTooLongDays) return 'Not shipped yet';
@@ -104,11 +114,22 @@ export interface HealthResult {
 }
 
 const resolve = (not: string[], att: string[]): HealthResult =>
-  not.length ? { status: 'not_working', reasons: not } : att.length ? { status: 'needs_attention', reasons: att } : { status: 'working', reasons: [] };
+  not.length
+    ? { status: 'not_working', reasons: not }
+    : att.length
+      ? { status: 'needs_attention', reasons: att }
+      : { status: 'working', reasons: [] };
 
 /** SKU-level health (§5.3 Seller Central). */
 export function skuHealth(
-  p: { stockFlag: ScStockFlag; fcStockouts: number; returnRatePct: number; agedSharePct: number; drr7: number | null; drr30: number | null },
+  p: {
+    stockFlag: ScStockFlag;
+    fcStockouts: number;
+    returnRatePct: number;
+    agedSharePct: number;
+    drr7: number | null;
+    drr30: number | null;
+  },
   t: ScThresholds
 ): HealthResult {
   const not: string[] = [];
@@ -144,20 +165,31 @@ export function shipmentHealth(
   if (p.flag === 'Receiving - stuck') not.push('Receiving stuck');
   if (p.flag === 'In transit - delayed') not.push('In transit delayed');
   if (isStatus(p.status, 'Closed') && p.shortfall > 0) not.push(`Short received ${p.shortfall} units`);
-  if (isStatus(p.status, 'Receiving') && p.fillRate != null && p.fillRate < 100) att.push(`Only ${round1(p.fillRate)}% located so far`);
+  if (isStatus(p.status, 'Receiving') && p.fillRate != null && p.fillRate < 100)
+    att.push(`Only ${round1(p.fillRate)}% located so far`);
   return resolve(not, att);
 }
 
 /** Warehouse-level health, aggregated from its SKU×FC and shipment signals. */
 export function warehouseHealth(
-  p: { skusStockedOut: number; shipmentsShort: number; shipmentsStuckOrDelayed: number; lowCoverSkus: number; excessSkus: number },
+  p: {
+    skusStockedOut: number;
+    shipmentsShort: number;
+    shipmentsStuckOrDelayed: number;
+    lowCoverSkus: number;
+    excessSkus: number;
+  },
   _t: ScThresholds
 ): HealthResult {
   const not: string[] = [];
   const att: string[] = [];
   if (p.skusStockedOut > 0) not.push(`${p.skusStockedOut} SKU stockout${p.skusStockedOut > 1 ? 's' : ''}`);
-  if (p.shipmentsShort > 0) not.push(`${p.shipmentsShort} short-received shipment${p.shipmentsShort > 1 ? 's' : ''}`);
-  if (p.shipmentsStuckOrDelayed > 0) not.push(`${p.shipmentsStuckOrDelayed} stuck/delayed shipment${p.shipmentsStuckOrDelayed > 1 ? 's' : ''}`);
+  if (p.shipmentsShort > 0)
+    not.push(`${p.shipmentsShort} short-received shipment${p.shipmentsShort > 1 ? 's' : ''}`);
+  if (p.shipmentsStuckOrDelayed > 0)
+    not.push(
+      `${p.shipmentsStuckOrDelayed} stuck/delayed shipment${p.shipmentsStuckOrDelayed > 1 ? 's' : ''}`
+    );
   if (p.lowCoverSkus > 0) att.push(`${p.lowCoverSkus} low-cover SKU${p.lowCoverSkus > 1 ? 's' : ''}`);
   if (p.excessSkus > 0) att.push(`${p.excessSkus} excess SKU${p.excessSkus > 1 ? 's' : ''}`);
   return resolve(not, att);

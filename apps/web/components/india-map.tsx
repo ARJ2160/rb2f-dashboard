@@ -18,7 +18,11 @@ const NO_DATA = '#eceef1';
 
 export type MapMetric = 'sales' | 'units' | 'orders';
 
-const METRIC_FMT: Record<MapMetric, (v: number | null) => string> = { sales: fmtMoney, units: fmtInt, orders: fmtInt };
+const METRIC_FMT: Record<MapMetric, (v: number | null) => string> = {
+  sales: fmtMoney,
+  units: fmtInt,
+  orders: fmtInt,
+};
 
 function delta(v: number | null | undefined, p: number | null | undefined) {
   if (v == null || p == null) return '';
@@ -33,7 +37,15 @@ function delta(v: number | null | undefined, p: number | null | undefined) {
  * comparison period when on). Ladakh's data is shown on the J&K shape, which
  * this map draws as one region.
  */
-export function IndiaMap({ rows, prev, metric }: { rows: StateRow[]; prev: StateRow[] | null; metric: MapMetric }) {
+export function IndiaMap({
+  rows,
+  prev,
+  metric,
+}: {
+  rows: StateRow[];
+  prev: StateRow[] | null;
+  metric: MapMetric;
+}) {
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null);
   const byState = useMemo(() => {
     const m = new Map(rows.map((r) => [r.state, r]));
@@ -54,7 +66,8 @@ export function IndiaMap({ rows, prev, metric }: { rows: StateRow[]; prev: State
   const prevBy = useMemo(() => new Map((prev ?? []).map((r) => [r.state, r])), [prev]);
   const val = (r: StateRow | undefined) => (r ? (metric === 'orders' ? (r.orders ?? 0) : r[metric]) : 0);
   const max = Math.max(0, ...[...byState.values()].map(val));
-  const color = (v: number) => (v <= 0 || max <= 0 ? NO_DATA : RAMP[Math.min(RAMP.length - 1, Math.floor((v / max) * RAMP.length))]!);
+  const color = (v: number) =>
+    v <= 0 || max <= 0 ? NO_DATA : RAMP[Math.min(RAMP.length - 1, Math.floor((v / max) * RAMP.length))]!;
 
   const hoverLoc = hover ? india.locations.find((l) => l.id === hover.id) : undefined;
   const hoverName = hoverLoc ? (SHAPE_TO_STATE[hoverLoc.name] ?? hoverLoc.name) : '';
@@ -75,7 +88,9 @@ export function IndiaMap({ rows, prev, metric }: { rows: StateRow[]; prev: State
               stroke={hover?.id === l.id ? 'var(--color-ink)' : '#ffffff'}
               strokeWidth={hover?.id === l.id ? 1.2 : 0.6}
               onMouseMove={(e) => {
-                const box = (e.currentTarget.ownerSVGElement!.parentElement as HTMLElement).getBoundingClientRect();
+                const box = (
+                  e.currentTarget.ownerSVGElement!.parentElement as HTMLElement
+                ).getBoundingClientRect();
                 setHover({ id: l.id, x: e.clientX - box.left, y: e.clientY - box.top });
               }}
             />
@@ -123,7 +138,9 @@ export function IndiaMap({ rows, prev, metric }: { rows: StateRow[]; prev: State
           </span>
         ))}
       </div>
-      <p className="mt-1 text-[10px] text-muted">Map: svg-maps (CC BY 4.0). Ladakh is shown within Jammu and Kashmir.</p>
+      <p className="mt-1 text-[10px] text-muted">
+        Map: svg-maps (CC BY 4.0). Ladakh is shown within Jammu and Kashmir.
+      </p>
     </div>
   );
 }

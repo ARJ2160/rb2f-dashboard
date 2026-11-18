@@ -18,7 +18,8 @@ export function periodLabel(from: string, to: string): string {
   const day = (x: Date) => x.getUTCDate();
   const mon = (x: Date) => MONTHS[x.getUTCMonth()]!;
   if (from === to) return `${day(a)} ${mon(a)}`;
-  if (a.getUTCFullYear() !== b.getUTCFullYear()) return `${day(a)} ${mon(a)} ${a.getUTCFullYear()}-${day(b)} ${mon(b)} ${b.getUTCFullYear()}`;
+  if (a.getUTCFullYear() !== b.getUTCFullYear())
+    return `${day(a)} ${mon(a)} ${a.getUTCFullYear()}-${day(b)} ${mon(b)} ${b.getUTCFullYear()}`;
   if (a.getUTCMonth() !== b.getUTCMonth()) return `${day(a)} ${mon(a)}-${day(b)} ${mon(b)}`;
   return `${day(a)}-${day(b)} ${mon(b)}`;
 }

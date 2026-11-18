@@ -21,8 +21,20 @@ export interface SearchTermRecord {
 }
 
 const SPEND = ['Spend', 'Spend (₹)', 'Cost'];
-const SALES = ['7 Day Total Sales', '7 Day Total Sales (₹)', '14 Day Total Sales', '14 Day Total Sales (₹)', 'Total Sales'];
-const UNITS = ['7 Day Total Units (#)', '14 Day Total Units (#)', '7 Day Total Units', '14 Day Total Units', 'Total Units'];
+const SALES = [
+  '7 Day Total Sales',
+  '7 Day Total Sales (₹)',
+  '14 Day Total Sales',
+  '14 Day Total Sales (₹)',
+  'Total Sales',
+];
+const UNITS = [
+  '7 Day Total Units (#)',
+  '14 Day Total Units (#)',
+  '7 Day Total Units',
+  '14 Day Total Units',
+  'Total Units',
+];
 const ORDERS = ['7 Day Total Orders (#)', '14 Day Total Orders (#)', 'Total Orders (#)'];
 
 /** Excel exports prefix text that looks like a formula/number with an apostrophe ("'shoes for men"). */
@@ -55,7 +67,8 @@ export function parseSearchTerms(
     const campaignName = str(pick(r, ['Campaign Name', 'Campaign']));
     if (!campaignName) continue;
     const target = cleanTerm(pick(r, ['Targeting', 'Target', 'Keyword']));
-    const searchTerm = channel === 'sd' ? target : cleanTerm(pick(r, ['Customer Search Term', 'Search Term']));
+    const searchTerm =
+      channel === 'sd' ? target : cleanTerm(pick(r, ['Customer Search Term', 'Search Term']));
     if (!searchTerm && !target) continue;
     let date = plausible(parseDateCell(pick(r, ['Date', 'Day'])));
     if (!date) {
@@ -70,9 +83,20 @@ export function parseSearchTerms(
     }
     const matchType = str(pick(r, ['Match Type'])).toUpperCase() || '-';
     const key = `${date}|${campaignName}|${target}|${matchType}|${searchTerm}`;
-    const cur =
-      acc.get(key) ??
-      { date, channel, campaignName, target, matchType, searchTerm, impressions: 0, clicks: 0, spend: 0, adSales: 0, adUnits: 0, adOrders: hasOrders ? 0 : null };
+    const cur = acc.get(key) ?? {
+      date,
+      channel,
+      campaignName,
+      target,
+      matchType,
+      searchTerm,
+      impressions: 0,
+      clicks: 0,
+      spend: 0,
+      adSales: 0,
+      adUnits: 0,
+      adOrders: hasOrders ? 0 : null,
+    };
     cur.impressions += num(pick(r, ['Impressions']));
     cur.clicks += num(pick(r, ['Clicks']));
     cur.spend += num(pick(r, SPEND));
@@ -82,7 +106,12 @@ export function parseSearchTerms(
     acc.set(key, cur);
   }
   if (undated) warnings.push(`${undated} row(s) skipped: no single-day date (export with Daily time unit).`);
-  const records = [...acc.values()].map((r) => ({ ...r, spend: round2(r.spend), adSales: round2(r.adSales) }));
-  if (!records.length && rows.length) return { records, rowsRead: rows.length, warnings, error: 'No dated search-term rows.' };
+  const records = [...acc.values()].map((r) => ({
+    ...r,
+    spend: round2(r.spend),
+    adSales: round2(r.adSales),
+  }));
+  if (!records.length && rows.length)
+    return { records, rowsRead: rows.length, warnings, error: 'No dated search-term rows.' };
   return { records, rowsRead: rows.length, warnings };
 }

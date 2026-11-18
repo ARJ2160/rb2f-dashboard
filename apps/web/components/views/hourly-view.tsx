@@ -61,7 +61,9 @@ export function HourlyView(props: RangeProps) {
           <AdFilterBar value={filters} onChange={setFilters} options={data?.filterOptions} />
           {data && (
             <span className="text-xs text-muted">
-              {data.channels.length ? data.channels.map((c) => `${c.channel.toUpperCase()}: ${c.days} day(s)`).join(' · ') : 'No hourly data in range'}
+              {data.channels.length
+                ? data.channels.map((c) => `${c.channel.toUpperCase()}: ${c.days} day(s)`).join(' · ')
+                : 'No hourly data in range'}
             </span>
           )}
         </>
@@ -71,7 +73,15 @@ export function HourlyView(props: RangeProps) {
         <>
           <Card
             title={`${label} by hour`}
-            right={<Select label="Metric" value={metric} onChange={(v) => setMetric(v as keyof AdMetrics)} options={CHART_METRICS} allLabel={null} />}
+            right={
+              <Select
+                label="Metric"
+                value={metric}
+                onChange={(v) => setMetric(v as keyof AdMetrics)}
+                options={CHART_METRICS}
+                allLabel={null}
+              />
+            }
           >
             <Columns
               items={data.rows.map((r) => ({
@@ -102,7 +112,10 @@ export function HourlyView(props: RangeProps) {
                 {data.rows.map((r) => {
                   const p = prevBy.get(r.hour);
                   return (
-                    <tr key={r.hour} className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft">
+                    <tr
+                      key={r.hour}
+                      className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft"
+                    >
                       <td className="num whitespace-nowrap px-3 py-1.5 align-top">{hourLabel(r.hour)}</td>
                       <MCell v={r.spendSharePct} prev={p?.spendSharePct} fmt={fmtPct} comparing={comparing} />
                       <AdCells m={r} prev={p} comparing={comparing} />

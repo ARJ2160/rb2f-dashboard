@@ -10,6 +10,11 @@ async function json<T>(res: Response): Promise<T> {
 }
 
 /** All Seller Central views for a brand in one call. */
-export async function getScAll(brandId: string, f: { from?: string; to?: string } = {}): Promise<ScAllResponse> {
-  return json(await fetch(`/api/ops/sc/all?${q({ brandId, from: f.from, to: f.to })}`, { cache: 'no-store' }));
+export async function getScAll(
+  brandId: string,
+  f: { from?: string; to?: string } = {}
+): Promise<ScAllResponse> {
+  return json(
+    await fetch(`/api/ops/sc/all?${q({ brandId, from: f.from, to: f.to })}`, { cache: 'no-store' })
+  );
 }

@@ -10,8 +10,6 @@
  * dashboard immediately.
  */
 
-
-
 import type { ReportType as FineReportType } from '@dash/shared';
 
 import { env } from '../config/env';
@@ -119,11 +117,41 @@ export const AMAZON_REPORT_TYPES: readonly ReportType[] = [
     marketplace: 'amazon',
     hint: 'Keyword share of voice / CTR / CPC / ACoS (7 / 15 / 30 day)',
   },
-  { id: 'sc_ledger', label: 'Seller Central — Inventory Ledger', folder: 'sc_ledger', marketplace: 'amazon', hint: 'FBA Inventory Ledger (Summary or Detailed view)' },
-  { id: 'fba_inventory', label: 'Seller Central — FBA Inventory', folder: 'fba_inventory', marketplace: 'amazon', hint: 'FBA Inventory snapshot — available, inbound, ageing, sales T7/T30' },
-  { id: 'sc_shipments', label: 'Seller Central — Shipments', folder: 'sc_shipments', marketplace: 'amazon', hint: 'FBA shipments list / shipment contents' },
-  { id: 'vc_po', label: 'Vendor Central — PO Export', folder: 'vc_po', marketplace: 'amazon', hint: 'Purchase order items export' },
-  { id: 'vc_inventory', label: 'Vendor Central — Inventory', folder: 'vc_inventory', marketplace: 'amazon', hint: 'Retail Analytics inventory (Sellable On Hand Units)' },
+  {
+    id: 'sc_ledger',
+    label: 'Seller Central — Inventory Ledger',
+    folder: 'sc_ledger',
+    marketplace: 'amazon',
+    hint: 'FBA Inventory Ledger (Summary or Detailed view)',
+  },
+  {
+    id: 'fba_inventory',
+    label: 'Seller Central — FBA Inventory',
+    folder: 'fba_inventory',
+    marketplace: 'amazon',
+    hint: 'FBA Inventory snapshot — available, inbound, ageing, sales T7/T30',
+  },
+  {
+    id: 'sc_shipments',
+    label: 'Seller Central — Shipments',
+    folder: 'sc_shipments',
+    marketplace: 'amazon',
+    hint: 'FBA shipments list / shipment contents',
+  },
+  {
+    id: 'vc_po',
+    label: 'Vendor Central — PO Export',
+    folder: 'vc_po',
+    marketplace: 'amazon',
+    hint: 'Purchase order items export',
+  },
+  {
+    id: 'vc_inventory',
+    label: 'Vendor Central — Inventory',
+    folder: 'vc_inventory',
+    marketplace: 'amazon',
+    hint: 'Retail Analytics inventory (Sellable On Hand Units)',
+  },
 ];
 
 export const BLINKIT_REPORT_TYPES: readonly ReportType[] = [
@@ -247,14 +275,19 @@ export const ALL_REPORT_TYPES: readonly ReportType[] = [
   ...ZEPTO_REPORT_TYPES,
 ];
 
-export function reportTypesForMarketplace(marketplace: 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto'): readonly ReportType[] {
-  if (marketplace === 'blinkit')          return BLINKIT_REPORT_TYPES;
+export function reportTypesForMarketplace(
+  marketplace: 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto'
+): readonly ReportType[] {
+  if (marketplace === 'blinkit') return BLINKIT_REPORT_TYPES;
   if (marketplace === 'swiggy_instamart') return SWIGGY_INSTAMART_REPORT_TYPES;
-  if (marketplace === 'zepto')            return ZEPTO_REPORT_TYPES;
+  if (marketplace === 'zepto') return ZEPTO_REPORT_TYPES;
   return AMAZON_REPORT_TYPES;
 }
 
-export function findReportType(marketplace: 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto', id: string): ReportType | undefined {
+export function findReportType(
+  marketplace: 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto',
+  id: string
+): ReportType | undefined {
   return reportTypesForMarketplace(marketplace).find((r) => r.id === id);
 }
 
@@ -318,7 +351,12 @@ export interface DetectResult {
 }
 
 /** Swiggy Instamart exports are recognised by their own columns (sales / ads / SKU mapper). */
-const IM_FOLDER: Record<string, string> = { im_sales: 'sales', im_ads: 'ads', im_inventory: 'inventory', im_sku_mapper: 'sku_mapper' };
+const IM_FOLDER: Record<string, string> = {
+  im_sales: 'sales',
+  im_ads: 'ads',
+  im_inventory: 'inventory',
+  im_sku_mapper: 'sku_mapper',
+};
 
 /**
  * Inspect a file's columns and decide which warehouse report type it is.
@@ -335,15 +373,32 @@ export function detectIngestType(buffer: Buffer, filename: string): DetectResult
   // Try each sheet; the first that classifies wins (combined workbooks name
   // their tabs, so sheetName feeds the fallback).
   for (const sheet of sheets) {
-    const im = detectInstamart({ fileName: filename, sheetName: sheet.sheetName, headers: sheet.headers.map((h) => normKey(h)), rows: [] });
+    const im = detectInstamart({
+      fileName: filename,
+      sheetName: sheet.sheetName,
+      headers: sheet.headers.map((h) => normKey(h)),
+      rows: [],
+    });
     if (im !== 'unknown')
-      return { filename, reportType: IM_FOLDER[im] ?? null, fineType: null, detectedBy: 'headers', marketplace: 'swiggy_instamart' };
+      return {
+        filename,
+        reportType: IM_FOLDER[im] ?? null,
+        fineType: null,
+        detectedBy: 'headers',
+        marketplace: 'swiggy_instamart',
+      };
     // Inventory / PO / Shipment files are recognised by their own signatures and
     // take priority over the ads detector (Vendor Central sales excepted).
     const ops = detectOpsFile(sheet.headers, sheet.preamble);
     if (ops && ops.fileType !== 'vc_sales') {
       const folder = OPS_TO_FOLDER[ops.fileType];
-      if (folder) return { filename, reportType: folder, fineType: null, detectedBy: ops.detectedBy === 'metadata' ? 'headers' : ops.detectedBy };
+      if (folder)
+        return {
+          filename,
+          reportType: folder,
+          fineType: null,
+          detectedBy: ops.detectedBy === 'metadata' ? 'headers' : ops.detectedBy,
+        };
     }
     const hit = detectReportType(sheet.headers, sheet.sheetName, filename);
     if (!hit) continue;
@@ -373,7 +428,6 @@ export function mimeForFilename(filename: string): string {
   return 'application/octet-stream';
 }
 
-
 // ── Filename normalisation ────────────────────────────────────────────────────
 
 /**
@@ -390,11 +444,9 @@ export function buildFilename(
   originalName: string,
   suffix = ''
 ): string {
-  const start = startDate.replace(/-/g, '');  // "2026-06-01" → "20260601"
-  const end   = endDate.replace(/-/g, '');
-  const ext   = originalName.includes('.')
-    ? '.' + originalName.split('.').pop()!.toLowerCase()
-    : '.csv';
+  const start = startDate.replace(/-/g, ''); // "2026-06-01" → "20260601"
+  const end = endDate.replace(/-/g, '');
+  const ext = originalName.includes('.') ? '.' + originalName.split('.').pop()!.toLowerCase() : '.csv';
   return `${brand}_${reportTypeId}_${start}_${end}${suffix}${ext}`;
 }
 
@@ -455,7 +507,6 @@ export async function uploadFilesToGcs(
   return results;
 }
 
-
 // ── Bulk upload (mixed report types, one call) ────────────────────────────────
 
 export interface BulkIngestItem {
@@ -479,7 +530,10 @@ export async function uploadBulkToGcs(
   startDate: string,
   endDate: string,
   items: BulkIngestItem[]
-): Promise<{ results: IngestFileResult[]; marketplaces: Array<'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto'> }> {
+): Promise<{
+  results: IngestFileResult[];
+  marketplaces: Array<'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto'>;
+}> {
   const credFile = env.gcsCredentialsFile ?? null;
   const bucket = env.GCS_BUCKET;
   const client =

@@ -55,7 +55,11 @@ import { parseSearchTerms } from './parsers/search-term';
  * (a combined workbook with one tab per report); every sheet is handled
  * independently, so one bad tab never blocks the rest of the batch.
  */
-export async function ingestFile(profileId: string, filename: string, buffer: Buffer): Promise<FileUploadResult[]> {
+export async function ingestFile(
+  profileId: string,
+  filename: string,
+  buffer: Buffer
+): Promise<FileUploadResult[]> {
   let sheets: SheetData[];
   try {
     // Cheap preview first; only parse every row if some sheet is a report we ingest.
@@ -70,7 +74,11 @@ export async function ingestFile(profileId: string, filename: string, buffer: Bu
     });
     sheets = needsFull ? await parseAmazonWorkbook(buffer) : preview;
   } catch (err) {
-    const r: FileUploadResult = { filename, status: 'error', message: `Could not read file: ${(err as Error).message}` };
+    const r: FileUploadResult = {
+      filename,
+      status: 'error',
+      message: `Could not read file: ${(err as Error).message}`,
+    };
     await log(profileId, r);
     return [r];
   }
@@ -136,7 +144,8 @@ async function ingestSheet(
       message: `${REPORT_TYPES[reportType].label} is recognised but not used yet — DSR/DUR don't need it. Nothing was stored from this file.`,
     };
   }
-  if (sheet.rows.length === 0) return { ...base, status: 'skipped', message: 'Sheet has a header but no rows.' };
+  if (sheet.rows.length === 0)
+    return { ...base, status: 'skipped', message: 'Sheet has a header but no rows.' };
 
   const ctx: ParseContext = {
     nameDates: datesFromFilename(sheet.sheetName) ?? datesFromFilename(filename),
@@ -147,7 +156,9 @@ async function ingestSheet(
   switch (reportType) {
     case 'business_report': {
       const parsed = parseBusinessReport(sheet.headers, sheet.rows, ctx);
-      return finish(parsed, () => db.transaction((tx) => storeSales(tx, profileId, uploadId, 'seller', parsed.records)));
+      return finish(parsed, () =>
+        db.transaction((tx) => storeSales(tx, profileId, uploadId, 'seller', parsed.records))
+      );
     }
     case 'vendor_central': {
       const parsed = parseVendorCentral(sheet.headers, sheet.rows, ctx);
@@ -161,11 +172,13 @@ async function ingestSheet(
     case 'sp_campaign':
     case 'sb_campaign':
     case 'sd_campaign': {
-      const channel = (reportType.slice(0, 2) as 'sp' | 'sb' | 'sd');
+      const channel = reportType.slice(0, 2) as 'sp' | 'sb' | 'sd';
       const parsed = parseCampaignReport(channel, sheet.headers, sheet.rows, ctx);
       const headerChannel = detectAdChannel(sheet.headers);
       if (headerChannel && headerChannel !== channel) {
-        parsed.warnings.push(`Columns look like ${headerChannel.toUpperCase()} but the name says ${channel.toUpperCase()}.`);
+        parsed.warnings.push(
+          `Columns look like ${headerChannel.toUpperCase()} but the name says ${channel.toUpperCase()}.`
+        );
       }
       return finish(parsed, () =>
         db.transaction(async (tx) => {
@@ -188,40 +201,56 @@ async function ingestSheet(
     }
     case 'sb_attributed_purchase': {
       const parsed = parseSbAttributed(sheet.rows, ctx);
-      return finish(parsed, () => db.transaction((tx) => storeSbAttributed(tx, profileId, uploadId, parsed.records)));
+      return finish(parsed, () =>
+        db.transaction((tx) => storeSbAttributed(tx, profileId, uploadId, parsed.records))
+      );
     }
     case 'sp_search_term':
     case 'sb_search_term':
     case 'sd_targeting': {
       const channel = reportType === 'sp_search_term' ? 'sp' : reportType === 'sb_search_term' ? 'sb' : 'sd';
       const parsed = parseSearchTerms(channel, sheet.headers, sheet.rows, ctx);
-      return finish(parsed, () => db.transaction((tx) => storeSearchTerms(tx, profileId, uploadId, channel, parsed.records)));
+      return finish(parsed, () =>
+        db.transaction((tx) => storeSearchTerms(tx, profileId, uploadId, channel, parsed.records))
+      );
     }
     case 'sp_placement':
     case 'sb_placement': {
       const channel = reportType === 'sp_placement' ? 'sp' : 'sb';
       const parsed = parsePlacements(channel, sheet.headers, sheet.rows, ctx);
-      return finish(parsed, () => db.transaction((tx) => storePlacements(tx, profileId, uploadId, channel, parsed.records)));
+      return finish(parsed, () =>
+        db.transaction((tx) => storePlacements(tx, profileId, uploadId, channel, parsed.records))
+      );
     }
     case 'order_report': {
       const parsed = parseOrderReport(sheet.rows, ctx);
-      return finish(parsed, () => db.transaction((tx) => storeStateSales(tx, profileId, uploadId, 'seller', parsed.records)));
+      return finish(parsed, () =>
+        db.transaction((tx) => storeStateSales(tx, profileId, uploadId, 'seller', parsed.records))
+      );
     }
     case 'pi_city_sales': {
       const parsed = parsePiCitySales(sheet.rows, ctx);
-      return finish(parsed, () => db.transaction((tx) => storePiCitySales(tx, profileId, uploadId, parsed.records)));
+      return finish(parsed, () =>
+        db.transaction((tx) => storePiCitySales(tx, profileId, uploadId, parsed.records))
+      );
     }
     case 'search_rank': {
       const parsed = parseSearchRank(sheet.rows, ctx);
-      return finish(parsed, () => db.transaction((tx) => storeSearchRank(tx, profileId, uploadId, parsed.records)));
+      return finish(parsed, () =>
+        db.transaction((tx) => storeSearchRank(tx, profileId, uploadId, parsed.records))
+      );
     }
     case 'asin_gv': {
       const parsed = parseAsinGv(sheet.rows, ctx);
-      return finish(parsed, () => db.transaction((tx) => storeAsinGv(tx, profileId, uploadId, parsed.records)));
+      return finish(parsed, () =>
+        db.transaction((tx) => storeAsinGv(tx, profileId, uploadId, parsed.records))
+      );
     }
     case 'keyword_sov': {
       const parsed = parseKeywordSov(sheet.rows, ctx, [sheet.sheetName, filename]);
-      return finish(parsed, () => db.transaction((tx) => storeKeywordSov(tx, profileId, uploadId, parsed.records)));
+      return finish(parsed, () =>
+        db.transaction((tx) => storeKeywordSov(tx, profileId, uploadId, parsed.records))
+      );
     }
     case 'search_query_performance': {
       const parsed = parseSearchQueryPerformance(sheet.headers, sheet.rows, ctx, [sheet.sheetName, filename]);
@@ -263,7 +292,11 @@ async function ingestOpsSheet(
   };
   const typeLabel = OPS_FILE_TYPES[ops.fileType].label;
   if (!OPS_FILE_TYPES[ops.fileType].inScope) {
-    return { ...base, status: 'skipped', message: `${typeLabel} recognised — its parser lands in a later phase; nothing stored yet.` };
+    return {
+      ...base,
+      status: 'skipped',
+      message: `${typeLabel} recognised — its parser lands in a later phase; nothing stored yet.`,
+    };
   }
   const uploadId = randomUUID();
   const ctx: ParseContext = {
@@ -295,12 +328,18 @@ export async function finalize(
 ): Promise<FileUploadResult> {
   const withWarnings = parsed.warnings.length ? { warnings: parsed.warnings } : {};
   if (parsed.error) return { ...base, ...withWarnings, status: 'error', message: parsed.error };
-  if (parsed.records.length === 0) return { ...base, ...withWarnings, status: 'skipped', message: 'No usable rows.' };
+  if (parsed.records.length === 0)
+    return { ...base, ...withWarnings, status: 'skipped', message: 'No usable rows.' };
 
   try {
     await write();
   } catch (err) {
-    return { ...base, ...withWarnings, status: 'error', message: `Failed to store: ${(err as Error).message}` };
+    return {
+      ...base,
+      ...withWarnings,
+      status: 'error',
+      message: `Failed to store: ${(err as Error).message}`,
+    };
   }
   const dates = parsed.records
     .map((r) => ('date' in r ? (r.date as string) : null))

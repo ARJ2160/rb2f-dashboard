@@ -60,9 +60,9 @@ let client: GcsClient | null = null;
 
 /** Bucket folder (under each brand) for a marketplace. */
 export function marketplaceFolder(m: Marketplace): string {
-  if (m === 'blinkit')          return env.GCS_BLINKIT_FOLDER;
+  if (m === 'blinkit') return env.GCS_BLINKIT_FOLDER;
   if (m === 'swiggy_instamart') return env.GCS_SWIGGY_FOLDER;
-  if (m === 'zepto')            return env.GCS_ZEPTO_FOLDER;
+  if (m === 'zepto') return env.GCS_ZEPTO_FOLDER;
   return env.GCS_MARKETPLACE_FOLDER; // amazon
 }
 
@@ -124,7 +124,10 @@ export function stopSyncs(): void {
   stopping = true;
 }
 
-export async function getBrands(refresh = false, marketplace: Marketplace = 'amazon'): Promise<GcsBrandsResponse> {
+export async function getBrands(
+  refresh = false,
+  marketplace: Marketplace = 'amazon'
+): Promise<GcsBrandsResponse> {
   const mFolder = marketplaceFolder(marketplace);
   const base = { bucket: env.GCS_BUCKET, marketplace: mFolder };
   const cfgErr = gcsConfigError();
@@ -226,7 +229,9 @@ function refuseIfBusy(): void {
 async function lockBrand(key: string): Promise<(() => Promise<void>) | null> {
   const conn = await sqlClient.reserve();
   try {
-    const [row] = await conn<{ ok: boolean }[]>`select pg_try_advisory_lock(hashtext(${`gcs-sync:${key}`})) as ok`;
+    const [row] = await conn<
+      { ok: boolean }[]
+    >`select pg_try_advisory_lock(hashtext(${`gcs-sync:${key}`})) as ok`;
     if (row?.ok) {
       return async () => {
         await conn`select pg_advisory_unlock(hashtext(${`gcs-sync:${key}`}))`.catch(() => {});
@@ -250,7 +255,9 @@ async function execute(job: GcsSyncJob, folder: BrandFolder, marketplace: Market
   try {
     unlock = await lockBrand(key);
     if (!unlock) {
-      throw new Error(`Another server instance is syncing ${job.brand} right now (a deploy is probably rolling out). Try again in a few minutes.`);
+      throw new Error(
+        `Another server instance is syncing ${job.brand} right now (a deploy is probably rolling out). Try again in a few minutes.`
+      );
     }
     await runSync(job, folder, marketplace);
   } catch (err) {
@@ -293,7 +300,12 @@ export async function syncAllBrands(): Promise<void> {
   }
 }
 
-function newJob(folder: BrandFolder, force: boolean, marketplace: Marketplace, startedBy: string): GcsSyncJob {
+function newJob(
+  folder: BrandFolder,
+  force: boolean,
+  marketplace: Marketplace,
+  startedBy: string
+): GcsSyncJob {
   return {
     brand: folder.brand,
     marketplace,
@@ -323,11 +335,18 @@ function finishWithError(job: GcsSyncJob, err: unknown) {
   job.finishedAt = new Date().toISOString();
 }
 
-async function runSync(job: GcsSyncJob, folder: BrandFolder, marketplace: Marketplace = 'amazon'): Promise<void> {
+async function runSync(
+  job: GcsSyncJob,
+  folder: BrandFolder,
+  marketplace: Marketplace = 'amazon'
+): Promise<void> {
   const prefix = marketplacePrefix(folder.folder, marketplaceFolder(marketplace));
   const listed = ingestableObjects(await gcs().listObjects(prefix), prefix);
   // Blinkit and Instamart: mappers first, then ads, then sales (same ranking).
-  const objects = marketplace === 'blinkit' || marketplace === 'swiggy_instamart' ? blinkitSyncOrder(listed, prefix) : syncOrder(listed, prefix);
+  const objects =
+    marketplace === 'blinkit' || marketplace === 'swiggy_instamart'
+      ? blinkitSyncOrder(listed, prefix)
+      : syncOrder(listed, prefix);
   job.filesTotal = objects.length;
   if (objects.length === 0) {
     job.message = `No .csv / .xlsx files under gs://${env.GCS_BUCKET}/${prefix}`;
@@ -343,7 +362,10 @@ async function runSync(job: GcsSyncJob, folder: BrandFolder, marketplace: Market
   let anyStored = false;
 
   for (const obj of objects) {
-    if (stopping) throw new Error('The server restarted during the sync. Run Sync again to finish — finished files are kept.');
+    if (stopping)
+      throw new Error(
+        'The server restarted during the sync. Run Sync again to finish — finished files are kept.'
+      );
     const file = relativeName(obj.name, prefix);
     job.current = file;
     const prev = ledger.get(obj.name);
@@ -397,7 +419,12 @@ async function runSync(job: GcsSyncJob, folder: BrandFolder, marketplace: Market
   job.finishedAt = new Date().toISOString();
 }
 
-async function ingestObject(profileId: string, obj: GcsObject, file: string, marketplace: Marketplace): Promise<GcsFileResult> {
+async function ingestObject(
+  profileId: string,
+  obj: GcsObject,
+  file: string,
+  marketplace: Marketplace
+): Promise<GcsFileResult> {
   let buffer: Buffer;
   try {
     buffer = await gcs().download(obj.name, obj.generation);
@@ -410,12 +437,13 @@ async function ingestObject(profileId: string, obj: GcsObject, file: string, mar
       message: `Download failed: ${(err as Error).message}`,
     };
   }
-  const sheets = await ingestSlots.run<SheetResult[]>(() =>
-    marketplace === 'blinkit'
-      ? ingestBlinkitFile(profileId, file, buffer)
-      : marketplace === 'swiggy_instamart'
-        ? ingestInstamartFile(profileId, file, buffer)
-        : ingestWarehouseFile(profileId, file, buffer) // amazon, zepto
+  const sheets = await ingestSlots.run<SheetResult[]>(
+    () =>
+      marketplace === 'blinkit'
+        ? ingestBlinkitFile(profileId, file, buffer)
+        : marketplace === 'swiggy_instamart'
+          ? ingestInstamartFile(profileId, file, buffer)
+          : ingestWarehouseFile(profileId, file, buffer) // amazon, zepto
   );
   return summarize(file, sheets);
 }
@@ -469,13 +497,18 @@ async function record(profileId: string, obj: GcsObject, r: GcsFileResult): Prom
 }
 
 /** Ledger rows for a brand (what was synced, when, and how it went). */
-export async function listSyncedFiles(brand: string, marketplace: Marketplace = 'amazon'): Promise<GcsFileEntry[]> {
+export async function listSyncedFiles(
+  brand: string,
+  marketplace: Marketplace = 'amazon'
+): Promise<GcsFileEntry[]> {
   const folder = await findBrand(brand);
   const prefix = marketplacePrefix(folder.folder, marketplaceFolder(marketplace));
   const rows = await db
     .select()
     .from(gcsObjects)
-    .where(and(eq(gcsObjects.profileId, folder.profileId), sql`starts_with(${gcsObjects.objectName}, ${prefix})`))
+    .where(
+      and(eq(gcsObjects.profileId, folder.profileId), sql`starts_with(${gcsObjects.objectName}, ${prefix})`)
+    )
     .orderBy(gcsObjects.objectName);
   return rows.map((r) => ({
     file: r.objectName.startsWith(prefix) ? relativeName(r.objectName, prefix) : r.objectName,

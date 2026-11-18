@@ -16,12 +16,34 @@ export interface KeywordSovRecord {
 
 /** Numeric metric columns kept in the JSON blob (surfaced by the metric picker). */
 const NUMBER_METRICS = [
-  'firstPageOrganicCoverage', 'firstPageSpSOV', 'overallSpSOV', 'overallSpACOS', 'overallSbSOV', 'overallSbACOS',
-  'firstPageTopSpSOV', 'firstPageSpCTR', 'firstPageSpCPC', 'firstPageSpACOS', 'firstPageSpConversions',
-  'overallSpCTR', 'overallSpCPC', 'overallSpConversions', 'restOfSearchSpSOV', 'totalFirstPageCoverage',
-  'firstPageSpCoverage', 'firstPageSbSOV', 'firstPageSbCTR', 'firstPageSbACOS', 'firstPageSbCPC',
-  'firstPageSbConversions', 'firstPageTopSbSOV', 'overallSbCTR', 'overallSbCPC', 'overallSbConversions',
-  'restOfSearchSbSOV', 'overallOrganicSOV',
+  'firstPageOrganicCoverage',
+  'firstPageSpSOV',
+  'overallSpSOV',
+  'overallSpACOS',
+  'overallSbSOV',
+  'overallSbACOS',
+  'firstPageTopSpSOV',
+  'firstPageSpCTR',
+  'firstPageSpCPC',
+  'firstPageSpACOS',
+  'firstPageSpConversions',
+  'overallSpCTR',
+  'overallSpCPC',
+  'overallSpConversions',
+  'restOfSearchSpSOV',
+  'totalFirstPageCoverage',
+  'firstPageSpCoverage',
+  'firstPageSbSOV',
+  'firstPageSbCTR',
+  'firstPageSbACOS',
+  'firstPageSbCPC',
+  'firstPageSbConversions',
+  'firstPageTopSbSOV',
+  'overallSbCTR',
+  'overallSbCPC',
+  'overallSbConversions',
+  'restOfSearchSbSOV',
+  'overallOrganicSOV',
 ] as const;
 /** ASIN-valued metrics (kept as strings). */
 const ASIN_METRICS = ['topDisplayedSPAsin', 'topDisplayedOrganicAsin'] as const;
@@ -29,7 +51,12 @@ const ASIN_METRICS = ['topDisplayedSPAsin', 'topDisplayedOrganicAsin'] as const;
 /** "15days" / "15 Days" / "15-Days" → "15days". */
 function normDuration(raw: string): string {
   const m = raw.toLowerCase().match(/(7|15|30)\s*-?\s*days?/);
-  return m ? `${m[1]}days` : raw.trim().toLowerCase().replace(/[\s-]+/g, '') || 'unknown';
+  return m
+    ? `${m[1]}days`
+    : raw
+        .trim()
+        .toLowerCase()
+        .replace(/[\s-]+/g, '') || 'unknown';
 }
 
 /** Find an export date in a file name: YYYY-MM-DD or DD-MM-YYYY (Indian) → YYYY-MM-DD. */
@@ -48,11 +75,18 @@ function dateFromNames(names: string[]): string | null {
  * duration window. Headline fields are columns; every SOV / CTR / CPC / ACoS /
  * coverage metric goes into a JSON blob for the metric picker.
  */
-export function parseKeywordSov(rows: Row[], ctx: ParseContext, names: string[] = []): ParseResult<KeywordSovRecord> {
+export function parseKeywordSov(
+  rows: Row[],
+  ctx: ParseContext,
+  names: string[] = []
+): ParseResult<KeywordSovRecord> {
   const warnings: string[] = [];
   const fromName = names.map((n) => normDuration(n)).find((d) => /^(7|15|30)days$/.test(d));
   const snapshotDate = ctx.nameDates?.from ?? dateFromNames(names) ?? new Date().toISOString().slice(0, 10);
-  if (!ctx.nameDates && !dateFromNames(names)) warnings.push('No export date in the file name — used today; rename the file with its date to keep pulls separate.');
+  if (!ctx.nameDates && !dateFromNames(names))
+    warnings.push(
+      'No export date in the file name — used today; rename the file with its date to keep pulls separate.'
+    );
   const acc = new Map<string, KeywordSovRecord>();
   let skipped = 0;
 
@@ -86,6 +120,7 @@ export function parseKeywordSov(rows: Row[], ctx: ParseContext, names: string[] 
   }
   if (skipped) warnings.push(`${skipped} row(s) skipped: no keyword.`);
   const records = [...acc.values()];
-  if (!records.length && rows.length) return { records, rowsRead: rows.length, warnings, error: 'No keyword rows.' };
+  if (!records.length && rows.length)
+    return { records, rowsRead: rows.length, warnings, error: 'No keyword rows.' };
   return { records, rowsRead: rows.length, warnings };
 }

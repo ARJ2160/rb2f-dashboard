@@ -75,7 +75,12 @@ export function readWorkbook(buffer: Buffer, opts: { maxRows?: number } = {}): S
     if (!ws || !ws['!ref']) continue;
 
     // Values (raw numbers / serial dates) for the body…
-    const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: true, defval: '', blankrows: false });
+    const aoa = XLSX.utils.sheet_to_json<unknown[]>(ws, {
+      header: 1,
+      raw: true,
+      defval: '',
+      blankrows: false,
+    });
     if (aoa.length === 0) continue;
     // …and formatted text for header detection (a date-typed header cell
     // would otherwise come back as a serial number).
@@ -93,7 +98,12 @@ export function readWorkbook(buffer: Buffer, opts: { maxRows?: number } = {}): S
     const headers = dedupeHeaders((textAoa[headerIdx] ?? []).map((c) => String(c ?? '').trim()));
     const preamble = textAoa
       .slice(0, headerIdx)
-      .map((r) => r.map((c) => String(c ?? '').trim()).filter(Boolean).join(' '))
+      .map((r) =>
+        r
+          .map((c) => String(c ?? '').trim())
+          .filter(Boolean)
+          .join(' ')
+      )
       .filter(Boolean);
 
     const rows: Row[] = [];
@@ -140,7 +150,13 @@ function findHeaderRow(textAoa: unknown[][]): number {
   let best = -1;
   let bestCells = 0;
   for (let i = 0; i < Math.min(textAoa.length, HEADER_SCAN_ROWS); i++) {
-    const cells = (textAoa[i] ?? []).map((c) => String(c ?? '').trim().toLowerCase()).filter(Boolean);
+    const cells = (textAoa[i] ?? [])
+      .map((c) =>
+        String(c ?? '')
+          .trim()
+          .toLowerCase()
+      )
+      .filter(Boolean);
     if (cells.length < 2) continue;
     if (firstNonTrivial < 0) firstNonTrivial = i;
     if (cells.some((c) => HEADER_TOKENS.includes(c)) && cells.length > bestCells) {

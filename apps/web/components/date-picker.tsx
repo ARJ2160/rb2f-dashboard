@@ -14,7 +14,13 @@ const toIso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 /** Button that opens a calendar below it; closes on outside click or Escape. */
-function Popup({ label, prefix, open, setOpen, children }: {
+function Popup({
+  label,
+  prefix,
+  open,
+  setOpen,
+  children,
+}: {
   label: ReactNode;
   /** Small muted caption inside the field, before the icon (e.g. "As of"). */
   prefix?: string | undefined;
@@ -25,7 +31,8 @@ function Popup({ label, prefix, open, setOpen, children }: {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    const onDown = (e: MouseEvent) =>
+      ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
@@ -53,7 +60,12 @@ function Popup({ label, prefix, open, setOpen, children }: {
 }
 
 /** From → to range in one calendar: first click picks the start, second the end. */
-export function DateRangePicker({ value, onChange, min, max }: {
+export function DateRangePicker({
+  value,
+  onChange,
+  min,
+  max,
+}: {
   value: { from: string; to: string };
   onChange: (v: { from: string; to: string }) => void;
   min?: string | null | undefined;
@@ -61,7 +73,9 @@ export function DateRangePicker({ value, onChange, min, max }: {
 }) {
   const [open, setOpen] = useState(false);
   const [start, setStart] = useState<Date | null>(null);
-  const selected: RdpRange = start ? { from: start, to: undefined } : { from: toDate(value.from), to: toDate(value.to) };
+  const selected: RdpRange = start
+    ? { from: start, to: undefined }
+    : { from: toDate(value.from), to: toDate(value.to) };
   const setOpenAndReset = (v: boolean) => {
     setOpen(v);
     setStart(null);
@@ -94,7 +108,12 @@ export function DateRangePicker({ value, onChange, min, max }: {
 }
 
 /** Single date. */
-export function DatePicker({ value, onChange, max, prefix }: {
+export function DatePicker({
+  value,
+  onChange,
+  max,
+  prefix,
+}: {
   value: string;
   onChange: (v: string) => void;
   max?: string | null | undefined;

@@ -17,12 +17,16 @@ export async function cityAds(a: RangeArgs & { includeGroups?: boolean }): Promi
   const items = a.category ? itemsIn(d, a.category) : null;
   const P = [a.profileId, a.from, a.to];
   const [ads, cities] = await Promise.all([
-    q(`select campaign_id, ${ADS_SUMS} from bk_daily_ads
+    q(
+      `select campaign_id, ${ADS_SUMS} from bk_daily_ads
        where profile_id=$1 and date between $2 and $3 ${inList('campaign_id', 4, camps)} group by 1`,
-      [...P, ...(camps ? [camps] : [])]),
-    q(`select customer_city k, sum(revenue) rev, sum(quantity) units, count(distinct order_id) orders
+      [...P, ...(camps ? [camps] : [])]
+    ),
+    q(
+      `select customer_city k, sum(revenue) rev, sum(quantity) units, count(distinct order_id) orders
        from bk_sales_lines where profile_id=$1 and date between $2 and $3 ${inList('item_id', 4, items)} group by 1`,
-      [...P, ...(items ? [items] : [])]),
+      [...P, ...(items ? [items] : [])]
+    ),
   ]);
   const cityRev = new Map(cities.map((r) => [String(r.k), salesRow(r)]));
   const units = new Map<string, BkCityAdsRow>();
@@ -34,7 +38,9 @@ export async function cityAds(a: RangeArgs & { includeGroups?: boolean }): Promi
     const c = d.campaigns.get(String(r.campaign_id));
     const g = c?.geo;
     if (!g || g.kind === 'none') {
-      notAttr.spend += s.spend; notAttr.asales += s.asales; notAttr.impr += s.impr;
+      notAttr.spend += s.spend;
+      notAttr.asales += s.asales;
+      notAttr.impr += s.impr;
       if (s.spend > 0) notAttr.campaigns++;
       continue;
     }
@@ -42,7 +48,14 @@ export async function cityAds(a: RangeArgs & { includeGroups?: boolean }): Promi
     if (!u) {
       u = { key: g.key, label: g.label, cities: g.cities, kind: g.kind, campaigns: [], sums: blank() };
       // Blinkit books Noida / Greater Noida orders as "Ghaziabad" — match sales on that name (once per sales city).
-      for (const city of new Set(g.cities.map(salesCityOf))) { const cs = cityRev.get(city); if (cs) { u.sums.rev += cs.rev; u.sums.units += cs.units; u.sums.orders += cs.orders; } }
+      for (const city of new Set(g.cities.map(salesCityOf))) {
+        const cs = cityRev.get(city);
+        if (cs) {
+          u.sums.rev += cs.rev;
+          u.sums.units += cs.units;
+          u.sums.orders += cs.orders;
+        }
+      }
       units.set(g.key, u);
     }
     u.campaigns.push(c!.name);

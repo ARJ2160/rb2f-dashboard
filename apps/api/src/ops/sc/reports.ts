@@ -63,26 +63,48 @@ async function loadScData(brandId: string, f: ScFilters) {
   const geoRows = await db.execute<Raw>(sql`select code, city, state from dim_warehouse`);
 
   const ledger: LedgerRow[] = ledgerRows.map((r) => ({
-    date: s(r.date), fnsku: s(r.fnsku), msku: s(r.msku), asin: s(r.asin), title: sOrNull(r.title), location: s(r.location),
-    disposition: s(r.disposition), endingBalance: n(r.ending_balance), customerShipments: n(r.customer_shipments),
-    customerReturns: n(r.customer_returns), receipts: n(r.receipts), warehouseTransfer: n(r.warehouse_transfer),
-    lost: n(r.lost), damaged: n(r.damaged), disposed: n(r.disposed),
+    date: s(r.date),
+    fnsku: s(r.fnsku),
+    msku: s(r.msku),
+    asin: s(r.asin),
+    title: sOrNull(r.title),
+    location: s(r.location),
+    disposition: s(r.disposition),
+    endingBalance: n(r.ending_balance),
+    customerShipments: n(r.customer_shipments),
+    customerReturns: n(r.customer_returns),
+    receipts: n(r.receipts),
+    warehouseTransfer: n(r.warehouse_transfer),
+    lost: n(r.lost),
+    damaged: n(r.damaged),
+    disposed: n(r.disposed),
   }));
   const fba: FbaRow[] = fbaRows.map((r) => ({
-    sku: s(r.sku), inboundWorking: n(r.inbound_working), inboundShipped: n(r.inbound_shipped),
-    inboundReceived: n(r.inbound_received), inboundQuantity: n(r.inbound_quantity),
+    sku: s(r.sku),
+    inboundWorking: n(r.inbound_working),
+    inboundShipped: n(r.inbound_shipped),
+    inboundReceived: n(r.inbound_received),
+    inboundQuantity: n(r.inbound_quantity),
   }));
   const shipments: ShipmentRow[] = shipmentRows.map((r) => ({
-    shipmentId: s(r.shipment_id), shipmentName: s(r.shipment_name), status: s(r.status), created: sOrNull(r.created),
-    lastUpdated: sOrNull(r.last_updated), destination: s(r.destination), skus: n(r.skus),
-    unitsExpected: n(r.units_expected), unitsLocated: n(r.units_located),
+    shipmentId: s(r.shipment_id),
+    shipmentName: s(r.shipment_name),
+    status: s(r.status),
+    created: sOrNull(r.created),
+    lastUpdated: sOrNull(r.last_updated),
+    destination: s(r.destination),
+    skus: n(r.skus),
+    unitsExpected: n(r.units_expected),
+    unitsLocated: n(r.units_located),
   }));
   const geo = new Map<string, { city: string | null; state: string | null }>();
   for (const r of geoRows) geo.set(s(r.code), { city: sOrNull(r.city), state: sOrNull(r.state) });
 
   // DUR units per (asin, date) — the DRR numerator source.
   const durUnits: Array<{ asin: string; date: string; units: number }> = durRows.map((r) => ({
-    asin: s(r.asin), date: s(r.date), units: n(r.units),
+    asin: s(r.asin),
+    date: s(r.date),
+    units: n(r.units),
   }));
   // ASIN → mapper category (falls back to 'Unmapped' in build when an ASIN exists but has no mapper row).
   const asinCategory = new Map<string, string | null>();

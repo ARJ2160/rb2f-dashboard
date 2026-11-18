@@ -35,7 +35,11 @@ const AD_TYPES: Partial<Record<BkReportType, AdType>> = {
  * parse → replace-by-date store. Used by the GCS sync (`<brand>/blinkit/…`)
  * and POST /api/blinkit/uploads.
  */
-export async function ingestBlinkitFile(profileId: string, filename: string, raw: Buffer): Promise<BkFileResult[]> {
+export async function ingestBlinkitFile(
+  profileId: string,
+  filename: string,
+  raw: Buffer
+): Promise<BkFileResult[]> {
   const results: BkFileResult[] = [];
   let read: Awaited<ReturnType<typeof parseBlinkitWorkbook>>;
   try {
@@ -56,7 +60,11 @@ export async function ingestBlinkitFile(profileId: string, filename: string, raw
     const span = (dates: string[]) => (dates.length ? { from: dates[0]!, to: dates[dates.length - 1]! } : {});
     try {
       if (type === 'unknown') {
-        results.push({ ...base, status: 'skipped', message: `Sheet "${s.sheetName}" is not a recognised Blinkit report (columns did not match).` });
+        results.push({
+          ...base,
+          status: 'skipped',
+          message: `Sheet "${s.sheetName}" is not a recognised Blinkit report (columns did not match).`,
+        });
         continue;
       }
       let stored = 0;
@@ -84,7 +92,9 @@ export async function ingestBlinkitFile(profileId: string, filename: string, raw
         warnings = p.warnings;
         // source = the sheet (or the file, for a CSV) so a city mapper and a category mapper don't overwrite each other
         const isCsv = read.sheets.length === 1 && /\.csv$/i.test(filename);
-        const source = normKey(isCsv ? filename.replace(/^.*\//, '').replace(/[_-]?\d{4}.*$/, '') : s.sheetName) || 'campaign mapper';
+        const source =
+          normKey(isCsv ? filename.replace(/^.*\//, '').replace(/[_-]?\d{4}.*$/, '') : s.sheetName) ||
+          'campaign mapper';
         if (p.records.length) stored = await storeCampaignMap(profileId, source, p.records);
       }
       results.push({

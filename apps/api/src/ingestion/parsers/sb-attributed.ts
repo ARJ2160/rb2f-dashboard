@@ -41,6 +41,12 @@ export function parseSbAttributed(rows: Row[], ctx: ParseContext): ParseResult<S
   }
   if (undated) warnings.push(`${undated} row(s) skipped: no readable date.`);
   const records = [...acc.values()].map((r) => ({ ...r, adSales: round2(r.adSales) }));
-  if (!records.length && rows.length) return { records, rowsRead: rows.length, warnings, error: 'No dated rows with a campaign and purchased ASIN.' };
+  if (!records.length && rows.length)
+    return {
+      records,
+      rowsRead: rows.length,
+      warnings,
+      error: 'No dated rows with a campaign and purchased ASIN.',
+    };
   return { records, rowsRead: rows.length, warnings };
 }

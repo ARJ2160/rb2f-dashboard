@@ -28,7 +28,11 @@ type Win = '7d' | '15d';
 type Basis = 'sellable' | 'warehouse' | 'darkstore';
 const ORDER: DocStatus[] = ['stock-out', 'critical', 'low', 'healthy', 'excess', 'no-sales', 'inactive'];
 const WIN_DAYS: Record<Win, number> = { '7d': 7, '15d': 15 };
-const BASIS_LABEL: Record<Basis, string> = { sellable: 'Sellable', warehouse: 'Warehouse', darkstore: 'Darkstore' };
+const BASIS_LABEL: Record<Basis, string> = {
+  sellable: 'Sellable',
+  warehouse: 'Warehouse',
+  darkstore: 'Darkstore',
+};
 
 /** Cell / badge colours per status (light tints so the numbers stay readable). */
 const TINT: Record<string, string> = {
@@ -54,10 +58,17 @@ const doc = (v: number | null) => (v == null ? '—' : v >= 999 ? '999+' : v.toF
 const stockOf = (r: { sellable: number; warehouse: number; darkstore: number }, basis: Basis) =>
   basis === 'warehouse' ? r.warehouse : basis === 'darkstore' ? r.darkstore : r.sellable;
 const soldOf = (r: { sold7d: number; sold15d: number }, win: Win) => (win === '15d' ? r.sold15d : r.sold7d);
-const drrOf = (r: { sold7d: number; sold15d: number }, win: Win) => Math.max(0, soldOf(r, win)) / WIN_DAYS[win];
+const drrOf = (r: { sold7d: number; sold15d: number }, win: Win) =>
+  Math.max(0, soldOf(r, win)) / WIN_DAYS[win];
 
 /** DOC status for any stock base / run-rate window (generalises the shared docStatus, which is fixed to sellable × L7D). */
-function docStatusFrom(stock: number, drr: number, soldWindow: number, sold30d: number, bands: DocBands): DocStatus {
+function docStatusFrom(
+  stock: number,
+  drr: number,
+  soldWindow: number,
+  sold30d: number,
+  bands: DocBands
+): DocStatus {
   if (stock <= 0) return sold30d > 0 || soldWindow > 0 ? 'stock-out' : 'inactive';
   if (drr <= 0) return 'no-sales';
   const d = stock / drr;
@@ -133,38 +144,67 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
   const [win, setWin] = useState<Win>('7d');
   const [basis, setBasis] = useState<Basis>('sellable');
   const { data, error, loading } = useLoad(
-    () => Promise.all([bkInventory(profileId, { snapshot, category }), bkInventoryTrend(profileId, { category })]) as Promise<[BkInventoryResponse, BkInventoryTrendResponse]>,
+    () =>
+      Promise.all([
+        bkInventory(profileId, { snapshot, category }),
+        bkInventoryTrend(profileId, { category }),
+      ]) as Promise<[BkInventoryResponse, BkInventoryTrendResponse]>,
     [profileId, snapshot, category]
   );
   const [inv, trend] = data ?? [null, null];
   const bands = inv?.bands ?? { critical: 7, low: 15, excess: 45 };
   // Rows filtered by feeder city, then by the status recomputed for the selected window / base.
   const rows = useMemo(
-    () => (inv?.rows ?? []).filter((r) => (!city || r.feederCity === city) && (!status || derive(r, win, basis, bands).status === status)),
+    () =>
+      (inv?.rows ?? []).filter(
+        (r) => (!city || r.feederCity === city) && (!status || derive(r, win, basis, bands).status === status)
+      ),
     [inv, city, status, win, basis, bands]
   );
 
   if (error) return <ErrorBox message={error} />;
-  if (!inv) return loading ? <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" /> : null;
+  if (!inv)
+    return loading ? (
+      <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />
+    ) : null;
   if (!inv.snapshot)
     return (
       <div className="rounded-box border border-line bg-surface px-4 py-6 text-sm text-muted shadow-sm">
-        No inventory snapshot yet — add the daily Blinkit Inventory export (InventoryData – &lt;date&gt;.xlsx) to the brand&apos;s blinkit/inventory/ folder and sync.
+        No inventory snapshot yet — add the daily Blinkit Inventory export (InventoryData – &lt;date&gt;.xlsx)
+        to the brand&apos;s blinkit/inventory/ folder and sync.
       </div>
     );
 
   const all = rollup(rows, bands, win, basis);
-  const counts = Object.fromEntries(ORDER.map((s) => [s, rows.filter((r) => derive(r, win, basis, bands).status === s).length])) as Record<DocStatus, number>;
+  const counts = Object.fromEntries(
+    ORDER.map((s) => [s, rows.filter((r) => derive(r, win, basis, bands).status === s).length])
+  ) as Record<DocStatus, number>;
   const vol = new Map<string, number>();
   for (const r of rows) vol.set(r.facility, (vol.get(r.facility) ?? 0) + r.sold30d + r.sellable / 1000);
-  const feeders = [...vol.entries()].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]).map(([f]) => f);
+  const feeders = [...vol.entries()]
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([f]) => f);
   const bySku = new Map<string, BkInventoryRow[]>();
   for (const r of rows) bySku.set(r.itemId, [...(bySku.get(r.itemId) ?? []), r]);
   const skus = [...bySku.entries()]
-    .map(([itemId, list]) => ({ itemId, sku: list[0]!.sku, name: list[0]!.itemName, category: list[0]!.category, list, agg: rollup(list, bands, win, basis) }))
+    .map(([itemId, list]) => ({
+      itemId,
+      sku: list[0]!.sku,
+      name: list[0]!.itemName,
+      category: list[0]!.category,
+      list,
+      agg: rollup(list, bands, win, basis),
+    }))
     .sort((a, b) => b.agg.soldWin - a.agg.soldWin || b.agg.stock - a.agg.stock);
   const cellText = (v: { stock: number; drr: number; doc: number | null; docInc: number | null }) =>
-    cell === 'doc' ? doc(v.doc) : cell === 'docInc' ? doc(v.docInc) : cell === 'stock' ? fmtInt(v.stock) : v.drr.toFixed(1);
+    cell === 'doc'
+      ? doc(v.doc)
+      : cell === 'docInc'
+        ? doc(v.docInc)
+        : cell === 'stock'
+          ? fmtInt(v.stock)
+          : v.drr.toFixed(1);
   const short = (f: string) => f.replace(/\s*-\s*Feeder( Warehouse)?/i, '').replace(/ Feeder$/i, '');
   const winLabel = win === '15d' ? 'L15D' : 'L7D';
   const basisLabel = BASIS_LABEL[basis];
@@ -185,7 +225,10 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
           value={snapshot || inv.snapshot}
           onChange={setSnapshot}
           allLabel={null}
-          options={inv.snapshots.map((s, i) => ({ value: s, label: `${fmtDateLong(s)}${i === 0 ? ' (latest)' : ''}` }))}
+          options={inv.snapshots.map((s, i) => ({
+            value: s,
+            label: `${fmtDateLong(s)}${i === 0 ? ' (latest)' : ''}`,
+          }))}
         />
         <Select
           label="DOC window"
@@ -208,8 +251,18 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
             { value: 'darkstore', label: 'Darkstore' },
           ]}
         />
-        <Select label="Feeder city" value={city} onChange={setCity} options={[...new Set(inv.rows.map((r) => r.feederCity))].sort()} />
-        <Select label="Status" value={status} onChange={setStatus} options={ORDER.map((s) => ({ value: s, label: DOC_STATUS_LABEL[s] }))} />
+        <Select
+          label="Feeder city"
+          value={city}
+          onChange={setCity}
+          options={[...new Set(inv.rows.map((r) => r.feederCity))].sort()}
+        />
+        <Select
+          label="Status"
+          value={status}
+          onChange={setStatus}
+          options={ORDER.map((s) => ({ value: s, label: DOC_STATUS_LABEL[s] }))}
+        />
         <div className="join">
           {(
             [
@@ -218,7 +271,11 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
               ['detail', 'Detail'],
             ] as const
           ).map(([k, l]) => (
-            <button key={k} onClick={() => setView(k)} className={`btn btn-sm join-item ${view === k ? 'btn-primary' : 'font-normal'}`}>
+            <button
+              key={k}
+              onClick={() => setView(k)}
+              className={`btn btn-sm join-item ${view === k ? 'btn-primary' : 'font-normal'}`}
+            >
               {l}
             </button>
           ))}
@@ -241,12 +298,24 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
       </div>
 
       <div className="stats stats-vertical w-full border border-line bg-base-100 shadow-sm lg:stats-horizontal">
-        {stat('Sellable units', fmtInt(all.sellable), `${fmtInt(all.darkstore)} darkstore · ${fmtInt(all.warehouse)} warehouse · ${fmtInt(all.inBetween)} in-transit`)}
+        {stat(
+          'Sellable units',
+          fmtInt(all.sellable),
+          `${fmtInt(all.darkstore)} darkstore · ${fmtInt(all.warehouse)} warehouse · ${fmtInt(all.inBetween)} in-transit`
+        )}
         {stat('Incoming', fmtInt(all.incoming), 'scheduled inventory')}
-        {stat(`Units sold ${winLabel}`, fmtInt(all.soldWin), `L7D ${fmtInt(all.s7)} · L30D ${fmtInt(all.s30)}`)}
+        {stat(
+          `Units sold ${winLabel}`,
+          fmtInt(all.soldWin),
+          `L7D ${fmtInt(all.s7)} · L30D ${fmtInt(all.s30)}`
+        )}
         {stat(`Run rate (${winLabel})`, all.drr.toFixed(1), 'units / day')}
         {stat(`DOC · ${basisLabel}`, doc(all.doc), `incl. incoming ${doc(all.docInc)}`)}
-        {stat('Stock-out / critical', `${counts['stock-out']} / ${counts.critical}`, `${counts.low} low · ${counts.excess} excess (SKU × feeder)`)}
+        {stat(
+          'Stock-out / critical',
+          `${counts['stock-out']} / ${counts.critical}`,
+          `${counts.low} low · ${counts.excess} excess (SKU × feeder)`
+        )}
       </div>
 
       {view === 'matrix' && (
@@ -270,12 +339,20 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
                     {s.sku}
                     <div className="text-[11px] text-muted">{s.category}</div>
                   </td>
-                  <td className={`num px-3 py-1.5 text-center font-semibold ${TINT[s.agg.status]}`} title={`${DOC_STATUS_LABEL[s.agg.status]} · ${winLabel} ${fmtInt(s.agg.soldWin)}`}>
+                  <td
+                    className={`num px-3 py-1.5 text-center font-semibold ${TINT[s.agg.status]}`}
+                    title={`${DOC_STATUS_LABEL[s.agg.status]} · ${winLabel} ${fmtInt(s.agg.soldWin)}`}
+                  >
                     {cellText(s.agg)}
                   </td>
                   {feeders.map((f) => {
                     const r = s.list.find((x) => x.facility === f);
-                    if (!r) return <td key={f} className="text-center text-muted/50">·</td>;
+                    if (!r)
+                      return (
+                        <td key={f} className="text-center text-muted/50">
+                          ·
+                        </td>
+                      );
                     const dv = derive(r, win, basis, bands);
                     return (
                       <td
@@ -301,7 +378,18 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
               <tr className="text-xs text-muted">
                 <th className={TH_LEFT}>SKU</th>
                 <th className="px-3 py-2 text-left font-medium">Category</th>
-                {['Sellable', 'Darkstore', 'Warehouse', 'In-transit', 'Incoming', `${winLabel} units`, 'L30D units', 'Run rate', `DOC · ${basisLabel}`, 'DOC + incoming'].map((h) => (
+                {[
+                  'Sellable',
+                  'Darkstore',
+                  'Warehouse',
+                  'In-transit',
+                  'Incoming',
+                  `${winLabel} units`,
+                  'L30D units',
+                  'Run rate',
+                  `DOC · ${basisLabel}`,
+                  'DOC + incoming',
+                ].map((h) => (
                   <th key={h} className={TH}>
                     {h}
                   </th>
@@ -312,14 +400,26 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
             </thead>
             <tbody>
               {skus.map((s) => {
-                const risk = s.list.map((r) => ({ r, d: derive(r, win, basis, bands) })).filter((x) => x.d.status === 'stock-out' || x.d.status === 'critical' || x.d.status === 'low');
+                const risk = s.list
+                  .map((r) => ({ r, d: derive(r, win, basis, bands) }))
+                  .filter(
+                    (x) => x.d.status === 'stock-out' || x.d.status === 'critical' || x.d.status === 'low'
+                  );
                 return (
                   <tr key={s.itemId} className={ROW}>
                     <td className={TD_LEFT} title={s.name}>
                       {s.sku}
                     </td>
                     <td className="px-3 py-1.5 text-xs text-muted">{s.category}</td>
-                    {[s.agg.sellable, s.agg.darkstore, s.agg.warehouse, s.agg.inBetween, s.agg.incoming, s.agg.soldWin, s.agg.s30].map((v, i) => (
+                    {[
+                      s.agg.sellable,
+                      s.agg.darkstore,
+                      s.agg.warehouse,
+                      s.agg.inBetween,
+                      s.agg.incoming,
+                      s.agg.soldWin,
+                      s.agg.s30,
+                    ].map((v, i) => (
                       <td key={i} className="num px-3 py-1.5 text-right">
                         {fmtInt(v)}
                       </td>
@@ -328,9 +428,16 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
                     <td className="num px-3 py-1.5 text-right font-semibold">{doc(s.agg.doc)}</td>
                     <td className="num px-3 py-1.5 text-right">{doc(s.agg.docInc)}</td>
                     <td className="px-3 py-1.5">
-                      <span className={`badge badge-sm badge-soft ${BADGE[s.agg.status]}`}>{DOC_STATUS_LABEL[s.agg.status]}</span>
+                      <span className={`badge badge-sm badge-soft ${BADGE[s.agg.status]}`}>
+                        {DOC_STATUS_LABEL[s.agg.status]}
+                      </span>
                     </td>
-                    <td className="max-w-72 truncate px-3 py-1.5 text-xs" title={risk.map((x) => `${x.r.facility}: ${DOC_STATUS_LABEL[x.d.status]} (${doc(x.d.doc)} d)`).join('\n')}>
+                    <td
+                      className="max-w-72 truncate px-3 py-1.5 text-xs"
+                      title={risk
+                        .map((x) => `${x.r.facility}: ${DOC_STATUS_LABEL[x.d.status]} (${doc(x.d.doc)} d)`)
+                        .join('\n')}
+                    >
                       {risk.length ? `${risk.length}: ${risk.map((x) => x.r.feederCity).join(', ')}` : '—'}
                     </td>
                   </tr>
@@ -349,7 +456,20 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
                 <th className={TH_LEFT}>SKU</th>
                 <th className="px-3 py-2 text-left font-medium">Feeder</th>
                 <th className="px-3 py-2 text-left font-medium">City</th>
-                {['Sellable', 'Darkstore', 'Warehouse', 'In-transit', 'Incoming', 'L7D', 'L15D', 'L30D', `DRR ${winLabel}`, `DOC · ${basisLabel}`, 'DOC + inc', 'Near expiry'].map((h) => (
+                {[
+                  'Sellable',
+                  'Darkstore',
+                  'Warehouse',
+                  'In-transit',
+                  'Incoming',
+                  'L7D',
+                  'L15D',
+                  'L30D',
+                  `DRR ${winLabel}`,
+                  `DOC · ${basisLabel}`,
+                  'DOC + inc',
+                  'Near expiry',
+                ].map((h) => (
                   <th key={h} className={TH}>
                     {h}
                   </th>
@@ -360,7 +480,11 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
             <tbody>
               {[...rows]
                 .map((r) => ({ r, d: derive(r, win, basis, bands) }))
-                .sort((a, b) => ORDER.indexOf(a.d.status) - ORDER.indexOf(b.d.status) || (a.d.doc ?? 1e9) - (b.d.doc ?? 1e9))
+                .sort(
+                  (a, b) =>
+                    ORDER.indexOf(a.d.status) - ORDER.indexOf(b.d.status) ||
+                    (a.d.doc ?? 1e9) - (b.d.doc ?? 1e9)
+                )
                 .map(({ r, d }) => (
                   <tr key={r.itemId + r.facilityId} className={ROW}>
                     <td className={TD_LEFT} title={r.itemName}>
@@ -368,7 +492,16 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
                     </td>
                     <td className="whitespace-nowrap px-3 py-1.5 text-xs">{r.facility}</td>
                     <td className="whitespace-nowrap px-3 py-1.5 text-xs text-muted">{r.feederCity}</td>
-                    {[r.sellable, r.darkstore, r.warehouse, r.inBetween, r.incoming, r.sold7d, r.sold15d, r.sold30d].map((v, i) => (
+                    {[
+                      r.sellable,
+                      r.darkstore,
+                      r.warehouse,
+                      r.inBetween,
+                      r.incoming,
+                      r.sold7d,
+                      r.sold15d,
+                      r.sold30d,
+                    ].map((v, i) => (
                       <td key={i} className="num px-3 py-1.5 text-right">
                         {fmtInt(v)}
                       </td>
@@ -378,7 +511,9 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
                     <td className="num px-3 py-1.5 text-right">{doc(d.docInc)}</td>
                     <td className="num px-3 py-1.5 text-right">{fmtInt(r.nearExpiry)}</td>
                     <td className="px-3 py-1.5">
-                      <span className={`badge badge-sm badge-soft ${BADGE[d.status]}`}>{DOC_STATUS_LABEL[d.status]}</span>
+                      <span className={`badge badge-sm badge-soft ${BADGE[d.status]}`}>
+                        {DOC_STATUS_LABEL[d.status]}
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -389,7 +524,10 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
 
       {trend && trend.points.length > 1 && (
         <Card title="Days of cover across snapshots">
-          <Columns items={trend.points.map((p) => ({ label: p.snapshot.slice(5), value: p.doc ?? 0 }))} fmt={(v) => (v == null ? '—' : `${v.toFixed(1)} d`)} />
+          <Columns
+            items={trend.points.map((p) => ({ label: p.snapshot.slice(5), value: p.doc ?? 0 }))}
+            fmt={(v) => (v == null ? '—' : `${v.toFixed(1)} d`)}
+          />
         </Card>
       )}
 
@@ -397,7 +535,13 @@ export function InventoryView({ profileId, category }: { profileId: string; cate
         {ORDER.slice(0, 6).map((s) => (
           <span key={s} className={`rounded px-2 py-0.5 ${TINT[s]}`}>
             {DOC_STATUS_LABEL[s]}
-            {s === 'critical' ? ` < ${bands.critical} d` : s === 'low' ? ` < ${bands.low} d` : s === 'excess' ? ` > ${bands.excess} d` : ''}
+            {s === 'critical'
+              ? ` < ${bands.critical} d`
+              : s === 'low'
+                ? ` < ${bands.low} d`
+                : s === 'excess'
+                  ? ` > ${bands.excess} d`
+                  : ''}
           </span>
         ))}
       </div>

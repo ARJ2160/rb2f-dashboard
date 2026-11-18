@@ -44,11 +44,15 @@ export function ChannelSplit({ data }: { data: DsrResponse }) {
         <div key={c.channel} className="stat px-4 py-3">
           <div className="stat-title flex items-baseline justify-between gap-3 text-xs">
             <span className="font-semibold text-ink">{CHANNEL_LABEL[c.channel]}</span>
-            <span className={c.days ? 'text-muted' : 'text-warn'}>{c.days ? `${c.days}/${data.days} days` : 'no data'}</span>
+            <span className={c.days ? 'text-muted' : 'text-warn'}>
+              {c.days ? `${c.days}/${data.days} days` : 'no data'}
+            </span>
           </div>
           <div className="stat-value num text-xl">
             {fmtMoney(c.spend)}
-            <span className="ml-1.5 text-sm font-normal text-muted">{total ? fmtPct((c.spend / total) * 100) : '—'} of spend</span>
+            <span className="ml-1.5 text-sm font-normal text-muted">
+              {total ? fmtPct((c.spend / total) * 100) : '—'} of spend
+            </span>
           </div>
           <div className="stat-desc num">
             Ad Sales {fmtMoney(c.adSales)} · ACoS {c.adSales ? fmtPct((c.spend / c.adSales) * 100) : '—'}
@@ -95,8 +99,13 @@ export function DsrTable({ data }: { data: DsrResponse }) {
         </thead>
         <tbody>
           {data.rows.map((r) => (
-            <tr key={r.date} className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft">
-              <td className="sticky left-0 z-10 whitespace-nowrap bg-inherit px-3 py-1.5">{fmtDateLong(r.date)}</td>
+            <tr
+              key={r.date}
+              className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft"
+            >
+              <td className="sticky left-0 z-10 whitespace-nowrap bg-inherit px-3 py-1.5">
+                {fmtDateLong(r.date)}
+              </td>
               <td className="whitespace-nowrap px-3 py-1.5 text-muted">{fmtWeekday(r.date)}</td>
               <Cells m={r} />
             </tr>

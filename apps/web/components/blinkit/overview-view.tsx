@@ -1,9 +1,21 @@
 'use client';
 
-import { AD_TYPE_LABEL, METRICS, metricValue, type BkDailyResponse, type MetricKey, type Sums } from '@dash/shared/blinkit';
+import {
+  AD_TYPE_LABEL,
+  METRICS,
+  metricValue,
+  type BkDailyResponse,
+  type MetricKey,
+  type Sums,
+} from '@dash/shared/blinkit';
 
 import { ErrorBox, Notes } from '@/components/notes';
-import { BreakdownTable, PerformanceOverview, type AxisKind, type OverviewMetric } from '@/components/shell/performance-overview';
+import {
+  BreakdownTable,
+  PerformanceOverview,
+  type AxisKind,
+  type OverviewMetric,
+} from '@/components/shell/performance-overview';
 import { periodSentence, previousRange, spanDays, useLoad } from '@/components/shell/use-load';
 import { fmtInt, fmtPct, fmtRupee, fmtRupee2 } from '@/lib/format';
 
@@ -18,7 +30,11 @@ type CardDef = { k: MetricKey; label: string; hint: string };
 
 /** Swiggy Instamart (Ads report columns in brackets). */
 const IM_CARDS: CardDef[] = [
-  { k: 'spend', label: 'Budget Burnt', hint: 'TOTAL_BUDGET_BURNT across Keyword, Search Inline Banner and Auto Suggest ads' },
+  {
+    k: 'spend',
+    label: 'Budget Burnt',
+    hint: 'TOTAL_BUDGET_BURNT across Keyword, Search Inline Banner and Auto Suggest ads',
+  },
   { k: 'impr', label: 'Impressions', hint: 'TOTAL_IMPRESSIONS' },
   { k: 'clicks', label: 'Clicks', hint: 'TOTAL_CLICKS' },
   { k: 'ctr', label: 'CTR', hint: 'Clicks ÷ impressions' },
@@ -45,14 +61,26 @@ const CARDS: Array<{ k: MetricKey; label: string; hint: string }> = [
   { k: 'cpm', label: 'CPM', hint: 'Spend per 1,000 impressions' },
   { k: 'atcr', label: 'ATC %', hint: 'Add to carts ÷ impressions' },
   { k: 'nu', label: 'New Users', hint: 'New users acquired by ads' },
-  { k: 'rev', label: 'Total Revenue', hint: 'All Blinkit sales (Sales report, Total Gross Bill Amount) — ads and organic' },
+  {
+    k: 'rev',
+    label: 'Total Revenue',
+    hint: 'All Blinkit sales (Sales report, Total Gross Bill Amount) — ads and organic',
+  },
   { k: 'units', label: 'Total Units', hint: 'All units sold (Sales report)' },
   { k: 'orders', label: 'Orders', hint: 'Distinct orders (Sales report)' },
   { k: 'tacos', label: 'TACoS', hint: 'Budget spent ÷ total revenue' },
   { k: 'organic', label: 'Organic Sales', hint: 'Total revenue − ad sales' },
 ];
 
-const AXIS: Record<string, AxisKind> = { inr: 'inr', inr1: 'inr', num: 'num', pct: 'pct', pct2: 'pct', x2: 'x', pos: 'num' };
+const AXIS: Record<string, AxisKind> = {
+  inr: 'inr',
+  inr1: 'inr',
+  num: 'num',
+  pct: 'pct',
+  pct2: 'pct',
+  x2: 'x',
+  pos: 'num',
+};
 const val = (k: MetricKey, s: Sums | null | undefined) => {
   if (!s) return null;
   const v = metricValue(k, s);
@@ -61,7 +89,14 @@ const val = (k: MetricKey, s: Sums | null | undefined) => {
 /** A day with no sales rows means the Sales file doesn't cover it — show a gap, not a zero. */
 const salesGap = (k: MetricKey, s: Sums) => METRICS[k].needs !== 'ads' && s.rev === 0 && s.orders === 0;
 
-export function BkOverview({ profileId, from, to, category, adType, latest }: {
+export function BkOverview({
+  profileId,
+  from,
+  to,
+  category,
+  adType,
+  latest,
+}: {
   profileId: string;
   from: string;
   to: string;
@@ -97,7 +132,7 @@ export function BkOverview({ profileId, from, to, category, adType, latest }: {
   }));
 
   const spendAll = cur?.byAdType.reduce((a, r) => a + r.spend, 0) ?? 0;
-  const typeLabel = adType ? AD_TYPE_LABEL[adType] ?? adType : null;
+  const typeLabel = adType ? (AD_TYPE_LABEL[adType] ?? adType) : null;
 
   return (
     <div className="space-y-6">
@@ -123,8 +158,29 @@ export function BkOverview({ profileId, from, to, category, adType, latest }: {
             title={im ? 'By ad property' : 'By campaign type'}
             head={
               im
-                ? ['Ad property', 'Budget Burnt', 'Share', 'Impressions', 'Clicks', 'CTR', 'A2C', 'Conversions', 'Ad GMV', 'ROAS']
-                : ['Campaign type', 'Budget Spent', 'Share', 'Impressions', 'ATC', 'Quantity Sold', 'Sales', 'ROAS', 'CPM']
+                ? [
+                    'Ad property',
+                    'Budget Burnt',
+                    'Share',
+                    'Impressions',
+                    'Clicks',
+                    'CTR',
+                    'A2C',
+                    'Conversions',
+                    'Ad GMV',
+                    'ROAS',
+                  ]
+                : [
+                    'Campaign type',
+                    'Budget Spent',
+                    'Share',
+                    'Impressions',
+                    'ATC',
+                    'Quantity Sold',
+                    'Sales',
+                    'ROAS',
+                    'CPM',
+                  ]
             }
             rows={cur.byAdType
               .filter((r) => r.spend > 0 || r.impr > 0)
@@ -135,7 +191,9 @@ export function BkOverview({ profileId, from, to, category, adType, latest }: {
                   fmtRupee(r.spend),
                   spendAll ? fmtPct((r.spend / spendAll) * 100) : '—',
                   fmtInt(r.impr),
-                  ...(im ? [fmtInt(r.clicks ?? 0), r.impr ? fmtPct(((r.clicks ?? 0) / r.impr) * 100) : '—'] : []),
+                  ...(im
+                    ? [fmtInt(r.clicks ?? 0), r.impr ? fmtPct(((r.clicks ?? 0) / r.impr) * 100) : '—']
+                    : []),
                   fmtInt(r.atc),
                   fmtInt(r.aunits),
                   fmtRupee(r.asales),

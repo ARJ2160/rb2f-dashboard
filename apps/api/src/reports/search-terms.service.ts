@@ -94,8 +94,14 @@ export async function getSearchTerms(
   const t = totals[0];
   const totalTerms = Number(t?.terms ?? 0);
   const notes: string[] = [];
-  if (!hasTerms) notes.push('No brand terms set — nothing is classed "Branded" except own ASINs. Set them on the Ads Analysis tab.');
-  if (totalTerms > rows.length) notes.push(`Showing the top ${rows.length} of ${totalTerms} terms by ${opts.sort}. Use search to find others.`);
+  if (!hasTerms)
+    notes.push(
+      'No brand terms set — nothing is classed "Branded" except own ASINs. Set them on the Ads Analysis tab.'
+    );
+  if (totalTerms > rows.length)
+    notes.push(
+      `Showing the top ${rows.length} of ${totalTerms} terms by ${opts.sort}. Use search to find others.`
+    );
 
   return {
     profileId,

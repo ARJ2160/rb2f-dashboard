@@ -8,7 +8,15 @@ import {
   type MetricKey,
   type Sums,
 } from '@dash/shared/blinkit';
-import { daysInRange, enumerateDates, type DurMetric, type DurResponse, type SummaryPeriod, type SummaryResponse, type SummaryRow } from '@dash/shared';
+import {
+  daysInRange,
+  enumerateDates,
+  type DurMetric,
+  type DurResponse,
+  type SummaryPeriod,
+  type SummaryResponse,
+  type SummaryRow,
+} from '@dash/shared';
 
 import { changePct, periodLabel, summaryPeriods } from '../../lib/periods';
 import { campaignsIn, getDims, itemsIn } from './dims';
@@ -24,7 +32,11 @@ export interface RangeArgs {
 /** Item / campaign ID filters for a category (null = no filter). */
 async function scope(profileId: string, category?: string) {
   const d = await getDims(profileId);
-  return { d, items: category ? itemsIn(d, category) : null, camps: category ? campaignsIn(d, category) : null };
+  return {
+    d,
+    items: category ? itemsIn(d, category) : null,
+    camps: category ? campaignsIn(d, category) : null,
+  };
 }
 
 /* ------------------------------------------------------------------ totals */
@@ -89,7 +101,8 @@ export async function groups(a: RangeArgs & { groupBy: 'category' | 'sku' }): Pr
   const tot = salesRow(total[0] ?? {});
   for (const r of ads) {
     const c = d.campaigns.get(String(r.campaign_id));
-    const key = a.groupBy === 'sku' ? c?.sku || `${c?.category ?? 'Unmapped'} (no SKU)` : (c?.category ?? 'Unmapped');
+    const key =
+      a.groupBy === 'sku' ? c?.sku || `${c?.category ?? 'Unmapped'} (no SKU)` : (c?.category ?? 'Unmapped');
     const s = adsRow(r);
     addInto(g(key), s);
     addInto(tot, s);
@@ -153,14 +166,22 @@ export async function daily(a: RangeArgs & { adType?: string | undefined }): Pro
   const notes: string[] = [];
   const noSales = dates.filter((x) => !salesDays.has(x)).length;
   const noAds = dates.filter((x) => !adDays.has(x)).length;
-  if (noSales) notes.push(`${noSales} of ${dates.length} day(s) have no Blinkit sales data — revenue, organic sales and TACoS for those days are not real zeros.`);
+  if (noSales)
+    notes.push(
+      `${noSales} of ${dates.length} day(s) have no Blinkit sales data — revenue, organic sales and TACoS for those days are not real zeros.`
+    );
   if (noAds) notes.push(`${noAds} of ${dates.length} day(s) have no Blinkit ads data.`);
   const order = ['PL', 'PR', 'BL'];
   const byAdType = order.map((t) => {
     const r = byType.find((x) => x.ad_type === t);
     return {
-      adType: t, spend: Number(r?.spend ?? 0), asales: Number(r?.asales ?? 0), impr: Number(r?.impr ?? 0),
-      atc: Number(r?.atc ?? 0), aunits: Number(r?.aunits ?? 0), days: Number(r?.days ?? 0),
+      adType: t,
+      spend: Number(r?.spend ?? 0),
+      asales: Number(r?.asales ?? 0),
+      impr: Number(r?.impr ?? 0),
+      atc: Number(r?.atc ?? 0),
+      aunits: Number(r?.aunits ?? 0),
+      days: Number(r?.days ?? 0),
     };
   });
   return { from: a.from, to: a.to, dates, series, total, byAdType, notes };
@@ -177,7 +198,8 @@ export async function dur(a: RangeArgs & { metric: DurMetric | 'revenue' }): Pro
     [a.profileId, a.from, a.to, ...(items ? [items] : [])]
   );
   const dates = enumerateDates(a.from, a.to);
-  const pick = (r: Record<string, unknown>) => Number(a.metric === 'orders' ? r.orders : a.metric === 'revenue' ? r.rev : r.units);
+  const pick = (r: Record<string, unknown>) =>
+    Number(a.metric === 'orders' ? r.orders : a.metric === 'revenue' ? r.rev : r.units);
   const by = new Map<string, Record<string, number | null>>();
   for (const r of rows) {
     const id = String(r.item_id);
@@ -201,7 +223,8 @@ export async function dur(a: RangeArgs & { metric: DurMetric | 'revenue' }): Pro
   const notes = [
     'One row per Blinkit Item ID; SKU, name and category from the SKU mapper ("Unmapped" if the item is not in it). Avg = Totals ÷ days in range.',
   ];
-  if (a.metric === 'orders') notes.push('Orders are counted per item, so a basket with two products counts once for each.');
+  if (a.metric === 'orders')
+    notes.push('Orders are counted per item, so a basket with two products counts once for each.');
   return {
     profileId: a.profileId,
     from: a.from,
@@ -219,7 +242,13 @@ export async function dur(a: RangeArgs & { metric: DurMetric | 'revenue' }): Pro
 /* ----------------------------------------------------------------- MoM / WoW */
 
 type Fmt = SummaryRow['format'];
-type RowDef = { key: string; label: string; format: Fmt; better: SummaryRow['better']; get: (s: Sums, days: number) => number | null };
+type RowDef = {
+  key: string;
+  label: string;
+  format: Fmt;
+  better: SummaryRow['better'];
+  get: (s: Sums, days: number) => number | null;
+};
 
 const metric = (k: MetricKey) => (s: Sums) => {
   const v = METRICS[k].get(s);
@@ -248,11 +277,35 @@ const ROWS: RowDef[] = [
   { key: 'tacosPct', label: 'TACOS%', format: 'pct', better: 'down', get: needsSales(metric('tacos')) },
   { key: 'roas', label: 'ROAS', format: 'ratio', better: 'up', get: metric('roas') },
   { key: 'troas', label: 'Total ROAS', format: 'ratio', better: 'up', get: metric('troas') },
-  { key: 'organicPct', label: 'Organic contribution %', format: 'pct', better: 'up', get: metric('orgshare') },
-  { key: 'adPct', label: 'Ad contribution %', format: 'pct', better: 'none', get: needsSales(metric('adshare')) },
+  {
+    key: 'organicPct',
+    label: 'Organic contribution %',
+    format: 'pct',
+    better: 'up',
+    get: metric('orgshare'),
+  },
+  {
+    key: 'adPct',
+    label: 'Ad contribution %',
+    format: 'pct',
+    better: 'none',
+    get: needsSales(metric('adshare')),
+  },
   { key: 'newUsers', label: 'New Users', format: 'int', better: 'up', get: metric('nu') },
-  { key: 'spendPerDay', label: 'Ad Spends / day', format: 'money', better: 'none', get: (s, n) => (n ? s.spend / n : null) },
-  { key: 'salesPerDay', label: 'Sales / day', format: 'money', better: 'up', get: (s, n) => (n && (s.rev || s.units) ? s.rev / n : null) },
+  {
+    key: 'spendPerDay',
+    label: 'Ad Spends / day',
+    format: 'money',
+    better: 'none',
+    get: (s, n) => (n ? s.spend / n : null),
+  },
+  {
+    key: 'salesPerDay',
+    label: 'Sales / day',
+    format: 'money',
+    better: 'up',
+    get: (s, n) => (n && (s.rev || s.units) ? s.rev / n : null),
+  },
 ];
 
 async function latestDates(profileId: string) {
@@ -278,9 +331,18 @@ async function missingDays(profileId: string, from: string, to: string) {
  * MoM / WoW (MTD vs PMTD, L7D vs P7D) in the same shape as the Amazon summary,
  * anchored on the last day that has BOTH sales and ads (or whichever exists).
  */
-export async function momWow(a: { profileId: string; asOf?: string | undefined; category?: string | undefined }): Promise<SummaryResponse> {
+export async function momWow(a: {
+  profileId: string;
+  asOf?: string | undefined;
+  category?: string | undefined;
+}): Promise<SummaryResponse> {
   const latest = await latestDates(a.profileId);
-  const autoAsOf = latest.sales && latest.ads ? (latest.sales < latest.ads ? latest.sales : latest.ads) : (latest.sales ?? latest.ads);
+  const autoAsOf =
+    latest.sales && latest.ads
+      ? latest.sales < latest.ads
+        ? latest.sales
+        : latest.ads
+      : (latest.sales ?? latest.ads);
   const asOf = a.asOf ?? autoAsOf;
   const { d } = await scope(a.profileId, a.category);
   const base: SummaryResponse = {
@@ -308,23 +370,46 @@ export async function momWow(a: { profileId: string; asOf?: string | undefined; 
         totals({ profileId: a.profileId, from: p.from, to: p.to, category: a.category }),
         missingDays(a.profileId, p.from, p.to),
       ]);
-      const period: SummaryPeriod = { ...p, label: periodLabel(p.from, p.to), short: short[k], days: daysInRange(p.from, p.to), ...miss };
+      const period: SummaryPeriod = {
+        ...p,
+        label: periodLabel(p.from, p.to),
+        short: short[k],
+        days: daysInRange(p.from, p.to),
+        ...miss,
+      };
       return { k, sums, period };
     })
   );
-  const P = Object.fromEntries(loaded.map((x) => [x.k, x])) as Record<(typeof keys)[number], (typeof loaded)[number]>;
+  const P = Object.fromEntries(loaded.map((x) => [x.k, x])) as Record<
+    (typeof keys)[number],
+    (typeof loaded)[number]
+  >;
   base.periods = { mtd: P.mtd.period, pmtd: P.pmtd.period, l7d: P.l7d.period, p7d: P.p7d.period };
   const val = (r: RowDef, k: (typeof keys)[number]) => r.get(P[k].sums, P[k].period.days);
   base.rows = ROWS.map((r) => {
     const v = { mtd: val(r, 'mtd'), pmtd: val(r, 'pmtd'), l7d: val(r, 'l7d'), p7d: val(r, 'p7d') };
-    return { key: r.key, label: r.label, format: r.format, better: r.better, ...v, mom: changePct(v.mtd, v.pmtd), wow: changePct(v.l7d, v.p7d) };
+    return {
+      key: r.key,
+      label: r.label,
+      format: r.format,
+      better: r.better,
+      ...v,
+      mom: changePct(v.mtd, v.pmtd),
+      wow: changePct(v.l7d, v.p7d),
+    };
   });
   for (const k of keys) {
     const p = P[k].period;
-    if (p.missingSalesDays) base.notes.push(`${p.short} (${p.label}): ${p.missingSalesDays} of ${p.days} day(s) have no sales data — sales-based values are partial or "—".`);
-    if (p.missingAdDays) base.notes.push(`${p.short} (${p.label}): ${p.missingAdDays} of ${p.days} day(s) have no ads data.`);
+    if (p.missingSalesDays)
+      base.notes.push(
+        `${p.short} (${p.label}): ${p.missingSalesDays} of ${p.days} day(s) have no sales data — sales-based values are partial or "—".`
+      );
+    if (p.missingAdDays)
+      base.notes.push(`${p.short} (${p.label}): ${p.missingAdDays} of ${p.days} day(s) have no ads data.`);
   }
-  base.notes.push('Ratios are recomputed from each period\'s totals. Organic = Sales − Ad Sales (direct + indirect). Ad Spends = Estimated Budget Consumed.');
+  base.notes.push(
+    "Ratios are recomputed from each period's totals. Organic = Sales − Ad Sales (direct + indirect). Ad Spends = Estimated Budget Consumed."
+  );
   return base;
 }
 
@@ -348,7 +433,15 @@ export async function geo(a: RangeArgs): Promise<BkGeoResponse> {
     ),
   ]);
   return {
-    states: states.map((r) => ({ key: String(r.k || 'Unknown'), state: String(r.k || 'Unknown'), sums: salesRow(r) })),
-    cities: cities.map((r) => ({ key: String(r.k || 'Unknown'), state: String(r.st || 'Unknown'), sums: salesRow(r) })),
+    states: states.map((r) => ({
+      key: String(r.k || 'Unknown'),
+      state: String(r.k || 'Unknown'),
+      sums: salesRow(r),
+    })),
+    cities: cities.map((r) => ({
+      key: String(r.k || 'Unknown'),
+      state: String(r.st || 'Unknown'),
+      sums: salesRow(r),
+    })),
   };
 }

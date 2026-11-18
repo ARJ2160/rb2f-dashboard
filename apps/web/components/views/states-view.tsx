@@ -6,7 +6,16 @@ import { IndiaMap, type MapMetric } from '@/components/india-map';
 import { getStates } from '@/lib/api';
 import { fmtInt, fmtMoney, fmtPct } from '@/lib/format';
 
-import { Card, MCell, Select, THEAD, TABLE_WRAP, useCompareReport, ViewShell, type RangeProps } from './shared';
+import {
+  Card,
+  MCell,
+  Select,
+  THEAD,
+  TABLE_WRAP,
+  useCompareReport,
+  ViewShell,
+  type RangeProps,
+} from './shared';
 
 const METRICS: Array<{ value: MapMetric; label: string }> = [
   { value: 'sales', label: 'Sales' },
@@ -43,11 +52,21 @@ export function StatesView(props: RangeProps) {
               { value: 'vendor', label: 'Vendor Central' },
             ]}
           />
-          {data && data.categories.length > 0 && <Select label="Category" value={category} onChange={setCategory} options={data.categories} />}
-          <Select label="Map metric" value={metric} onChange={(v) => setMetric(v as MapMetric)} options={METRICS} allLabel={null} />
+          {data && data.categories.length > 0 && (
+            <Select label="Category" value={category} onChange={setCategory} options={data.categories} />
+          )}
+          <Select
+            label="Map metric"
+            value={metric}
+            onChange={(v) => setMetric(v as MapMetric)}
+            options={METRICS}
+            allLabel={null}
+          />
           {data && (
             <span className="text-xs text-muted">
-              {data.sources.map((s) => `${s.source === 'seller' ? 'Seller' : 'Vendor'}: ${s.days} day(s)`).join(' · ')}
+              {data.sources
+                .map((s) => `${s.source === 'seller' ? 'Seller' : 'Vendor'}: ${s.days} day(s)`)
+                .join(' · ')}
             </span>
           )}
         </>
@@ -84,7 +103,10 @@ export function StatesView(props: RangeProps) {
                 {data.rows.map((r) => {
                   const p = prevBy.get(r.state);
                   return (
-                    <tr key={r.state} className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft">
+                    <tr
+                      key={r.state}
+                      className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft"
+                    >
                       <td className="whitespace-nowrap px-3 py-1.5 align-top">{r.state}</td>
                       <MCell v={r.sales} prev={p?.sales} fmt={fmtMoney} comparing={comparing} />
                       <MCell v={r.salesSharePct} prev={p?.salesSharePct} fmt={fmtPct} comparing={comparing} />

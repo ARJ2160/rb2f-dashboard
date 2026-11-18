@@ -128,7 +128,10 @@ export class GcsClient {
     }
     const body = (await res.json().catch(() => ({}))) as { access_token?: string; expires_in?: number };
     if (!res.ok || !body.access_token) {
-      throw new GcsError(`GCS auth failed (${res.status}): the metadata server returned no access token`, res.status);
+      throw new GcsError(
+        `GCS auth failed (${res.status}): the metadata server returned no access token`,
+        res.status
+      );
     }
     return { value: body.access_token, expiresAt: Date.now() + (body.expires_in ?? 3600) * 1000 };
   }
@@ -194,9 +197,7 @@ export class GcsClient {
         /* not JSON */
       }
       const hint =
-        res.status === 403
-          ? ` — give ${this.principal} "Storage Object Viewer" on gs://${this.bucket}`
-          : '';
+        res.status === 403 ? ` — give ${this.principal} "Storage Object Viewer" on gs://${this.bucket}` : '';
       throw new GcsError(`GCS request failed (${res.status}): ${msg}${hint}`, res.status);
     }
   }
@@ -310,14 +311,14 @@ export class GcsClient {
       let msg = text.slice(0, 300);
       try {
         msg = (JSON.parse(text) as { error?: { message?: string } }).error?.message ?? msg;
-      } catch { /* not JSON */ }
-      const hint = res.status === 403
-        ? ` — give ${this.principal} "Storage Object Creator" on gs://${this.bucket}`
-        : '';
+      } catch {
+        /* not JSON */
+      }
+      const hint =
+        res.status === 403 ? ` — give ${this.principal} "Storage Object Creator" on gs://${this.bucket}` : '';
       throw new GcsError(`GCS upload failed (${res.status}): ${msg}${hint}`, res.status);
     }
     const body = (await res.json()) as { name: string; generation: string; size: string };
     return { name: body.name, generation: body.generation, size: Number(body.size) };
   }
-
 }

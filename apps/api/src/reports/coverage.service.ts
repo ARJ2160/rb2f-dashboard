@@ -5,7 +5,12 @@ import { db } from '../db/client';
 
 /** What has been uploaded for a profile, and how well the ASIN mapper covers it (rule book §3). */
 export async function getCoverage(profileId: string): Promise<CoverageResponse> {
-  const sources = await db.execute<{ source: string; from: string | null; to: string | null; days: string }>(sql`
+  const sources = await db.execute<{
+    source: string;
+    from: string | null;
+    to: string | null;
+    days: string;
+  }>(sql`
     select 'seller' as source, min(date)::text as "from", max(date)::text as "to", count(distinct date) as days
       from daily_asin_sales where profile_id = ${profileId} and source = 'seller'
     union all

@@ -140,7 +140,10 @@ export async function getNegations(
   const maxOrders = opts.maxOrders ?? 3;
   const limit = opts.limit ?? 1000;
 
-  const [acct, options] = await Promise.all([accountAcosPct(profileId, from, to), adFilterOptions(profileId)]);
+  const [acct, options] = await Promise.all([
+    accountAcosPct(profileId, from, to),
+    adFilterOptions(profileId),
+  ]);
   const acosThreshold = acct == null ? null : acosMultiple * acct;
 
   const zeroRule = sql`(${ORDERS} = 0 and sum(st.clicks) > ${minClicks})`;
@@ -158,8 +161,14 @@ export async function getNegations(
   });
 
   const notes: string[] = [];
-  if (acct == null) notes.push('No account ad-sales in this range, so the high-ACoS rule is off — only "0 orders with clicks" terms are shown.');
-  else notes.push(`Account ACoS for the range is ${acct.toFixed(1)}%; the high-ACoS rule flags terms above ${(acosMultiple * acct).toFixed(1)}%.`);
+  if (acct == null)
+    notes.push(
+      'No account ad-sales in this range, so the high-ACoS rule is off — only "0 orders with clicks" terms are shown.'
+    );
+  else
+    notes.push(
+      `Account ACoS for the range is ${acct.toFixed(1)}%; the high-ACoS rule flags terms above ${(acosMultiple * acct).toFixed(1)}%.`
+    );
   if (truncated) notes.push(`Showing the top ${limit} by spend — narrow the filters to see the rest.`);
 
   return {
@@ -207,7 +216,10 @@ export async function getTermRules(
   if (!rules.length) notes.push(`Showing all ${noun} — set a rule value to filter.`);
 
   const { rows, truncated } = await aggregate(profileId, from, to, grain, filters, having, limit);
-  if (truncated) notes.push(`Showing the top ${limit} by spend — ${rules.length ? 'tighten the rules' : 'add a rule'} to narrow it.`);
+  if (truncated)
+    notes.push(
+      `Showing the top ${limit} by spend — ${rules.length ? 'tighten the rules' : 'add a rule'} to narrow it.`
+    );
 
   return {
     profileId,
@@ -249,7 +261,10 @@ export async function getBidActions(
   const limit = opts.limit ?? 1000;
 
   const rangeOk = daysInRange(from, to) > 3;
-  const [acct, options] = await Promise.all([accountAcosPct(profileId, from, to), adFilterOptions(profileId)]);
+  const [acct, options] = await Promise.all([
+    accountAcosPct(profileId, from, to),
+    adFilterOptions(profileId),
+  ]);
   const notes: string[] = [];
   const empty = { thresholds: {}, rows: [] as TermActionRow[], totalMatched: 0, truncated: false };
 
@@ -269,7 +284,9 @@ export async function getBidActions(
   }
 
   if (acct == null) {
-    notes.push('No account ad-sales in this range, so bid moves (which compare to account ACoS) cannot be computed.');
+    notes.push(
+      'No account ad-sales in this range, so bid moves (which compare to account ACoS) cannot be computed.'
+    );
     return {
       profileId,
       from,

@@ -27,7 +27,10 @@ export const bkSalesLines = pgTable(
     /** Total Gross Bill Amount */
     revenue: doublePrecision('revenue').notNull().default(0),
   },
-  (t) => [primaryKey({ columns: [t.profileId, t.orderId, t.itemId] }), index('bk_sales_date_idx').on(t.profileId, t.date)]
+  (t) => [
+    primaryKey({ columns: [t.profileId, t.orderId, t.itemId] }),
+    index('bk_sales_date_idx').on(t.profileId, t.date),
+  ]
 );
 
 /** Ads: one row per day × ad type (PL / PR / BL) × campaign × targeting. */
@@ -95,7 +98,9 @@ export const bkInventory = pgTable(
     sold30d: doublePrecision('sold_30d').notNull().default(0),
     generatedAt: text('generated_at').notNull().default(''),
   },
-  (t) => [primaryKey({ name: 'bk_inventory_pk', columns: [t.profileId, t.snapshotDate, t.itemId, t.facilityId] })]
+  (t) => [
+    primaryKey({ name: 'bk_inventory_pk', columns: [t.profileId, t.snapshotDate, t.itemId, t.facilityId] }),
+  ]
 );
 
 /** SKU mapper: keyed by Item ID when present, else the normalised product name. */

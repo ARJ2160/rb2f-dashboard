@@ -25,9 +25,15 @@ export function dimsJoin(alias: string): SQL {
  * one-element IN, so existing single-select callers are unchanged.
  */
 function inList(expr: SQL, csv: string): SQL | null {
-  const vals = csv.split(',').map((s) => s.trim()).filter(Boolean);
+  const vals = csv
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   if (!vals.length) return null;
-  return sql`${expr} in (${sql.join(vals.map((v) => sql`${v}`), sql`, `)})`;
+  return sql`${expr} in (${sql.join(
+    vals.map((v) => sql`${v}`),
+    sql`, `
+  )})`;
 }
 
 /**
@@ -70,7 +76,9 @@ export async function listCategories(profileId: string): Promise<string[]> {
  * mapper category, "Unmapped" (not in mapper) or "(missing ASIN)" (blank in source).
  */
 export function asinCategorySql(asinCol: string, productAlias = 'p'): SQL {
-  return sql.raw(`case when ${asinCol} = '' then '(missing ASIN)' else coalesce(${productAlias}.mapper_category, 'Unmapped') end`);
+  return sql.raw(
+    `case when ${asinCol} = '' then '(missing ASIN)' else coalesce(${productAlias}.mapper_category, 'Unmapped') end`
+  );
 }
 
 export async function adFilterOptions(profileId: string): Promise<AdFilterOptions> {
@@ -82,16 +90,26 @@ export async function adFilterOptions(profileId: string): Promise<AdFilterOption
   ]);
   const uniq = (k: keyof (typeof rows)[number]) => [...new Set(rows.map((r) => r[k]))];
   return {
-    categories: [...new Set([...uniq('category'), ...cats])].sort((a, b) => (a === 'Unmapped' ? 1 : b === 'Unmapped' ? -1 : a.localeCompare(b))),
+    categories: [...new Set([...uniq('category'), ...cats])].sort((a, b) =>
+      a === 'Unmapped' ? 1 : b === 'Unmapped' ? -1 : a.localeCompare(b)
+    ),
     adTypes: sortBy(uniq('ad_type'), ORDER.adTypes!),
-    targetings: sortBy([...new Set([...uniq('targeting'), ...ORDER.targetings!.slice(0, 5)])], ORDER.targetings!),
+    targetings: sortBy(
+      [...new Set([...uniq('targeting'), ...ORDER.targetings!.slice(0, 5)])],
+      ORDER.targetings!
+    ),
     brandings: ORDER.brandings!,
   };
 }
 
 /** "SB,SP" → "SP & SB" (rule book §8: never "Both"). */
 export function channelLabel(csv: string | null): string {
-  const set = new Set((csv ?? '').split(',').filter(Boolean).map((c) => c.toUpperCase()));
+  const set = new Set(
+    (csv ?? '')
+      .split(',')
+      .filter(Boolean)
+      .map((c) => c.toUpperCase())
+  );
   return ['SP', 'SB', 'SD'].filter((c) => set.has(c)).join(' & ');
 }
 

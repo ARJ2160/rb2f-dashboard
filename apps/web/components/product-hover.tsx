@@ -26,7 +26,8 @@ export function ProfileProvider({ profileId, children }: { profileId: string; ch
 
 /** Amazon.in listing + public product image (01 variant, large). */
 const amazonListingUrl = (asin: string) => `https://www.amazon.in/dp/${asin}`;
-const amazonImageUrl = (asin: string) => `https://images-na.ssl-images-amazon.com/images/P/${asin}.01._SCLZZZZZZZ_.jpg`;
+const amazonImageUrl = (asin: string) =>
+  `https://images-na.ssl-images-amazon.com/images/P/${asin}.01._SCLZZZZZZZ_.jpg`;
 
 // Tiny module-level cache so re-hovering the same ASIN doesn't refetch.
 const cache = new Map<string, ProductCard | 'missing'>();
@@ -36,7 +37,9 @@ async function fetchProduct(profileId: string, asin: string): Promise<ProductCar
   const hit = cache.get(key);
   if (hit) return hit;
   try {
-    const res = await fetch(`/api/products/${asin}?profileId=${encodeURIComponent(profileId)}`, { cache: 'no-store' });
+    const res = await fetch(`/api/products/${asin}?profileId=${encodeURIComponent(profileId)}`, {
+      cache: 'no-store',
+    });
     if (!res.ok) {
       cache.set(key, 'missing');
       return 'missing';
@@ -50,7 +53,11 @@ async function fetchProduct(profileId: string, asin: string): Promise<ProductCar
 }
 
 const inr = (v: number | null) =>
-  v == null ? null : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v);
+  v == null
+    ? null
+    : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(
+        v
+      );
 
 /** An ASIN rendered as monospace text that reveals a product card on hover/focus. */
 export function AsinCell({ asin }: { asin: string | null | undefined }) {
@@ -77,7 +84,12 @@ export function AsinCell({ asin }: { asin: string | null | undefined }) {
     setOpen(false);
   };
 
-  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    []
+  );
 
   return (
     <span
@@ -129,8 +141,12 @@ export function AsinCell({ asin }: { asin: string | null | undefined }) {
               ) : (
                 <>
                   <span className="block line-clamp-2 text-xs font-medium">{card.title ?? asin}</span>
-                  {card.category && <span className="mt-0.5 block text-[11px] text-muted">{card.category}</span>}
-                  {inr(card.sellingPrice) && <span className="mt-0.5 block text-[11px] font-semibold">{inr(card.sellingPrice)}</span>}
+                  {card.category && (
+                    <span className="mt-0.5 block text-[11px] text-muted">{card.category}</span>
+                  )}
+                  {inr(card.sellingPrice) && (
+                    <span className="mt-0.5 block text-[11px] font-semibold">{inr(card.sellingPrice)}</span>
+                  )}
                 </>
               )}
               <span className="mt-1 block font-mono text-[10px] text-muted">{asin}</span>

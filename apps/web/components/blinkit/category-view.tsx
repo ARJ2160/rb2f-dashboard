@@ -12,14 +12,46 @@ import { BkCell, bkFmt, bkVal, days, ROW, TD_LEFT, TH, TH_LEFT, type BkViewProps
 import { useLoad } from './dsr-dur';
 import { useQc } from './qc-context';
 
-const COLS: MetricKey[] = ['rev', 'orders', 'units', 'aov', 'spend', 'asales', 'organic', 'acos', 'tacos', 'roas', 'cpm', 'impr', 'clicks', 'ctr', 'cpc', 'atcr', 'cvr', 'mvp'];
+const COLS: MetricKey[] = [
+  'rev',
+  'orders',
+  'units',
+  'aov',
+  'spend',
+  'asales',
+  'organic',
+  'acos',
+  'tacos',
+  'roas',
+  'cpm',
+  'impr',
+  'clicks',
+  'ctr',
+  'cpc',
+  'atcr',
+  'cvr',
+  'mvp',
+];
 const SHARE: Array<{ value: MetricKey; label: string }> = [
   { value: 'rev', label: 'Sales' },
   { value: 'units', label: 'Units' },
   { value: 'spend', label: 'Spends' },
   { value: 'asales', label: 'Ad Sales' },
 ];
-const TREND: MetricKey[] = ['rev', 'orders', 'units', 'spend', 'asales', 'tacos', 'acos', 'roas', 'impr', 'clicks', 'ctr', 'cpm'];
+const TREND: MetricKey[] = [
+  'rev',
+  'orders',
+  'units',
+  'spend',
+  'asales',
+  'tacos',
+  'acos',
+  'roas',
+  'impr',
+  'clicks',
+  'ctr',
+  'cpm',
+];
 
 /** Category / SKU performance (the mock-up's Main View + Comparison), with the period B deltas when comparing. */
 export function CategoryView(p: BkViewProps) {
@@ -42,7 +74,8 @@ export function CategoryView(p: BkViewProps) {
   const comparing = !!cmp;
   const [cur, prev, daily] = data ?? [null, null, null];
   const prevBy = new Map(prev?.groups.map((g) => [g.key, g.sums]) ?? []);
-  const dA = days(p), dB = cmp ? days(cmp) : 1;
+  const dA = days(p),
+    dB = cmp ? days(cmp) : 1;
   const label = groupBy === 'sku' ? 'SKU' : 'Category';
 
   return (
@@ -66,10 +99,22 @@ export function CategoryView(p: BkViewProps) {
           <div className="grid gap-3 lg:grid-cols-2">
             <Card
               title={`Share by ${label.toLowerCase()}`}
-              right={<Select label="Metric" value={share} onChange={(v) => setShare(v as MetricKey)} options={SHARE} allLabel={null} />}
+              right={
+                <Select
+                  label="Metric"
+                  value={share}
+                  onChange={(v) => setShare(v as MetricKey)}
+                  options={SHARE}
+                  allLabel={null}
+                />
+              }
             >
               <Donut
-                items={cur.groups.map((g) => ({ label: g.key, value: bkVal(share, g.sums) ?? 0, prev: prevBy.has(g.key) ? bkVal(share, prevBy.get(g.key)!) : null }))}
+                items={cur.groups.map((g) => ({
+                  label: g.key,
+                  value: bkVal(share, g.sums) ?? 0,
+                  prev: prevBy.has(g.key) ? bkVal(share, prevBy.get(g.key)!) : null,
+                }))}
                 fmt={share === 'units' ? fmtInt : fmtMoney}
                 comparing={comparing}
               />
@@ -79,7 +124,11 @@ export function CategoryView(p: BkViewProps) {
                 items={cur.groups
                   .filter((g) => g.sums.rev > 0)
                   .slice(0, 8)
-                  .map((g) => ({ label: g.key, value: bkVal('tacos', g.sums) ?? 0, prev: prevBy.has(g.key) ? bkVal('tacos', prevBy.get(g.key)!) : null }))}
+                  .map((g) => ({
+                    label: g.key,
+                    value: bkVal('tacos', g.sums) ?? 0,
+                    prev: prevBy.has(g.key) ? bkVal('tacos', prevBy.get(g.key)!) : null,
+                  }))}
                 fmt={fmtPct}
                 comparing={comparing}
               />
@@ -90,11 +139,20 @@ export function CategoryView(p: BkViewProps) {
           <Card
             title="Daily trend"
             right={
-              <Select label="Metric" value={trend} onChange={(v) => setTrend(v as MetricKey)} allLabel={null} options={TREND.filter(show).map((k) => ({ value: k, label: mLabel(k) }))} />
+              <Select
+                label="Metric"
+                value={trend}
+                onChange={(v) => setTrend(v as MetricKey)}
+                allLabel={null}
+                options={TREND.filter(show).map((k) => ({ value: k, label: mLabel(k) }))}
+              />
             }
           >
             <Columns
-              items={daily.dates.map((d, i) => ({ label: fmtDay(d), value: bkVal(trend, daily.series[i]!) ?? 0 }))}
+              items={daily.dates.map((d, i) => ({
+                label: fmtDay(d),
+                value: bkVal(trend, daily.series[i]!) ?? 0,
+              }))}
               fmt={(v) => bkFmt(trend, v)}
             />
           </Card>
@@ -115,17 +173,39 @@ export function CategoryView(p: BkViewProps) {
                   <td className="sticky left-0 z-30 bg-accent-soft px-3 py-1.5">TOTAL</td>
                   <td className="num px-3 py-1.5 text-right">100%</td>
                   {cols.map((c) => (
-                    <BkCell key={c} k={c} s={cur.total} prev={prev?.total} comparing={comparing} daysA={dA} daysB={dB} />
+                    <BkCell
+                      key={c}
+                      k={c}
+                      s={cur.total}
+                      prev={prev?.total}
+                      comparing={comparing}
+                      daysA={dA}
+                      daysB={dB}
+                    />
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {cur.groups.map((g) => (
                   <tr key={g.key} className={ROW}>
-                    <td className={`${TD_LEFT} ${g.key === 'Unmapped' || g.key.endsWith('(no SKU)') ? 'text-warn' : ''}`}>{g.key}</td>
-                    <td className="num px-3 py-1.5 text-right align-top">{cur.total.rev ? fmtPct((g.sums.rev / cur.total.rev) * 100) : '—'}</td>
+                    <td
+                      className={`${TD_LEFT} ${g.key === 'Unmapped' || g.key.endsWith('(no SKU)') ? 'text-warn' : ''}`}
+                    >
+                      {g.key}
+                    </td>
+                    <td className="num px-3 py-1.5 text-right align-top">
+                      {cur.total.rev ? fmtPct((g.sums.rev / cur.total.rev) * 100) : '—'}
+                    </td>
                     {cols.map((c) => (
-                      <BkCell key={c} k={c} s={g.sums} prev={prevBy.get(g.key)} comparing={comparing} daysA={dA} daysB={dB} />
+                      <BkCell
+                        key={c}
+                        k={c}
+                        s={g.sums}
+                        prev={prevBy.get(g.key)}
+                        comparing={comparing}
+                        daysA={dA}
+                        daysB={dB}
+                      />
                     ))}
                   </tr>
                 ))}
@@ -138,9 +218,13 @@ export function CategoryView(p: BkViewProps) {
                 ? `Sales join to a ${label.toLowerCase()} through the SKU mapper's Item Code block; ads through the product the ad row names (keyword ads), else the campaign name in the mapper.`
                 : `Sales join to a ${label.toLowerCase()} through the SKU mapper (Item ID / product name); ads through the campaign mapper's ${groupBy === 'sku' ? 'SKU' : 'Category'}.`,
               ...(groupBy === 'sku' && flavour.id === 'blinkit'
-                ? ['Campaigns whose mapper SKU covers several products (e.g. "Jam", "FH & TH") or has no SKU stay as their own ad-only rows — never split.']
+                ? [
+                    'Campaigns whose mapper SKU covers several products (e.g. "Jam", "FH & TH") or has no SKU stay as their own ad-only rows — never split.',
+                  ]
                 : []),
-              ...(comparing && dA !== dB ? [`The two periods differ in length (${dA} vs ${dB} days), so volume changes are per day.`] : []),
+              ...(comparing && dA !== dB
+                ? [`The two periods differ in length (${dA} vs ${dB} days), so volume changes are per day.`]
+                : []),
               ...daily.notes,
             ]}
           />

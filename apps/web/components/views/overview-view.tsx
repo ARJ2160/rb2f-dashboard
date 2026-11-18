@@ -4,7 +4,12 @@ import { ratio, type DsrMetrics, type DsrResponse } from '@dash/shared';
 import { useEffect } from 'react';
 
 import { ErrorBox, Notes } from '@/components/notes';
-import { BreakdownTable, PerformanceOverview, type AxisKind, type OverviewMetric } from '@/components/shell/performance-overview';
+import {
+  BreakdownTable,
+  PerformanceOverview,
+  type AxisKind,
+  type OverviewMetric,
+} from '@/components/shell/performance-overview';
 import { periodSentence, previousRange, spanDays, useLoad } from '@/components/shell/use-load';
 import { getDsr } from '@/lib/api';
 import { fmtInt, fmtPct, fmtRupee, fmtRupee2 } from '@/lib/format';
@@ -27,30 +32,150 @@ interface Card {
 const x2 = (v: number | null) => (v == null ? '—' : v.toFixed(2));
 
 const CARDS: Card[] = [
-  { key: 'spend', label: 'Ad Spend', hint: 'SP + SB + SD spend', get: (m) => m.spends, fmt: fmtRupee, axis: 'inr', higherIsBetter: false },
-  { key: 'impr', label: 'Impressions', hint: 'Ad impressions', get: (m) => m.impressions, fmt: fmtInt, axis: 'num', higherIsBetter: true },
-  { key: 'clicks', label: 'Clicks', hint: 'Ad clicks', get: (m) => m.clicks, fmt: fmtInt, axis: 'num', higherIsBetter: true },
-  { key: 'adUnits', label: 'Quantity Sold', hint: 'Units attributed to ads', get: (m) => m.adUnits, fmt: fmtInt, axis: 'num', higherIsBetter: true },
-  { key: 'adSales', label: 'Sales', hint: 'Ad-attributed sales', get: (m) => m.adSales, fmt: fmtRupee, axis: 'inr', higherIsBetter: true },
-  { key: 'roas', label: 'ROAS', hint: 'Ad sales ÷ ad spend', get: (m) => ratio(m.adSales, m.spends), fmt: x2, axis: 'x', higherIsBetter: true },
-  { key: 'acos', label: 'ACoS', hint: 'Ad spend ÷ ad sales', get: (m) => m.acosPct, fmt: fmtPct, axis: 'pct', higherIsBetter: false },
-  { key: 'ctr', label: 'CTR', hint: 'Clicks ÷ impressions', get: (m) => m.ctrPct, fmt: fmtPct, axis: 'pct', higherIsBetter: true },
-  { key: 'cpc', label: 'CPC', hint: 'Spend ÷ clicks', get: (m) => m.cpc, fmt: fmtRupee2, axis: 'inr', higherIsBetter: false },
-  { key: 'sales', label: 'Total Sales', hint: 'Ordered product sales (Seller / Vendor Central)', get: (m) => m.sales, fmt: fmtRupee, axis: 'inr', higherIsBetter: true, sales: true },
-  { key: 'units', label: 'Total Units', hint: 'Units ordered (Seller / Vendor Central)', get: (m) => m.unitsSold, fmt: fmtInt, axis: 'num', higherIsBetter: true, sales: true },
-  { key: 'tacos', label: 'TACoS', hint: 'Ad spend ÷ total sales', get: (m) => m.tacosPct, fmt: fmtPct, axis: 'pct', higherIsBetter: false, sales: true },
-  { key: 'organic', label: 'Organic Sales', hint: 'Total sales − ad sales', get: (m) => m.organicSales, fmt: fmtRupee, axis: 'inr', higherIsBetter: true, sales: true },
+  {
+    key: 'spend',
+    label: 'Ad Spend',
+    hint: 'SP + SB + SD spend',
+    get: (m) => m.spends,
+    fmt: fmtRupee,
+    axis: 'inr',
+    higherIsBetter: false,
+  },
+  {
+    key: 'impr',
+    label: 'Impressions',
+    hint: 'Ad impressions',
+    get: (m) => m.impressions,
+    fmt: fmtInt,
+    axis: 'num',
+    higherIsBetter: true,
+  },
+  {
+    key: 'clicks',
+    label: 'Clicks',
+    hint: 'Ad clicks',
+    get: (m) => m.clicks,
+    fmt: fmtInt,
+    axis: 'num',
+    higherIsBetter: true,
+  },
+  {
+    key: 'adUnits',
+    label: 'Quantity Sold',
+    hint: 'Units attributed to ads',
+    get: (m) => m.adUnits,
+    fmt: fmtInt,
+    axis: 'num',
+    higherIsBetter: true,
+  },
+  {
+    key: 'adSales',
+    label: 'Sales',
+    hint: 'Ad-attributed sales',
+    get: (m) => m.adSales,
+    fmt: fmtRupee,
+    axis: 'inr',
+    higherIsBetter: true,
+  },
+  {
+    key: 'roas',
+    label: 'ROAS',
+    hint: 'Ad sales ÷ ad spend',
+    get: (m) => ratio(m.adSales, m.spends),
+    fmt: x2,
+    axis: 'x',
+    higherIsBetter: true,
+  },
+  {
+    key: 'acos',
+    label: 'ACoS',
+    hint: 'Ad spend ÷ ad sales',
+    get: (m) => m.acosPct,
+    fmt: fmtPct,
+    axis: 'pct',
+    higherIsBetter: false,
+  },
+  {
+    key: 'ctr',
+    label: 'CTR',
+    hint: 'Clicks ÷ impressions',
+    get: (m) => m.ctrPct,
+    fmt: fmtPct,
+    axis: 'pct',
+    higherIsBetter: true,
+  },
+  {
+    key: 'cpc',
+    label: 'CPC',
+    hint: 'Spend ÷ clicks',
+    get: (m) => m.cpc,
+    fmt: fmtRupee2,
+    axis: 'inr',
+    higherIsBetter: false,
+  },
+  {
+    key: 'sales',
+    label: 'Total Sales',
+    hint: 'Ordered product sales (Seller / Vendor Central)',
+    get: (m) => m.sales,
+    fmt: fmtRupee,
+    axis: 'inr',
+    higherIsBetter: true,
+    sales: true,
+  },
+  {
+    key: 'units',
+    label: 'Total Units',
+    hint: 'Units ordered (Seller / Vendor Central)',
+    get: (m) => m.unitsSold,
+    fmt: fmtInt,
+    axis: 'num',
+    higherIsBetter: true,
+    sales: true,
+  },
+  {
+    key: 'tacos',
+    label: 'TACoS',
+    hint: 'Ad spend ÷ total sales',
+    get: (m) => m.tacosPct,
+    fmt: fmtPct,
+    axis: 'pct',
+    higherIsBetter: false,
+    sales: true,
+  },
+  {
+    key: 'organic',
+    label: 'Organic Sales',
+    hint: 'Total sales − ad sales',
+    get: (m) => m.organicSales,
+    fmt: fmtRupee,
+    axis: 'inr',
+    higherIsBetter: true,
+    sales: true,
+  },
 ];
 
-const CHANNEL: Record<string, string> = { sp: 'Sponsored Products', sb: 'Sponsored Brands', sd: 'Sponsored Display' };
+const CHANNEL: Record<string, string> = {
+  sp: 'Sponsored Products',
+  sb: 'Sponsored Brands',
+  sd: 'Sponsored Display',
+};
 
 function enumerate(from: string, to: string) {
   const out: string[] = [];
-  for (let t = Date.parse(`${from}T00:00:00Z`); t <= Date.parse(`${to}T00:00:00Z`); t += 86_400_000) out.push(new Date(t).toISOString().slice(0, 10));
+  for (let t = Date.parse(`${from}T00:00:00Z`); t <= Date.parse(`${to}T00:00:00Z`); t += 86_400_000)
+    out.push(new Date(t).toISOString().slice(0, 10));
   return out;
 }
 
-export function AmazonOverview({ profileId, from, to, category, latest, onCategories }: {
+export function AmazonOverview({
+  profileId,
+  from,
+  to,
+  category,
+  latest,
+  onCategories,
+}: {
   profileId: string;
   from: string;
   to: string;
@@ -61,9 +186,10 @@ export function AmazonOverview({ profileId, from, to, category, latest, onCatego
   const prev = previousRange({ from, to });
   const { data, error, loading } = useLoad(
     () =>
-      Promise.all([getDsr(profileId, from, to, category), getDsr(profileId, prev.from, prev.to, category).catch(() => null)]) as Promise<
-        [DsrResponse, DsrResponse | null]
-      >,
+      Promise.all([
+        getDsr(profileId, from, to, category),
+        getDsr(profileId, prev.from, prev.to, category).catch(() => null),
+      ]) as Promise<[DsrResponse, DsrResponse | null]>,
     [profileId, from, to, category]
   );
   const [cur, before] = data ?? [null, null];
@@ -114,7 +240,17 @@ export function AmazonOverview({ profileId, from, to, category, latest, onCatego
         {cur && (
           <BreakdownTable
             title="By ad type"
-            head={['Ad type', 'Ad Spend', 'Share', 'Impressions', 'Clicks', 'CTR', 'Quantity Sold', 'Sales', 'ROAS']}
+            head={[
+              'Ad type',
+              'Ad Spend',
+              'Share',
+              'Impressions',
+              'Clicks',
+              'CTR',
+              'Quantity Sold',
+              'Sales',
+              'ROAS',
+            ]}
             rows={cur.byChannel
               .filter((r) => r.spend > 0 || r.impressions > 0)
               .map((r) => ({

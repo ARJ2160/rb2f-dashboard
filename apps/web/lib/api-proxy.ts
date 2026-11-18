@@ -129,9 +129,13 @@ async function iapKey(kid: string): Promise<CryptoKey | undefined> {
       if (k.kty !== 'EC' || k.crv !== 'P-256' || !k.x || !k.y) continue;
       byKid.set(
         k.kid,
-        await crypto.subtle.importKey('jwk', { kty: 'EC', crv: 'P-256', x: k.x, y: k.y }, { name: 'ECDSA', namedCurve: 'P-256' }, false, [
-          'verify',
-        ])
+        await crypto.subtle.importKey(
+          'jwk',
+          { kty: 'EC', crv: 'P-256', x: k.x, y: k.y },
+          { name: 'ECDSA', namedCurve: 'P-256' },
+          false,
+          ['verify']
+        )
       );
     }
     iapKeys = { fetchedAt: Date.now(), byKid };
@@ -185,14 +189,19 @@ async function signedInEmail(headers: Headers): Promise<string | null> {
   }
   if (!email && Date.now() - lastIdentityWarning > 60_000) {
     lastIdentityWarning = Date.now();
-    console.warn(`[api-proxy] request without a valid IAP assertion (${jwt ? 'did not verify' : 'missing'}) — rate limits fall back to the client IP`);
+    console.warn(
+      `[api-proxy] request without a valid IAP assertion (${jwt ? 'did not verify' : 'missing'}) — rate limits fall back to the client IP`
+    );
   }
   return email;
 }
 
 /** The client IP Cloud Run's front end appended (the last X-Forwarded-For entry; earlier ones are client-supplied). */
 function clientIp(headers: Headers): string | null {
-  const parts = (headers.get('x-forwarded-for') ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  const parts = (headers.get('x-forwarded-for') ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   return parts.at(-1) ?? null;
 }
 

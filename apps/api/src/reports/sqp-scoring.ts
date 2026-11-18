@@ -41,7 +41,8 @@ export function ratePct(n: number, d: number): number | null {
 }
 
 /** Strictly greater; a missing rate never wins, so it can't manufacture an opportunity. */
-const beats = (brand: number | null, category: number | null) => brand != null && category != null && brand > category;
+const beats = (brand: number | null, category: number | null) =>
+  brand != null && category != null && brand > category;
 
 function statusOf(ch: Array<'SP' | 'SB'>): SqpTargeted {
   const sp = ch.includes('SP');
@@ -83,8 +84,12 @@ export function scoreQuery(
   const targeted = statusOf(targeting?.channels ?? []);
   const launchIn = launchOf(targeted);
   const spend = targeting ? Number(targeting.spend.toFixed(2)) : null;
-  const acosPct = targeting && targeting.adSales > 0 ? Number(((targeting.spend / targeting.adSales) * 100).toFixed(2)) : null;
-  const acosVsAccount = acosPct != null && accountAcosPct != null ? (acosPct > accountAcosPct ? 'worse' : 'better') : null;
+  const acosPct =
+    targeting && targeting.adSales > 0
+      ? Number(((targeting.spend / targeting.adSales) * 100).toFixed(2))
+      : null;
+  const acosVsAccount =
+    acosPct != null && accountAcosPct != null ? (acosPct > accountAcosPct ? 'worse' : 'better') : null;
 
   const wins = [
     beats(ctrBrandPct, ctrCategoryPct),
@@ -146,7 +151,8 @@ const SORT_FIELD: Record<Exclude<SqpSort, 'strength'>, keyof SqpRow> = {
 export function compareBy(sort: SqpSort) {
   // Strength: Strong → Medium → Low, then by search volume.
   if (sort === 'strength')
-    return (a: SqpRow, b: SqpRow): number => b.wins - a.wins || b.volume - a.volume || a.query.localeCompare(b.query);
+    return (a: SqpRow, b: SqpRow): number =>
+      b.wins - a.wins || b.volume - a.volume || a.query.localeCompare(b.query);
   const f = SORT_FIELD[sort];
   return (a: SqpRow, b: SqpRow): number => {
     const av = a[f] as number | null;

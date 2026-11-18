@@ -39,11 +39,19 @@ export function detectInstamart(s: Sheet): ImReportType {
   const h = new Set(s.headers);
   const has = (...c: string[]) => c.every((x) => h.has(x));
   if (has('ordered date', 'item code') && (h.has('units sold') || h.has('gmv'))) return 'im_sales';
-  if (has('metrics date', 'campaign id') && (h.has('total budget burnt') || h.has('total impressions'))) return 'im_ads';
+  if (has('metrics date', 'campaign id') && (h.has('total budget burnt') || h.has('total impressions')))
+    return 'im_ads';
   // Stock-on-hand export: warehouse/facility snapshot keyed by SKU code. Has no
   // ordered/metrics date and no campaign id, so it can't collide with sales/ads.
-  if (h.has('skucode') && h.has('warehouseqtyavailable') && (h.has('facilityname') || h.has('daysonhand'))) return 'im_inventory';
-  if (h.has('sku') && (h.has('item code') || h.has('product name')) && !h.has('units sold') && !h.has('campaign id')) return 'im_sku_mapper';
+  if (h.has('skucode') && h.has('warehouseqtyavailable') && (h.has('facilityname') || h.has('daysonhand')))
+    return 'im_inventory';
+  if (
+    h.has('sku') &&
+    (h.has('item code') || h.has('product name')) &&
+    !h.has('units sold') &&
+    !h.has('campaign id')
+  )
+    return 'im_sku_mapper';
   return 'unknown';
 }
 
@@ -77,26 +85,57 @@ type SalesRow = typeof imSales.$inferInsert;
 
 export function parseSales(s: Sheet, profileId: string) {
   const c = {
-    date: colOf(s, 'ordered date'), city: colOf(s, 'city'), area: colOf(s, 'area name'), store: colOf(s, 'store id'),
-    item: colOf(s, 'item code'), combo: colOf(s, 'combo item code'), name: colOf(s, 'product name'), variant: colOf(s, 'variant'),
-    l1: colOf(s, 'l1 category'), l3: colOf(s, 'l3 category'), mrp: colOf(s, 'base mrp'), units: colOf(s, 'units sold'), gmv: colOf(s, 'gmv'),
+    date: colOf(s, 'ordered date'),
+    city: colOf(s, 'city'),
+    area: colOf(s, 'area name'),
+    store: colOf(s, 'store id'),
+    item: colOf(s, 'item code'),
+    combo: colOf(s, 'combo item code'),
+    name: colOf(s, 'product name'),
+    variant: colOf(s, 'variant'),
+    l1: colOf(s, 'l1 category'),
+    l3: colOf(s, 'l3 category'),
+    mrp: colOf(s, 'base mrp'),
+    units: colOf(s, 'units sold'),
+    gmv: colOf(s, 'gmv'),
   };
-  const order = inferDateOrder(s.rows.map((r) => cell(r, c.date)), s.fileName);
+  const order = inferDateOrder(
+    s.rows.map((r) => cell(r, c.date)),
+    s.fileName
+  );
   const by = new Map<string, SalesRow>();
-  let badDate = 0, merged = 0;
+  let badDate = 0,
+    merged = 0;
   for (const r of s.rows) {
     const date = toISODate(cell(r, c.date), order);
     const itemCode = str(cell(r, c.item)).replace(/\.0+$/, '');
-    if (!date || !itemCode) { badDate++; continue; }
+    if (!date || !itemCode) {
+      badDate++;
+      continue;
+    }
     const row: SalesRow = {
-      profileId, date, city: imCity(cell(r, c.city)), area: str(cell(r, c.area)), storeId: str(cell(r, c.store)).replace(/\.0+$/, ''),
-      itemCode, comboItemCode: str(cell(r, c.combo)).replace(/\.0+$/, ''), productName: str(cell(r, c.name)), variant: str(cell(r, c.variant)),
-      l1Category: str(cell(r, c.l1)), l3Category: str(cell(r, c.l3)), mrp: num(cell(r, c.mrp)), units: num(cell(r, c.units)), gmv: num(cell(r, c.gmv)),
+      profileId,
+      date,
+      city: imCity(cell(r, c.city)),
+      area: str(cell(r, c.area)),
+      storeId: str(cell(r, c.store)).replace(/\.0+$/, ''),
+      itemCode,
+      comboItemCode: str(cell(r, c.combo)).replace(/\.0+$/, ''),
+      productName: str(cell(r, c.name)),
+      variant: str(cell(r, c.variant)),
+      l1Category: str(cell(r, c.l1)),
+      l3Category: str(cell(r, c.l3)),
+      mrp: num(cell(r, c.mrp)),
+      units: num(cell(r, c.units)),
+      gmv: num(cell(r, c.gmv)),
     };
     const key = [row.date, row.city, row.area, row.storeId, row.itemCode, row.comboItemCode].join('\u0001');
     const prev = by.get(key);
-    if (prev) { prev.units = (prev.units ?? 0) + (row.units ?? 0); prev.gmv = (prev.gmv ?? 0) + (row.gmv ?? 0); merged++; }
-    else by.set(key, row);
+    if (prev) {
+      prev.units = (prev.units ?? 0) + (row.units ?? 0);
+      prev.gmv = (prev.gmv ?? 0) + (row.gmv ?? 0);
+      merged++;
+    } else by.set(key, row);
   }
   const records = [...by.values()];
   const dates = [...new Set(records.map((r) => r.date))].sort();
@@ -112,30 +151,64 @@ type AdRow = typeof imAds.$inferInsert;
 
 export function parseAds(s: Sheet, profileId: string) {
   const c = {
-    date: colOf(s, 'metrics date'), id: colOf(s, 'campaign id'), name: colOf(s, 'campaign name'), prop: colOf(s, 'ad property'),
-    kw: colOf(s, 'keyword'), match: colOf(s, 'match type'), product: colOf(s, 'product name'), city: colOf(s, 'city'),
-    impr: colOf(s, 'total impressions'), clicks: colOf(s, 'total clicks'), a2c: colOf(s, 'total a2c'), conv: colOf(s, 'total conversions'),
-    gmv: colOf(s, 'total gmv'), d7: colOf(s, 'total direct gmv 7 days'), d14: colOf(s, 'total direct gmv 14 days'),
-    spend: colOf(s, 'total budget burnt'), branded: colOf(s, 'branded searches clicks'), rank: colOf(s, 'ad rank'),
+    date: colOf(s, 'metrics date'),
+    id: colOf(s, 'campaign id'),
+    name: colOf(s, 'campaign name'),
+    prop: colOf(s, 'ad property'),
+    kw: colOf(s, 'keyword'),
+    match: colOf(s, 'match type'),
+    product: colOf(s, 'product name'),
+    city: colOf(s, 'city'),
+    impr: colOf(s, 'total impressions'),
+    clicks: colOf(s, 'total clicks'),
+    a2c: colOf(s, 'total a2c'),
+    conv: colOf(s, 'total conversions'),
+    gmv: colOf(s, 'total gmv'),
+    d7: colOf(s, 'total direct gmv 7 days'),
+    d14: colOf(s, 'total direct gmv 14 days'),
+    spend: colOf(s, 'total budget burnt'),
+    branded: colOf(s, 'branded searches clicks'),
+    rank: colOf(s, 'ad rank'),
   };
-  const order = inferDateOrder(s.rows.map((r) => cell(r, c.date)), s.fileName);
+  const order = inferDateOrder(
+    s.rows.map((r) => cell(r, c.date)),
+    s.fileName
+  );
   const by = new Map<string, AdRow>();
   let bad = 0;
-  const add = (t: AdRow, k: keyof AdRow, v: number) => ((t[k] as number) = ((t[k] as number | undefined) ?? 0) + v);
+  const add = (t: AdRow, k: keyof AdRow, v: number) =>
+    ((t[k] as number) = ((t[k] as number | undefined) ?? 0) + v);
   for (const r of s.rows) {
     const date = toISODate(cell(r, c.date), order);
     const campaignId = str(cell(r, c.id));
-    if (!date || !campaignId) { bad++; continue; }
+    if (!date || !campaignId) {
+      bad++;
+      continue;
+    }
     const kw = str(cell(r, c.kw));
     const product = str(cell(r, c.product));
     const row: AdRow = {
-      profileId, date, campaignId, campaignName: str(cell(r, c.name)), adType: AD_TYPE_CODE(str(cell(r, c.prop))),
+      profileId,
+      date,
+      campaignId,
+      campaignName: str(cell(r, c.name)),
+      adType: AD_TYPE_CODE(str(cell(r, c.prop))),
       keyword: /^na$/i.test(kw) ? '' : kw.toLowerCase(),
-      matchType: str(cell(r, c.match)).replace(/^KEYWORD_MATCH_TYPE_/, '').toLowerCase(),
+      matchType: str(cell(r, c.match))
+        .replace(/^KEYWORD_MATCH_TYPE_/, '')
+        .toLowerCase(),
       productName: /^na$/i.test(product) ? '' : product.toLowerCase(),
       city: imCity(cell(r, c.city)),
     };
-    const key = [row.date, row.campaignId, row.adType, row.keyword, row.matchType, row.productName, row.city].join('\u0001');
+    const key = [
+      row.date,
+      row.campaignId,
+      row.adType,
+      row.keyword,
+      row.matchType,
+      row.productName,
+      row.city,
+    ].join('\u0001');
     const t = by.get(key) ?? row;
     const impr = num(cell(r, c.impr));
     const rank = num(cell(r, c.rank));
@@ -148,7 +221,10 @@ export function parseAds(s: Sheet, profileId: string) {
     add(t, 'directGmv14', num(cell(r, c.d14)));
     add(t, 'spend', num(cell(r, c.spend)));
     add(t, 'brandedClicks', num(cell(r, c.branded)));
-    if (rank > 0) { add(t, 'rankWeighted', rank * impr); add(t, 'rankImpr', impr); }
+    if (rank > 0) {
+      add(t, 'rankWeighted', rank * impr);
+      add(t, 'rankImpr', impr);
+    }
     by.set(key, t);
   }
   const records = [...by.values()];
@@ -177,9 +253,19 @@ export function parseSkuMapper(s: Sheet, profileId: string) {
     if (H[i] && start < 0) start = i;
     if (!H[i] && start >= 0) {
       const span = H.slice(start, i);
-      const at = (...n: string[]) => { const j = span.findIndex((x) => n.includes(x!)); return j < 0 ? -1 : start + j; };
+      const at = (...n: string[]) => {
+        const j = span.findIndex((x) => n.includes(x!));
+        return j < 0 ? -1 : start + j;
+      };
       const sku = at('sku');
-      if (sku >= 0) blocks.push({ item: at('item code', 'item id'), name: at('product name', 'campaign name', 'name'), sku, cat: at('category'), price: at('price', 'mrp', 'units') });
+      if (sku >= 0)
+        blocks.push({
+          item: at('item code', 'item id'),
+          name: at('product name', 'campaign name', 'name'),
+          sku,
+          cat: at('category'),
+          price: at('price', 'mrp', 'units'),
+        });
       start = -1;
     }
   }
@@ -203,17 +289,38 @@ export function parseSkuMapper(s: Sheet, profileId: string) {
       if (b.item >= 0) {
         const code = str(cell(r, b.item)).replace(/\.0+$/, '');
         if (code && /^\d+$/.test(code)) {
-          put(`item:${code}`, { profileId, key: `item:${code}`, productName: name, sku, category: cat || sku, price });
+          put(`item:${code}`, {
+            profileId,
+            key: `item:${code}`,
+            productName: name,
+            sku,
+            category: cat || sku,
+            price,
+          });
           if (cat && !skuCat.has(normKey(sku))) skuCat.set(normKey(sku), cat);
         }
       }
-      if (name) put(`name:${normKey(name)}`, { profileId, key: `name:${normKey(name)}`, productName: name, sku, category: cat, price });
+      if (name)
+        put(`name:${normKey(name)}`, {
+          profileId,
+          key: `name:${normKey(name)}`,
+          productName: name,
+          sku,
+          category: cat,
+          price,
+        });
     }
   }
-  const records = [...byKey.values()].map((r) => ({ ...r, category: r.category || skuCat.get(normKey(r.sku ?? '')) || r.sku || '' }));
+  const records = [...byKey.values()].map((r) => ({
+    ...r,
+    category: r.category || skuCat.get(normKey(r.sku ?? '')) || r.sku || '',
+  }));
   const warnings: string[] = [];
   if (!blocks.length) warnings.push('No column headed "SKU" — nothing mapped.');
-  if (conflicts) warnings.push(`${conflicts} repeated name / item code(s) with a different SKU — the first one in the sheet was kept.`);
+  if (conflicts)
+    warnings.push(
+      `${conflicts} repeated name / item code(s) with a different SKU — the first one in the sheet was kept.`
+    );
   return { records, warnings, items: records.filter((r) => r.key.startsWith('item:')).length };
 }
 
@@ -249,7 +356,11 @@ export async function storeSkuMap(profileId: string, rows: MapRow[]) {
 
 // ── One file ──────────────────────────────────────────────────────────
 
-export async function ingestInstamartFile(profileId: string, filename: string, raw: Buffer): Promise<ImFileResult[]> {
+export async function ingestInstamartFile(
+  profileId: string,
+  filename: string,
+  raw: Buffer
+): Promise<ImFileResult[]> {
   let sheets: Sheet[];
   try {
     sheets = await parseInstamartWorkbook(toUtf8Csv(raw), filename);
@@ -262,7 +373,11 @@ export async function ingestInstamartFile(profileId: string, filename: string, r
     const base = { filename, sheet: s.sheetName, reportType: type, rowsRead: s.rows.length };
     try {
       if (type === 'unknown') {
-        results.push({ ...base, status: 'skipped', message: `Sheet "${s.sheetName}" is not a recognised Instamart report (columns did not match).` });
+        results.push({
+          ...base,
+          status: 'skipped',
+          message: `Sheet "${s.sheetName}" is not a recognised Instamart report (columns did not match).`,
+        });
         continue;
       }
       let stored = 0;
@@ -278,7 +393,11 @@ export async function ingestInstamartFile(profileId: string, filename: string, r
         if (p.records.length) stored = await storeAds(profileId, p.dates, p.records);
       } else if (type === 'im_inventory') {
         // Recognised, but there is no inventory table yet (kept in the bucket only).
-        results.push({ ...base, status: 'skipped', message: `${IM_REPORT_LABEL[type]}: recognised but not ingested yet (no inventory store).` });
+        results.push({
+          ...base,
+          status: 'skipped',
+          message: `${IM_REPORT_LABEL[type]}: recognised but not ingested yet (no inventory store).`,
+        });
         continue;
       } else {
         const p = parseSkuMapper(s, profileId);

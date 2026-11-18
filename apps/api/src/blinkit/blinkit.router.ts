@@ -46,19 +46,30 @@ blinkitRouter.get('/meta', async (req, res) => {
 
 /** GET /mom?profileId&asOf&category — MTD vs PMTD, L7D vs P7D (Amazon SummaryResponse shape). */
 blinkitRouter.get('/mom', async (req, res) => {
-  const { asOf } = z.object({ asOf: isoDate.optional().or(z.literal('').transform(() => undefined)) }).parse(req.query);
+  const { asOf } = z
+    .object({ asOf: isoDate.optional().or(z.literal('').transform(() => undefined)) })
+    .parse(req.query);
   res.json(await momWow({ ...profile(req.query), asOf }));
 });
 
 /** GET /dsr?profileId&from&to&category&adType=PL|PR|BL — raw sums per day (adType filters the ads side only). */
 blinkitRouter.get('/dsr', async (req, res) => {
-  const { adType } = z.object({ adType: z.enum(['PL', 'PR', 'BL']).optional().or(z.literal('').transform(() => undefined)) }).parse(req.query);
+  const { adType } = z
+    .object({
+      adType: z
+        .enum(['PL', 'PR', 'BL'])
+        .optional()
+        .or(z.literal('').transform(() => undefined)),
+    })
+    .parse(req.query);
   res.json(await daily({ ...range(req.query), adType }));
 });
 
 /** GET /dur?profileId&from&to&metric=units|orders|revenue&category — item × date (Amazon DurResponse shape). */
 blinkitRouter.get('/dur', async (req, res) => {
-  const { metric } = z.object({ metric: z.enum(['units', 'orders', 'revenue']).default('units') }).parse(req.query);
+  const { metric } = z
+    .object({ metric: z.enum(['units', 'orders', 'revenue']).default('units') })
+    .parse(req.query);
   res.json(await dur({ ...range(req.query), metric }));
 });
 
@@ -84,7 +95,10 @@ blinkitRouter.get('/keywords', async (req, res) => {
     .object({
       geo: optText,
       campaignId: optText,
-      adType: z.enum(['PL', 'PR', 'BL']).optional().or(z.literal('').transform(() => undefined)),
+      adType: z
+        .enum(['PL', 'PR', 'BL'])
+        .optional()
+        .or(z.literal('').transform(() => undefined)),
       grain: z.enum(['kw', 'kwc']).default('kw'),
       q: optText,
       minImpr: z.coerce.number().min(0).default(0),
@@ -109,7 +123,9 @@ blinkitRouter.get('/keywords', async (req, res) => {
 
 /** GET /inventory?profileId&snapshot&category — run rate + days of cover per item × feeder. */
 blinkitRouter.get('/inventory', async (req, res) => {
-  const { snapshot } = z.object({ snapshot: isoDate.optional().or(z.literal('').transform(() => undefined)) }).parse(req.query);
+  const { snapshot } = z
+    .object({ snapshot: isoDate.optional().or(z.literal('').transform(() => undefined)) })
+    .parse(req.query);
   res.json(await inventory({ ...profile(req.query), snapshot }));
 });
 
@@ -130,15 +146,21 @@ blinkitRouter.post('/rebuild-dims', async (req, res) => {
 /** POST /uploads (multipart: files[], profileId) — Blinkit exports for a non-GCS profile. Mappers are processed first. */
 blinkitRouter.post('/uploads', receiveFiles, async (req, res) => {
   const profileId = profileIdSchema.parse(req.body?.profileId ?? undefined);
-  if (isGcsProfile(profileId)) throw new HttpError(400, `"${profileId}" is fed only by the GCS warehouse — use Sync on the GCS page.`);
+  if (isGcsProfile(profileId))
+    throw new HttpError(400, `"${profileId}" is fed only by the GCS warehouse — use Sync on the GCS page.`);
   const files = ((req.files as Express.Multer.File[] | undefined) ?? [])
     .map((f) => ({ name: cleanFilename(f.originalname), buffer: f.buffer }))
     .sort((a, b) => Number(!/mapper/i.test(a.name)) - Number(!/mapper/i.test(b.name)));
-  if (files.length === 0) throw new HttpError(400, 'Attach at least one .xlsx, .xls or .csv file in the "files" field.');
+  if (files.length === 0)
+    throw new HttpError(400, 'Attach at least one .xlsx, .xls or .csv file in the "files" field.');
   const results: BkFileResult[] = [];
   for (const f of files) {
     if (!looksLikeSpreadsheet(f.buffer)) {
-      results.push({ filename: f.name, status: 'error', message: 'Not a spreadsheet or CSV file — nothing was stored.' });
+      results.push({
+        filename: f.name,
+        status: 'error',
+        message: 'Not a spreadsheet or CSV file — nothing was stored.',
+      });
       continue;
     }
     results.push(...(await ingestSlots.run(() => ingestBlinkitFile(profileId, f.name, f.buffer))));

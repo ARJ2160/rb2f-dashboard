@@ -53,7 +53,16 @@ export function deriveDsr(b: DsrBase): DsrMetrics {
 }
 
 export function emptyDsrBase(): DsrBase {
-  return { sales: 0, unitsSold: 0, impressions: 0, clicks: 0, spends: 0, adSales: 0, adUnits: 0, pageViews: null };
+  return {
+    sales: 0,
+    unitsSold: 0,
+    impressions: 0,
+    clicks: 0,
+    spends: 0,
+    adSales: 0,
+    adUnits: 0,
+    pageViews: null,
+  };
 }
 
 export function addDsrBase(a: DsrBase, b: DsrBase): DsrBase {

@@ -25,8 +25,16 @@ test('SQP flat export: header found under Amazon metadata line, period from that
   ].join('\n');
   const [sheet] = readWorkbook(Buffer.from(csv), {});
   assert.ok(sheet);
-  assert.equal(detectReportType(sheet.headers, sheet.sheetName, 'export.csv')?.reportType, 'search_query_performance');
-  const r = parseSearchQueryPerformance(sheet.headers, sheet.rows, { nameDates: null, preamble: sheet.preamble }, [sheet.sheetName, 'export.csv']);
+  assert.equal(
+    detectReportType(sheet.headers, sheet.sheetName, 'export.csv')?.reportType,
+    'search_query_performance'
+  );
+  const r = parseSearchQueryPerformance(
+    sheet.headers,
+    sheet.rows,
+    { nameDates: null, preamble: sheet.preamble },
+    [sheet.sheetName, 'export.csv']
+  );
   assert.equal(r.error, undefined);
   assert.deepEqual(r.period, { from: '2026-10-05', to: '2026-10-11' });
   assert.equal(r.records.length, 2);
@@ -40,7 +48,18 @@ test('SQP flat export: header found under Amazon metadata line, period from that
 test('SQP two-row header (group row above "Total Count / Brand Count") is re-keyed', () => {
   const aoa = [
     ['', '', 'Impressions', '', 'Clicks', '', 'Cart Adds', '', 'Purchases', ''],
-    ['Search Query', 'Search Query Volume', 'Total Count', 'Brand Count', 'Total Count', 'Brand Count', 'Total Count', 'Brand Count', 'Total Count', 'Brand Count'],
+    [
+      'Search Query',
+      'Search Query Volume',
+      'Total Count',
+      'Brand Count',
+      'Total Count',
+      'Brand Count',
+      'Total Count',
+      'Brand Count',
+      'Total Count',
+      'Brand Count',
+    ],
     ['yoga mat', 900, 10000, 1000, 400, 60, 100, 20, 40, 9],
   ];
   const wb = XLSX.utils.book_new();
@@ -49,25 +68,53 @@ test('SQP two-row header (group row above "Total Count / Brand Count") is re-key
   const name = 'search_query_performance/cult_sqp_20260701_20260731.xlsx';
   const [sheet] = readWorkbook(buf);
   assert.ok(sheet);
-  assert.equal(detectReportType(sheet.headers, sheet.sheetName, name)?.reportType, 'search_query_performance');
-  const r = parseSearchQueryPerformance(sheet.headers, sheet.rows, { nameDates: null, preamble: sheet.preamble }, [sheet.sheetName, name]);
+  assert.equal(
+    detectReportType(sheet.headers, sheet.sheetName, name)?.reportType,
+    'search_query_performance'
+  );
+  const r = parseSearchQueryPerformance(
+    sheet.headers,
+    sheet.rows,
+    { nameDates: null, preamble: sheet.preamble },
+    [sheet.sheetName, name]
+  );
   assert.equal(r.error, undefined);
   assert.deepEqual(r.period, { from: '2026-07-01', to: '2026-07-31' });
   assert.deepEqual(r.records, [
     {
-      periodStart: '2026-07-01', periodEnd: '2026-07-31', searchQuery: 'yoga mat', volume: 900,
-      impressionsTotal: 10000, impressionsBrand: 1000, clicksTotal: 400, clicksBrand: 60,
-      cartAddsTotal: 100, cartAddsBrand: 20, purchasesTotal: 40, purchasesBrand: 9,
+      periodStart: '2026-07-01',
+      periodEnd: '2026-07-31',
+      searchQuery: 'yoga mat',
+      volume: 900,
+      impressionsTotal: 10000,
+      impressionsBrand: 1000,
+      clicksTotal: 400,
+      clicksBrand: 60,
+      cartAddsTotal: 100,
+      cartAddsBrand: 20,
+      purchasesTotal: 40,
+      purchasesBrand: 9,
     },
   ]);
 });
 
 test('SQP period: month / quarter metadata, file names, and refusal without one', () => {
-  assert.deepEqual(periodFromPreamble(['Reporting Range=["Monthly"] Select month=["February 2026"]']), { from: '2026-02-01', to: '2026-02-28' });
-  assert.deepEqual(periodFromPreamble(['Reporting Range=["Quarterly"] Select quarter=["Q3 2026"]']), { from: '2026-07-01', to: '2026-09-30' });
+  assert.deepEqual(periodFromPreamble(['Reporting Range=["Monthly"] Select month=["February 2026"]']), {
+    from: '2026-02-01',
+    to: '2026-02-28',
+  });
+  assert.deepEqual(periodFromPreamble(['Reporting Range=["Quarterly"] Select quarter=["Q3 2026"]']), {
+    from: '2026-07-01',
+    to: '2026-09-30',
+  });
   assert.deepEqual(periodFromName('SQP_2026-04-01_2026-04-30.csv'), { from: '2026-04-01', to: '2026-04-30' });
   assert.equal(periodFromName('SQP_2026-04-01.csv'), null); // one day is not a period
-  const r = parseSearchQueryPerformance(['Search Query', 'Search Query Volume'], [{ 'Search Query': 'x', 'Search Query Volume': 1 }], { nameDates: null, preamble: [] }, ['Sheet1', 'sqp.csv']);
+  const r = parseSearchQueryPerformance(
+    ['Search Query', 'Search Query Volume'],
+    [{ 'Search Query': 'x', 'Search Query Volume': 1 }],
+    { nameDates: null, preamble: [] },
+    ['Sheet1', 'sqp.csv']
+  );
   assert.match(r.error ?? '', /reporting period/);
 });
 
@@ -82,11 +129,16 @@ test('SQP: refuses a file whose count columns are not recognised (would store al
 });
 
 const base: SqpCounts = {
-  searchQuery: 'q', volume: 1000,
-  impressionsTotal: 100_000, impressionsBrand: 10_000, // CTR cat 1%, brand 2%
-  clicksTotal: 1000, clicksBrand: 200,
-  cartAddsTotal: 100, cartAddsBrand: 30, // ATC cat 10%, brand 15%
-  purchasesTotal: 50, purchasesBrand: 10, // purchase cat 50%, brand 33%
+  searchQuery: 'q',
+  volume: 1000,
+  impressionsTotal: 100_000,
+  impressionsBrand: 10_000, // CTR cat 1%, brand 2%
+  clicksTotal: 1000,
+  clicksBrand: 200,
+  cartAddsTotal: 100,
+  cartAddsBrand: 30, // ATC cat 10%, brand 15%
+  purchasesTotal: 50,
+  purchasesBrand: 10, // purchase cat 50%, brand 33%
 };
 
 test('scoring: strength = how many of CTR / add-to-cart / purchase beat category', () => {
@@ -108,7 +160,11 @@ test('scoring: strength = how many of CTR / add-to-cart / purchase beat category
   const low = scoreQuery({ ...base, cartAddsBrand: 10, purchasesBrand: 1 }, undefined, null); // only CTR wins
   assert.equal(low.strength, 'Low');
   assert.equal(low.isOpportunity, true);
-  const purchaseOnly = scoreQuery({ ...base, clicksBrand: 50, cartAddsBrand: 2, purchasesBrand: 2 }, undefined, null); // CTR 0.5%, ATC 4%, purchase 100%
+  const purchaseOnly = scoreQuery(
+    { ...base, clicksBrand: 50, cartAddsBrand: 2, purchasesBrand: 2 },
+    undefined,
+    null
+  ); // CTR 0.5%, ATC 4%, purchase 100%
   assert.equal(purchaseOnly.strength, 'Low');
   const none = scoreQuery({ ...base, clicksBrand: 50, cartAddsBrand: 2, purchasesBrand: 0 }, undefined, null);
   assert.equal(none.wins, 0);
@@ -145,20 +201,29 @@ test('sorting: strength first (Strong → Low), missing values last for metrics'
     scoreQuery({ ...base, searchQuery: 'b' }, { channels: ['SP'], spend: 5, adSales: 100 }, null),
     scoreQuery({ ...base, searchQuery: 'c' }, { channels: ['SB'], spend: 50, adSales: 100 }, null),
   ];
-  assert.deepEqual([...rows].sort(compareBy('acos')).map((r) => r.query), ['c', 'b', 'a']);
+  assert.deepEqual(
+    [...rows].sort(compareBy('acos')).map((r) => r.query),
+    ['c', 'b', 'a']
+  );
   const tiers = [
     scoreQuery({ ...base, searchQuery: 'low', cartAddsBrand: 10, purchasesBrand: 1 }, undefined, null),
     scoreQuery({ ...base, searchQuery: 'strong', purchasesBrand: 20 }, undefined, null),
     scoreQuery({ ...base, searchQuery: 'medium' }, undefined, null),
   ];
-  assert.deepEqual([...tiers].sort(compareBy('strength')).map((r) => r.query), ['strong', 'medium', 'low']);
+  assert.deepEqual(
+    [...tiers].sort(compareBy('strength')).map((r) => r.query),
+    ['strong', 'medium', 'low']
+  );
 });
 
 test('harvesting: multiple orders + missing a manual target in SP and/or SB', () => {
   const t = { orders: 4, spOrders: 4, sbOrders: 0, manualSp: false, manualSb: false, minOrders: 2 };
   assert.deepEqual(decideHarvest(t), { performingIn: 'SP', harvestInto: 'SP & SB' });
   assert.deepEqual(decideHarvest({ ...t, manualSp: true }), { performingIn: 'SP', harvestInto: 'SB' });
-  assert.deepEqual(decideHarvest({ ...t, sbOrders: 1, orders: 5, manualSb: true }), { performingIn: 'SP & SB', harvestInto: 'SP' });
+  assert.deepEqual(decideHarvest({ ...t, sbOrders: 1, orders: 5, manualSb: true }), {
+    performingIn: 'SP & SB',
+    harvestInto: 'SP',
+  });
   assert.equal(decideHarvest({ ...t, manualSp: true, manualSb: true }), null, 'already manual in both');
   assert.equal(decideHarvest({ ...t, orders: 1, spOrders: 1 }), null, 'one order is not multiple');
   assert.equal(isAsinTerm('b0abc12345'), true);

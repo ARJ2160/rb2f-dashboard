@@ -201,7 +201,10 @@ export async function seedBrandTerms(profileId: string): Promise<string[]> {
     where length(w) > 2 and w ~ '^[a-z][a-z0-9&-]*$'
     group by w order by count(*) desc limit 5`);
   const total = Number(rows[0]?.total ?? 0);
-  const seed = rows.filter((r, i) => i === 0 || Number(r.n) >= 0.15 * total).slice(0, 3).map((r) => r.w);
+  const seed = rows
+    .filter((r, i) => i === 0 || Number(r.n) >= 0.15 * total)
+    .slice(0, 3)
+    .map((r) => r.w);
   if (!seed.length) return [];
   await db.execute(sql`
     insert into profile_settings (profile_id, brand_terms) values (${profileId}, ${JSON.stringify(seed)}::jsonb)

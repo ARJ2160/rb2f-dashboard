@@ -59,7 +59,9 @@ export function parseCampaignMapper(rows: Row[]): ParseResult<CampaignMapperReco
   const records = [...seen.values()];
   const noCat = records.filter((r) => !r.category).length;
   if (noCat === records.length && records.length) {
-    warnings.push('No "Category" column — campaign-level views (Search Terms, Placements) will show every campaign as "Unmapped"; Type / Branded filters still work.');
+    warnings.push(
+      'No "Category" column — campaign-level views (Search Terms, Placements) will show every campaign as "Unmapped"; Type / Branded filters still work.'
+    );
   } else if (noCat) {
     warnings.push(`${noCat} campaign(s) have no Category — they show as "Unmapped".`);
   }

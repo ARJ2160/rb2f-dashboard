@@ -54,7 +54,12 @@ export function createApp() {
     rateLimit({ limit: env.RATE_LIMIT_UPLOADS_PER_10MIN, windowMs: 10 * MINUTE, what: 'uploads' })
   );
   app.post(
-    ['/api/gcs/sync', '/api/reports/rebuild-dims', '/api/blinkit/rebuild-dims', '/api/instamart/rebuild-dims'],
+    [
+      '/api/gcs/sync',
+      '/api/reports/rebuild-dims',
+      '/api/blinkit/rebuild-dims',
+      '/api/instamart/rebuild-dims',
+    ],
     rateLimit({ limit: env.RATE_LIMIT_SYNC_PER_10MIN, windowMs: 10 * MINUTE, what: 'sync requests' })
   );
   app.post(

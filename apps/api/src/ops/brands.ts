@@ -1,6 +1,4 @@
-import type {
-  IdentifierSniff,
-} from './detect';
+import type { IdentifierSniff } from './detect';
 import type { OpsBrand, OpsBrandChannels, OpsBrandWithChannels, OpsNav } from '@dash/shared';
 import { and, desc, eq, inArray, max, sql } from 'drizzle-orm';
 
@@ -82,7 +80,10 @@ export async function createBrand(input: BrandInput): Promise<OpsBrand> {
   return toBrand(row!);
 }
 
-export async function updateBrand(id: string, patch: Partial<Omit<BrandInput, 'id'>>): Promise<OpsBrand | null> {
+export async function updateBrand(
+  id: string,
+  patch: Partial<Omit<BrandInput, 'id'>>
+): Promise<OpsBrand | null> {
   const set: Partial<typeof brands.$inferInsert> = {};
   if (patch.name !== undefined) set.name = patch.name;
   if (patch.logoUrl !== undefined) set.logoUrl = patch.logoUrl;
@@ -173,6 +174,7 @@ export function identifierWarning(brand: OpsBrand, sniff: IdentifierSniff | null
 
   const matches = pool.some((v) => v === needle || v.includes(needle) || needle.includes(v));
   if (matches) return null;
-  const label = sniff.kind === 'vendorCode' ? 'vendor code' : sniff.kind === 'sellerId' ? 'seller ID' : 'business';
+  const label =
+    sniff.kind === 'vendorCode' ? 'vendor code' : sniff.kind === 'sellerId' ? 'seller ID' : 'business';
   return `File ${label} "${sniff.value}" does not match brand "${brand.name}" — check you picked the right brand.`;
 }

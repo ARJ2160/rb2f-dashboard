@@ -17,7 +17,17 @@ const SUBTABS: Array<{ id: SubTab; label: string }> = [
   { id: 'scaleup', label: 'Bid scale up' },
 ];
 
-function NumField({ label, value, onChange, step = '1' }: { label: string; value: string; onChange: (v: string) => void; step?: string }) {
+function NumField({
+  label,
+  value,
+  onChange,
+  step = '1',
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  step?: string;
+}) {
   return (
     <label className="field">
       <span className="text-xs text-muted">{label}</span>
@@ -33,7 +43,17 @@ function NumField({ label, value, onChange, step = '1' }: { label: string; value
 }
 
 /** Bid reduction / scale-up panel — editable preset thresholds, target-level table. Needs a range > 3 days. */
-function BidPanel({ profileId, from, to, mode }: { profileId: string; from: string; to: string; mode: 'reduce' | 'scaleup' }) {
+function BidPanel({
+  profileId,
+  from,
+  to,
+  mode,
+}: {
+  profileId: string;
+  from: string;
+  to: string;
+  mode: 'reduce' | 'scaleup';
+}) {
   const [filters, setFilters] = useState<AdFilterState>(EMPTY_AD_FILTERS);
   const [reduceAcos, setReduceAcos] = useState('1.5');
   const [reduceClicks, setReduceClicks] = useState('10');

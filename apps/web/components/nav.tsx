@@ -3,9 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-const LINKS = [
-  { href: '/ingest', label: 'Ingest' },
-];
+const LINKS = [{ href: '/ingest', label: 'Ingest' }];
 
 export function Nav() {
   const pathname = usePathname();

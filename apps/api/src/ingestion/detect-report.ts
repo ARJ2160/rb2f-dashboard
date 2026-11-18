@@ -5,7 +5,13 @@ import { hasColumn } from '../lib/values';
 /** Header spellings for the ASIN column of a mapper sheet. */
 export const ASIN_COLUMNS = ['ASIN', 'Amazon ASIN', 'Child ASIN', 'Asin'] as const;
 /** Category column of an ASIN mapper, in priority order (first one present wins). */
-export const CATEGORY_COLUMNS = ['Category', 'Article Type', 'Sub-Cat', 'Sub Category', 'Sub-category'] as const;
+export const CATEGORY_COLUMNS = [
+  'Category',
+  'Article Type',
+  'Sub-Cat',
+  'Sub Category',
+  'Sub-category',
+] as const;
 
 /**
  * Decide what a sheet is.
@@ -34,10 +40,17 @@ export function detectByHeaders(h: string[]): ReportType | null {
   if (has('grossSales', 'netSales') && has('orderDay') && has('city')) return 'pi_city_sales';
   if (has('searchRank') && has('searchMonth', 'searchYear')) return 'search_rank';
   if (has('glanceViews') && has('snapshotDay')) return 'asin_gv';
-  if (has('keyword') && has('keywordType') && (has('overallSpSOV') || has('firstPageSpSOV') || has('mostClickedSpAsin'))) return 'keyword_sov';
+  if (
+    has('keyword') &&
+    has('keywordType') &&
+    (has('overallSpSOV') || has('firstPageSpSOV') || has('mostClickedSpAsin'))
+  )
+    return 'keyword_sov';
   // Vendor Central: Ordered and/or Shipped revenue & units per ASIN.
-  if (has('ASIN') && has('Ordered Revenue', 'Ordered Units', 'Shipped Revenue', 'Shipped Units')) return 'vendor_central';
-  if (has('Sessions - Total', 'Sessions') && has('Ordered Product Sales', 'Units Ordered')) return 'business_report';
+  if (has('ASIN') && has('Ordered Revenue', 'Ordered Units', 'Shipped Revenue', 'Shipped Units'))
+    return 'vendor_central';
+  if (has('Sessions - Total', 'Sessions') && has('Ordered Product Sales', 'Units Ordered'))
+    return 'business_report';
 
   // ── Mappers (category columns, no performance metrics) ──
   const metricCols = has('Impressions', 'Clicks', 'Spend', 'Units Ordered', 'Ordered Revenue');
@@ -45,7 +58,8 @@ export function detectByHeaders(h: string[]): ReportType | null {
     if (has(...ASIN_COLUMNS) && has(...CATEGORY_COLUMNS)) return 'asin_mapper';
     // Campaign mappers sometimes carry no Category column at all (only Type /
     // Targeting / Branded) — still recognisable by campaign name + those columns.
-    if (has('Campaigns', 'Campaign Name', 'Campaign') && has('Category', 'Type', 'Branded/Non-Branded')) return 'campaign_mapper';
+    if (has('Campaigns', 'Campaign Name', 'Campaign') && has('Category', 'Type', 'Branded/Non-Branded'))
+      return 'campaign_mapper';
   }
 
   // ── Search-query / order / attribution reports ──
@@ -93,8 +107,15 @@ export function detectAdChannel(h: string[]): AdChannel | null {
   const hasCostType = has('Cost type', 'Cost Type');
   if (!hasCostType && !has('Viewable Impressions')) return 'sp';
 
-  if (any(/view-through conversions/) || has('14 Day ATC Views', 'Tactic', 'Bid Optimization', 'Bid Optimisation')) return 'sd';
-  if (has('Brand Store page views', '5 Second Views', 'Video First Quartile Views', '14 Day Branded Searches')) return 'sb';
+  if (
+    any(/view-through conversions/) ||
+    has('14 Day ATC Views', 'Tactic', 'Bid Optimization', 'Bid Optimisation')
+  )
+    return 'sd';
+  if (
+    has('Brand Store page views', '5 Second Views', 'Video First Quartile Views', '14 Day Branded Searches')
+  )
+    return 'sb';
   if (has('14 Day Detail Page Views (DPV)', 'Detail Page Views (DPV)')) return 'sd';
   if (hasCostType) return 'sb';
   return null;
@@ -119,7 +140,8 @@ export function detectByName(name: string): ReportType | null {
   if (has('city', 'level') || (has('asin', 'sales') && has('city'))) return 'pi_city_sales';
   if (has('search', 'ranking') || has('search', 'rank')) return 'search_rank';
   if (has('glance', 'views')) return 'asin_gv';
-  if (has('search', 'performance') || has('keyword', 'performance') || (word('keywords') && has('category'))) return 'keyword_sov';
+  if (has('search', 'performance') || has('keyword', 'performance') || (word('keywords') && has('category')))
+    return 'keyword_sov';
   if (has('vendor')) return 'vendor_central';
   if (has('business')) return 'business_report';
   if (has('search', 'query')) return 'search_query_performance';

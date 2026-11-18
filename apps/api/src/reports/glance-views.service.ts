@@ -19,7 +19,18 @@ export async function getGlanceViews(
   const to = opts.to ?? bounds?.max ?? null;
 
   if (!from || !to) {
-    return { profileId, from, to, dates: [], trend: [], total: 0, rows: [], categories: [], category: opts.category ?? null, notes: ['No Amazon Pi glance-view data uploaded yet.'] };
+    return {
+      profileId,
+      from,
+      to,
+      dates: [],
+      trend: [],
+      total: 0,
+      rows: [],
+      categories: [],
+      category: opts.category ?? null,
+      notes: ['No Amazon Pi glance-view data uploaded yet.'],
+    };
   }
 
   const conds: SQL[] = [sql`g.profile_id = ${profileId}`, sql`g.date between ${from} and ${to}`];
@@ -43,7 +54,9 @@ export async function getGlanceViews(
   ]);
 
   const total = rows.reduce((a, r) => a + Number(r.gv), 0);
-  const notes = ['Glance views are Amazon Pi indexed values for your ASINs only (not a share of the whole category).'];
+  const notes = [
+    'Glance views are Amazon Pi indexed values for your ASINs only (not a share of the whole category).',
+  ];
 
   return {
     profileId,
@@ -53,7 +66,13 @@ export async function getGlanceViews(
     trend: trend.map((t) => ({ date: t.date, glanceViews: Number(t.gv) })),
     total,
     rows: rows
-      .map((r) => ({ asin: r.asin, title: r.title, category: r.category, glanceViews: Number(r.gv), sharePct: pct(Number(r.gv), total) }))
+      .map((r) => ({
+        asin: r.asin,
+        title: r.title,
+        category: r.category,
+        glanceViews: Number(r.gv),
+        sharePct: pct(Number(r.gv), total),
+      }))
       .sort((a, b) => b.glanceViews - a.glanceViews),
     categories: cats.map((c) => c.category),
     category: opts.category ?? null,

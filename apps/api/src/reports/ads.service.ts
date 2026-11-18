@@ -1,4 +1,12 @@
-import { addAdBase, deriveAd, emptyAdBase, pct, type AdBase, type AdGroupRow, type AdsResponse } from '@dash/shared';
+import {
+  addAdBase,
+  deriveAd,
+  emptyAdBase,
+  pct,
+  type AdBase,
+  type AdGroupRow,
+  type AdsResponse,
+} from '@dash/shared';
 import { sql, type SQL } from 'drizzle-orm';
 
 import { db } from '../db/client';
@@ -14,7 +22,12 @@ const ORDER = {
 function group(rows: Array<Agg & { key: string; n: string }>, order: string[]) {
   const total: AdBase = rows.reduce((a, r) => addAdBase(a, toBase(r)), emptyAdBase());
   const out: AdGroupRow[] = rows
-    .map((r) => ({ key: r.key, count: Number(r.n), spendSharePct: pct(Number(r.spend), total.spend), ...deriveAd(toBase(r)) }))
+    .map((r) => ({
+      key: r.key,
+      count: Number(r.n),
+      spendSharePct: pct(Number(r.spend), total.spend),
+      ...deriveAd(toBase(r)),
+    }))
     .sort((a, b) => (order.indexOf(a.key) + 1 || 99) - (order.indexOf(b.key) + 1 || 99) || b.spend - a.spend);
   return { total: deriveAd(total), rows: out };
 }
@@ -29,7 +42,12 @@ function group(rows: Array<Agg & { key: string; n: string }>, order: string[]) {
  *   Targeting types and Branded / Competitor / Generic — search-term level
  *     (SP + SB search term reports, SD targeting), classified per row.
  */
-export async function getAds(profileId: string, from: string, to: string, f: AdFilters): Promise<AdsResponse> {
+export async function getAds(
+  profileId: string,
+  from: string,
+  to: string,
+  f: AdFilters
+): Promise<AdsResponse> {
   const terms = await getBrandTerms(profileId);
   const st = sql.raw('st');
   const tType = targetTypeSql(sql`${st}.target`, sql`${st}.match_type`, sql`${st}.channel`);

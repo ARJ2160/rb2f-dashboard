@@ -19,8 +19,20 @@ export interface AsinAdRecord {
 const ASIN = ['Advertised ASIN', 'ASIN'];
 const SPEND = ['Spend', 'Spend (₹)', 'Cost'];
 // Exact names only — "14 Day Total Sales – (Click)" must not match.
-const SALES = ['7 Day Total Sales', '7 Day Total Sales (₹)', '14 Day Total Sales', '14 Day Total Sales (₹)', 'Total Sales'];
-const UNITS = ['7 Day Total Units (#)', '14 Day Total Units (#)', '7 Day Total Units', '14 Day Total Units', 'Total Units'];
+const SALES = [
+  '7 Day Total Sales',
+  '7 Day Total Sales (₹)',
+  '14 Day Total Sales',
+  '14 Day Total Sales (₹)',
+  'Total Sales',
+];
+const UNITS = [
+  '7 Day Total Units (#)',
+  '14 Day Total Units (#)',
+  '7 Day Total Units',
+  '14 Day Total Units',
+  'Total Units',
+];
 const ORDERS = ['7 Day Total Orders (#)', '14 Day Total Orders (#)', 'Total Orders (#)'];
 
 /**
@@ -62,8 +74,16 @@ export function parseAdvertisedProduct(
     const campaignName = str(pick(r, ['Campaign Name', 'Campaign']));
     attrs.push({ campaignName, channel, isVideo: looksVideo(campaignName, str(pick(r, ['Ad Group Name']))) });
     const key = `${date}|${campaignName}|${asin}`;
-    const cur =
-      acc.get(key) ?? { date, campaignName, asin, impressions: 0, clicks: 0, spend: 0, adSales: 0, adUnits: 0 };
+    const cur = acc.get(key) ?? {
+      date,
+      campaignName,
+      asin,
+      impressions: 0,
+      clicks: 0,
+      spend: 0,
+      adSales: 0,
+      adUnits: 0,
+    };
     cur.impressions += num(pick(r, ['Impressions']));
     cur.clicks += num(pick(r, ['Clicks']));
     cur.spend += num(pick(r, SPEND));
@@ -73,7 +93,11 @@ export function parseAdvertisedProduct(
   }
   if (noAsin) warnings.push(`${noAsin} row(s) skipped: no Advertised ASIN.`);
   if (undated) warnings.push(`${undated} row(s) skipped: no single-day date (export with Daily time unit).`);
-  const records = [...acc.values()].map((r) => ({ ...r, spend: round2(r.spend), adSales: round2(r.adSales) }));
+  const records = [...acc.values()].map((r) => ({
+    ...r,
+    spend: round2(r.spend),
+    adSales: round2(r.adSales),
+  }));
   const a = collectAttrs(attrs.filter((x) => x.campaignName));
   if (!records.length && rows.length)
     return { records, attrs: a, rowsRead: rows.length, warnings, error: 'No dated ASIN rows could be read.' };

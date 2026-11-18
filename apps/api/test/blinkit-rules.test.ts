@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { daysOfCover, docStatus, feederCity, geoFromCampaignName, parseCityList, resolveCampaignGeo, runRate, salesCityOf } from '@dash/shared/blinkit';
+import {
+  daysOfCover,
+  docStatus,
+  feederCity,
+  geoFromCampaignName,
+  parseCityList,
+  resolveCampaignGeo,
+  runRate,
+  salesCityOf,
+} from '@dash/shared/blinkit';
 
 // ── Exact-city rule for Blinkit ads ──
 
@@ -18,11 +27,18 @@ test('city rule: one city / one metro is city-level, several metros only a group
   assert.equal(ncr.kind === 'city' && ncr.label, 'Delhi NCR');
 
   assert.equal(parseCityList('Hyderabad, Bengaluru, Mumbai').kind, 'multi');
-  for (const t of ['Pan India', 'All', 'All India', 'Top City']) assert.equal(parseCityList(t).kind, 'none', t);
+  for (const t of ['Pan India', 'All', 'All India', 'Top City'])
+    assert.equal(parseCityList(t).kind, 'none', t);
 });
 
 test('city rule: live Eatopia campaign names carry no city; the mapper beats the name', () => {
-  for (const n of ['Honey | FH | SP | Top City | H | WES', 'Jam | MxB | SP | ROC | H', 'Jam | Spotlight', 'Branded | SP', 'Ketchup | SP | H | N'])
+  for (const n of [
+    'Honey | FH | SP | Top City | H | WES',
+    'Jam | MxB | SP | ROC | H',
+    'Jam | Spotlight',
+    'Branded | SP',
+    'Ketchup | SP | H | N',
+  ])
     assert.equal(geoFromCampaignName(n).kind, 'none', n);
   const named = geoFromCampaignName('Jam Slow Kwr/Mumbai');
   assert.equal(named.kind === 'city' && named.label, 'Mumbai');
@@ -55,7 +71,10 @@ test('feeder warehouse → city', () => {
 });
 
 test('city rule (warehouse names): 3-letter city codes, "Top 5 cities" never city-level, Noida sales booked as Ghaziabad', () => {
-  const city = (n: string) => { const g = geoFromCampaignName(n); return g.kind === 'city' ? g.cities : g.kind; };
+  const city = (n: string) => {
+    const g = geoFromCampaignName(n);
+    return g.kind === 'city' ? g.cities : g.kind;
+  };
   assert.deepEqual(city('Jam Kwr/Hyd'), ['Hyderabad']);
   assert.deepEqual(city('Jam/Slow Kw/Gen/Ahm'), ['Ahmedabad']);
   assert.deepEqual(city('RB/Kids Honey/ PNQ'), ['Pune']);

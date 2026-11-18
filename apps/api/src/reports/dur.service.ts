@@ -6,7 +6,14 @@ import { dailyAsinSales, products } from '../db/schema';
 import { listCategories } from './filters';
 import { piActive } from './pi-sales';
 
-type DurSalesRow = { asin: string; date: string; units: string; orders: string | null; category: string | null; title: string | null };
+type DurSalesRow = {
+  asin: string;
+  date: string;
+  units: string;
+  orders: string | null;
+  category: string | null;
+  title: string | null;
+};
 
 /**
  * DUR — Daily Units Report (rule book §10.2). Pivot: one row per ASIN, one
@@ -23,7 +30,13 @@ type DurSalesRow = { asin: string; date: string; units: string; orders: string |
  * Rows with a blank source ASIN form their own bucket (asin = null), kept
  * separate from "Unmapped" (an ASIN that the mapper doesn't know).
  */
-export async function getDur(profileId: string, from: string, to: string, metric: DurMetric, category?: string): Promise<DurResponse> {
+export async function getDur(
+  profileId: string,
+  from: string,
+  to: string,
+  metric: DurMetric,
+  category?: string
+): Promise<DurResponse> {
   const [categories, pi] = await Promise.all([listCategories(profileId), piActive(profileId, from, to)]);
   // Under Amazon Pi, units = gross units and there is no order count (orders → null/"—").
   const rows: DurSalesRow[] = pi
@@ -47,7 +60,10 @@ export async function getDur(profileId: string, from: string, to: string, metric
           title: sql<string | null>`max(coalesce(${products.mapperTitle}, ${products.reportTitle}))`,
         })
         .from(dailyAsinSales)
-        .leftJoin(products, and(eq(products.profileId, dailyAsinSales.profileId), eq(products.asin, dailyAsinSales.asin)))
+        .leftJoin(
+          products,
+          and(eq(products.profileId, dailyAsinSales.profileId), eq(products.asin, dailyAsinSales.asin))
+        )
         .where(and(eq(dailyAsinSales.profileId, profileId), between(dailyAsinSales.date, from, to)))
         .groupBy(dailyAsinSales.asin, dailyAsinSales.date);
 
@@ -87,7 +103,8 @@ export async function getDur(profileId: string, from: string, to: string, metric
   for (const [key, row] of byAsin) {
     for (const d of dates) {
       if (row.values[d] != null) continue;
-      const known = metric === 'units' ? datesWithData.has(d) : datesWithSeller.has(d) && sellerAsins.has(key);
+      const known =
+        metric === 'units' ? datesWithData.has(d) : datesWithSeller.has(d) && sellerAsins.has(key);
       if (known) {
         row.values[d] = 0;
         row.totals ??= 0;
@@ -121,8 +138,21 @@ export async function getDur(profileId: string, from: string, to: string, metric
   const unmapped = out.filter((r) => r.asin && r.category === 'Unmapped').length;
   const withAsin = out.filter((r) => r.asin).length;
   if (withAsin && unmapped / withAsin > 0.5) {
-    notes.push(`${unmapped} of ${withAsin} ASINs are not in the ASIN mapper (match rate under 50%) — upload/refresh the mapper.`);
+    notes.push(
+      `${unmapped} of ${withAsin} ASINs are not in the ASIN mapper (match rate under 50%) — upload/refresh the mapper.`
+    );
   }
 
-  return { profileId, from, to, days, metric, dates, rows: out, category: category ?? null, categories, notes };
+  return {
+    profileId,
+    from,
+    to,
+    days,
+    metric,
+    dates,
+    rows: out,
+    category: category ?? null,
+    categories,
+    notes,
+  };
 }

@@ -4,12 +4,83 @@ import { test } from 'node:test';
 import { detectByHeaders, detectByName, detectReportType } from '../src/ingestion/detect-report';
 
 // Header sets copied from real Amazon India exports (YPLAYZ sample workbook).
-const BUSINESS = ['(Parent) ASIN', '(Child) ASIN', 'Title', 'Sessions - Total', 'Page Views - Total', 'Units Ordered', 'Ordered Product Sales', 'Total Order Items'];
-const SP = ['Start Date', 'End Date', 'Portfolio name', 'Program Type', 'Campaign Name', 'Impressions', 'Clicks', 'Spend', '7 Day Total Orders (#)', '7 Day Total Sales'];
-const SB = ['Start Date', 'End Date', 'Portfolio name', 'Currency', 'Campaign Name', 'Cost type', 'Impressions', 'Clicks', 'Spend', '14 Day Total Sales', '14 Day Total Units (#)', '5 Second Views', '14 Day Branded Searches', '14 Day Detail Page Views (DPV)', 'Brand Store page views'];
-const SD = ['Start Date', 'End Date', 'Status', 'Budget Amount', 'Campaign Name', 'Cost type', 'Impressions', 'Clicks', '14 Day Detail Page Views (DPV)', 'Spend', '14 Day Total Units (#)', '14 Day Total Sales', '14 Day ATC Views', '14 Day Branded Searches', 'Branded Searches view-through conversions'];
-const SP_STR = ['Start Date', 'Campaign Name', 'Targeting', 'Match Type', 'Customer Search Term', 'Impressions', 'Clicks', 'Spend', '7 Day Total Sales'];
-const VENDOR = ['ASIN', 'Product Title', 'Ordered Revenue', 'Ordered Units', 'Shipped Revenue', 'Shipped COGS', 'Shipped Units', 'Customer Returns'];
+const BUSINESS = [
+  '(Parent) ASIN',
+  '(Child) ASIN',
+  'Title',
+  'Sessions - Total',
+  'Page Views - Total',
+  'Units Ordered',
+  'Ordered Product Sales',
+  'Total Order Items',
+];
+const SP = [
+  'Start Date',
+  'End Date',
+  'Portfolio name',
+  'Program Type',
+  'Campaign Name',
+  'Impressions',
+  'Clicks',
+  'Spend',
+  '7 Day Total Orders (#)',
+  '7 Day Total Sales',
+];
+const SB = [
+  'Start Date',
+  'End Date',
+  'Portfolio name',
+  'Currency',
+  'Campaign Name',
+  'Cost type',
+  'Impressions',
+  'Clicks',
+  'Spend',
+  '14 Day Total Sales',
+  '14 Day Total Units (#)',
+  '5 Second Views',
+  '14 Day Branded Searches',
+  '14 Day Detail Page Views (DPV)',
+  'Brand Store page views',
+];
+const SD = [
+  'Start Date',
+  'End Date',
+  'Status',
+  'Budget Amount',
+  'Campaign Name',
+  'Cost type',
+  'Impressions',
+  'Clicks',
+  '14 Day Detail Page Views (DPV)',
+  'Spend',
+  '14 Day Total Units (#)',
+  '14 Day Total Sales',
+  '14 Day ATC Views',
+  '14 Day Branded Searches',
+  'Branded Searches view-through conversions',
+];
+const SP_STR = [
+  'Start Date',
+  'Campaign Name',
+  'Targeting',
+  'Match Type',
+  'Customer Search Term',
+  'Impressions',
+  'Clicks',
+  'Spend',
+  '7 Day Total Sales',
+];
+const VENDOR = [
+  'ASIN',
+  'Product Title',
+  'Ordered Revenue',
+  'Ordered Units',
+  'Shipped Revenue',
+  'Shipped COGS',
+  'Shipped Units',
+  'Customer Returns',
+];
 const MAPPER = ['ASIN', 'Title', 'Category', 'Sub-category', 'Size', 'Price', 'MRP'];
 const CAMPAIGN_MAPPER = ['Campaigns ', 'Type', 'Targeting', 'Category', 'Branded/Non-Branded'];
 
@@ -25,7 +96,10 @@ test('headers decide the report type and ad channel', () => {
 });
 
 test('headers win over a misleading filename', () => {
-  assert.deepEqual(detectReportType(SB, 'Sheet1', 'SP_Campaign_1_June.xlsx'), { reportType: 'sb_campaign', detectedBy: 'headers' });
+  assert.deepEqual(detectReportType(SB, 'Sheet1', 'SP_Campaign_1_June.xlsx'), {
+    reportType: 'sb_campaign',
+    detectedBy: 'headers',
+  });
 });
 
 test('name fallback', () => {

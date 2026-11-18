@@ -685,7 +685,16 @@ export interface SqpResponse {
   accountAcosPct: number | null;
   minBrandClicks: number;
   /** Counted over the whole period, not the filtered list. */
-  kpis: { opportunities: number; strong: number; medium: number; low: number; launchSp: number; launchSb: number; launchBoth: number; queries: number };
+  kpis: {
+    opportunities: number;
+    strong: number;
+    medium: number;
+    low: number;
+    launchSp: number;
+    launchSb: number;
+    launchBoth: number;
+    queries: number;
+  };
   rows: SqpRow[];
   /** Rows matching the filters before the row limit. */
   totalRows: number;

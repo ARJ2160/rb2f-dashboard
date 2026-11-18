@@ -13,7 +13,9 @@ function jsonMap(raw: string | undefined, name: string): Record<string, string> 
   return {};
 }
 
-const [critical = 7, low = 15, excess = 45] = (env.BK_DOC_BANDS ?? '7,15,45').split(',').map((s) => Number(s.trim()));
+const [critical = 7, low = 15, excess = 45] = (env.BK_DOC_BANDS ?? '7,15,45')
+  .split(',')
+  .map((s) => Number(s.trim()));
 
 export const bkConfig = {
   /** Folder under each brand in the GCS bucket that holds Blinkit exports. */

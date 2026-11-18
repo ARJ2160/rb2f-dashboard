@@ -60,7 +60,13 @@ export async function storeSales(
   for (const d of chunks(dates)) {
     await tx
       .delete(dailyAsinSales)
-      .where(and(eq(dailyAsinSales.profileId, profileId), eq(dailyAsinSales.source, source), inArray(dailyAsinSales.date, d)));
+      .where(
+        and(
+          eq(dailyAsinSales.profileId, profileId),
+          eq(dailyAsinSales.source, source),
+          inArray(dailyAsinSales.date, d)
+        )
+      );
   }
   for (const c of chunks(records)) {
     await tx.insert(dailyAsinSales).values(
@@ -95,10 +101,17 @@ export async function storeSales(
 }
 
 /** Amazon Pi city-level sales → daily_pi_city_sales (replace-by-date). Titles seeded into products. */
-export async function storePiCitySales(tx: Tx, profileId: string, uploadId: string, records: PiCitySalesRecord[]): Promise<void> {
+export async function storePiCitySales(
+  tx: Tx,
+  profileId: string,
+  uploadId: string,
+  records: PiCitySalesRecord[]
+): Promise<void> {
   const dates = uniqueDates(records);
   for (const d of chunks(dates)) {
-    await tx.delete(dailyPiCitySales).where(and(eq(dailyPiCitySales.profileId, profileId), inArray(dailyPiCitySales.date, d)));
+    await tx
+      .delete(dailyPiCitySales)
+      .where(and(eq(dailyPiCitySales.profileId, profileId), inArray(dailyPiCitySales.date, d)));
   }
   for (const c of chunks(records)) {
     await tx.insert(dailyPiCitySales).values(
@@ -133,10 +146,17 @@ export async function storePiCitySales(tx: Tx, profileId: string, uploadId: stri
 }
 
 /** Amazon Pi Product Search Ranking → product_search_rank (replace-by-month). */
-export async function storeSearchRank(tx: Tx, profileId: string, uploadId: string, records: SearchRankRecord[]): Promise<void> {
+export async function storeSearchRank(
+  tx: Tx,
+  profileId: string,
+  uploadId: string,
+  records: SearchRankRecord[]
+): Promise<void> {
   const periods = [...new Set(records.map((r) => r.period))].sort();
   for (const p of chunks(periods)) {
-    await tx.delete(productSearchRank).where(and(eq(productSearchRank.profileId, profileId), inArray(productSearchRank.period, p)));
+    await tx
+      .delete(productSearchRank)
+      .where(and(eq(productSearchRank.profileId, profileId), inArray(productSearchRank.period, p)));
   }
   for (const c of chunks(records)) {
     await tx.insert(productSearchRank).values(c.map((r) => ({ profileId, ...r, uploadId })));
@@ -144,9 +164,16 @@ export async function storeSearchRank(tx: Tx, profileId: string, uploadId: strin
 }
 
 /** Amazon Pi ASIN-level Glance Views → daily_asin_gv (replace-by-date). */
-export async function storeAsinGv(tx: Tx, profileId: string, uploadId: string, records: AsinGvRecord[]): Promise<void> {
+export async function storeAsinGv(
+  tx: Tx,
+  profileId: string,
+  uploadId: string,
+  records: AsinGvRecord[]
+): Promise<void> {
   for (const d of chunks(uniqueDates(records))) {
-    await tx.delete(dailyAsinGv).where(and(eq(dailyAsinGv.profileId, profileId), inArray(dailyAsinGv.date, d)));
+    await tx
+      .delete(dailyAsinGv)
+      .where(and(eq(dailyAsinGv.profileId, profileId), inArray(dailyAsinGv.date, d)));
   }
   for (const c of chunks(records)) {
     await tx.insert(dailyAsinGv).values(c.map((r) => ({ profileId, ...r, uploadId })));
@@ -154,12 +181,23 @@ export async function storeAsinGv(tx: Tx, profileId: string, uploadId: string, r
 }
 
 /** Amazon Pi keyword SOV → keyword_sov (replace by each duration + snapshot-date window in the file). */
-export async function storeKeywordSov(tx: Tx, profileId: string, uploadId: string, records: KeywordSovRecord[]): Promise<void> {
+export async function storeKeywordSov(
+  tx: Tx,
+  profileId: string,
+  uploadId: string,
+  records: KeywordSovRecord[]
+): Promise<void> {
   const windows = [...new Map(records.map((r) => [`${r.duration}|${r.snapshotDate}`, r])).values()];
   for (const w of windows) {
     await tx
       .delete(keywordSov)
-      .where(and(eq(keywordSov.profileId, profileId), eq(keywordSov.duration, w.duration), eq(keywordSov.snapshotDate, w.snapshotDate)));
+      .where(
+        and(
+          eq(keywordSov.profileId, profileId),
+          eq(keywordSov.duration, w.duration),
+          eq(keywordSov.snapshotDate, w.snapshotDate)
+        )
+      );
   }
   for (const c of chunks(records)) {
     await tx.insert(keywordSov).values(c.map((r) => ({ profileId, ...r, uploadId })));
@@ -178,7 +216,11 @@ export async function storeAds(
     await tx
       .delete(dailyCampaignAds)
       .where(
-        and(eq(dailyCampaignAds.profileId, profileId), eq(dailyCampaignAds.channel, channel), inArray(dailyCampaignAds.date, d))
+        and(
+          eq(dailyCampaignAds.profileId, profileId),
+          eq(dailyCampaignAds.channel, channel),
+          inArray(dailyCampaignAds.date, d)
+        )
       );
   }
   for (const c of chunks(records)) {
@@ -210,7 +252,13 @@ export async function storeAsinAds(
   for (const d of chunks(uniqueDates(records))) {
     await tx
       .delete(dailyAsinAds)
-      .where(and(eq(dailyAsinAds.profileId, profileId), eq(dailyAsinAds.channel, channel), inArray(dailyAsinAds.date, d)));
+      .where(
+        and(
+          eq(dailyAsinAds.profileId, profileId),
+          eq(dailyAsinAds.channel, channel),
+          inArray(dailyAsinAds.date, d)
+        )
+      );
   }
   for (const c of chunks(records)) {
     await tx.insert(dailyAsinAds).values(
@@ -232,7 +280,12 @@ export async function storeAsinAds(
 }
 
 /** SB Attributed Purchases → sb_attributed_daily (replace-by-date). */
-export async function storeSbAttributed(tx: Tx, profileId: string, uploadId: string, records: SbAttributedRecord[]): Promise<void> {
+export async function storeSbAttributed(
+  tx: Tx,
+  profileId: string,
+  uploadId: string,
+  records: SbAttributedRecord[]
+): Promise<void> {
   for (const d of chunks(uniqueDates(records))) {
     await tx
       .delete(sbAttributedDaily)
@@ -264,7 +317,13 @@ export async function storeSearchTerms(
   for (const d of chunks(uniqueDates(records))) {
     await tx
       .delete(dailySearchTerms)
-      .where(and(eq(dailySearchTerms.profileId, profileId), eq(dailySearchTerms.channel, channel), inArray(dailySearchTerms.date, d)));
+      .where(
+        and(
+          eq(dailySearchTerms.profileId, profileId),
+          eq(dailySearchTerms.channel, channel),
+          inArray(dailySearchTerms.date, d)
+        )
+      );
   }
   for (const c of chunks(records)) {
     await tx.insert(dailySearchTerms).values(
@@ -316,7 +375,13 @@ export async function storePlacements(
   for (const d of chunks(uniqueDates(records))) {
     await tx
       .delete(dailyPlacements)
-      .where(and(eq(dailyPlacements.profileId, profileId), eq(dailyPlacements.channel, channel), inArray(dailyPlacements.date, d)));
+      .where(
+        and(
+          eq(dailyPlacements.profileId, profileId),
+          eq(dailyPlacements.channel, channel),
+          inArray(dailyPlacements.date, d)
+        )
+      );
   }
   for (const c of chunks(records)) {
     await tx.insert(dailyPlacements).values(
@@ -349,7 +414,13 @@ export async function storeStateSales(
   for (const d of chunks(uniqueDates(records))) {
     await tx
       .delete(dailyStateSales)
-      .where(and(eq(dailyStateSales.profileId, profileId), eq(dailyStateSales.source, source), inArray(dailyStateSales.date, d)));
+      .where(
+        and(
+          eq(dailyStateSales.profileId, profileId),
+          eq(dailyStateSales.source, source),
+          inArray(dailyStateSales.date, d)
+        )
+      );
   }
   for (const c of chunks(records)) {
     await tx.insert(dailyStateSales).values(
@@ -370,7 +441,11 @@ export async function storeStateSales(
 }
 
 /** Campaign mapper upload replaces the previous mapping. */
-export async function storeCampaignMapper(tx: Tx, profileId: string, records: CampaignMapperRecord[]): Promise<void> {
+export async function storeCampaignMapper(
+  tx: Tx,
+  profileId: string,
+  records: CampaignMapperRecord[]
+): Promise<void> {
   await tx.delete(campaignMapper).where(eq(campaignMapper.profileId, profileId));
   for (const c of chunks(records)) {
     await tx.insert(campaignMapper).values(c.map((r) => ({ profileId, ...r })));
@@ -378,11 +453,23 @@ export async function storeCampaignMapper(tx: Tx, profileId: string, records: Ca
 }
 
 /** Hour-of-day rows from campaign reports exported with Start Time (replace-by-date per channel). */
-export async function storeHourly(tx: Tx, profileId: string, uploadId: string, channel: 'sp' | 'sb' | 'sd', records: HourlyRecord[]) {
+export async function storeHourly(
+  tx: Tx,
+  profileId: string,
+  uploadId: string,
+  channel: 'sp' | 'sb' | 'sd',
+  records: HourlyRecord[]
+) {
   for (const d of chunks(uniqueDates(records))) {
     await tx
       .delete(dailyHourlyAds)
-      .where(and(eq(dailyHourlyAds.profileId, profileId), eq(dailyHourlyAds.channel, channel), inArray(dailyHourlyAds.date, d)));
+      .where(
+        and(
+          eq(dailyHourlyAds.profileId, profileId),
+          eq(dailyHourlyAds.channel, channel),
+          inArray(dailyHourlyAds.date, d)
+        )
+      );
   }
   for (const c of chunks(records)) {
     await tx.insert(dailyHourlyAds).values(
@@ -414,7 +501,15 @@ export async function storeCampaignAttrs(tx: Tx, profileId: string, attrs: Campa
   for (const c of chunks([...byKey.values()])) {
     await tx
       .insert(campaignAttrs)
-      .values(c.map((a) => ({ profileId, campaignKey: a.key, campaignName: a.campaignName, channel: a.channel, isVideo: a.isVideo })))
+      .values(
+        c.map((a) => ({
+          profileId,
+          campaignKey: a.key,
+          campaignName: a.campaignName,
+          channel: a.channel,
+          isVideo: a.isVideo,
+        }))
+      )
       .onConflictDoUpdate({
         target: [campaignAttrs.profileId, campaignAttrs.campaignKey],
         set: { channel: sql`excluded.channel`, isVideo: sql`${campaignAttrs.isVideo} or excluded.is_video` },
@@ -427,7 +522,11 @@ export async function storeAsinMapper(tx: Tx, profileId: string, records: Mapper
   // Seed brand terms (Branded search-term detection) the first time: the
   // mapper's Brand column, else the most common first word of product titles.
   // Users can edit them afterwards; an existing list is never overwritten.
-  const brands = [...new Set(records.map((r) => r.brand?.trim().toLowerCase()).filter((b): b is string => !!b && b !== 'brand'))];
+  const brands = [
+    ...new Set(
+      records.map((r) => r.brand?.trim().toLowerCase()).filter((b): b is string => !!b && b !== 'brand')
+    ),
+  ];
   let seed = brands;
   if (!seed.length) {
     const counts = new Map<string, number>();
@@ -452,13 +551,15 @@ export async function storeAsinMapper(tx: Tx, profileId: string, records: Mapper
   for (const c of chunks(records)) {
     await tx
       .insert(products)
-      .values(c.map((r) => ({
+      .values(
+        c.map((r) => ({
           profileId,
           asin: r.asin,
           mapperCategory: r.category,
           mapperTitle: r.title,
           sellingPrice: r.sellingPrice,
-        })))
+        }))
+      )
       .onConflictDoUpdate({
         target: [products.profileId, products.asin],
         set: {

@@ -27,14 +27,22 @@ function findDateColumn(headers: string[], sample: Row | undefined): string | nu
       if ((t === '>' || /^__col_/.test(t)) && plausible(parseDateCell(sample[k]))) return k;
     }
     const first = headers[0];
-    if (first && !ASIN.some((a) => a.toLowerCase() === first.toLowerCase()) && plausible(parseDateCell(sample[first])))
+    if (
+      first &&
+      !ASIN.some((a) => a.toLowerCase() === first.toLowerCase()) &&
+      plausible(parseDateCell(sample[first]))
+    )
       return first;
   }
   return null;
 }
 
 /** Seller Central "Detail Page Sales and Traffic by Child Item" → per-ASIN per-day sales. */
-export function parseBusinessReport(headers: string[], rows: Row[], ctx: ParseContext): ParseResult<SalesRecord> {
+export function parseBusinessReport(
+  headers: string[],
+  rows: Row[],
+  ctx: ParseContext
+): ParseResult<SalesRecord> {
   const warnings: string[] = [];
   const dateCol = findDateColumn(headers, rows[0]);
   const fallbackDate = singleNameDate(ctx);
@@ -69,7 +77,18 @@ export function parseBusinessReport(headers: string[], rows: Row[], ctx: ParseCo
     const key = `${date}|${asin}`;
     const cur =
       acc.get(key) ??
-      ({ date, asin, source: 'seller', sales: 0, units: 0, orderItems: 0, sessions: 0, pageViews: null, title, unpricedUnits: null } as SalesRecord);
+      ({
+        date,
+        asin,
+        source: 'seller',
+        sales: 0,
+        units: 0,
+        orderItems: 0,
+        sessions: 0,
+        pageViews: null,
+        title,
+        unpricedUnits: null,
+      } as SalesRecord);
     cur.sales += num(pick(r, SALES));
     cur.units += num(pick(r, UNITS));
     cur.orderItems = (cur.orderItems ?? 0) + num(pick(r, ORDER_ITEMS));

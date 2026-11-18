@@ -91,7 +91,15 @@ interface Cell {
   transfer: number;
   loss: number;
 }
-const emptyCell = (): Cell => ({ sellableEnding: 0, unsellableEnding: 0, cust: 0, returns: 0, receipts: 0, transfer: 0, loss: 0 });
+const emptyCell = (): Cell => ({
+  sellableEnding: 0,
+  unsellableEnding: 0,
+  cust: 0,
+  returns: 0,
+  receipts: 0,
+  transfer: 0,
+  loss: 0,
+});
 
 export interface ScViews {
   summary: ScSummary;
@@ -183,7 +191,17 @@ export function buildScViews(input: ScInput): ScViews {
     const m = new Map<string, FcAgg>();
     fcAgg.set(k, m);
     for (const [loc, byDate] of byLoc) {
-      const a: FcAgg = { sellable: 0, unsellable: 0, sold7: 0, sold30: 0, returns30: 0, receipts30: 0, transfers30: 0, loss30: 0, inStockDays: 0 };
+      const a: FcAgg = {
+        sellable: 0,
+        unsellable: 0,
+        sold7: 0,
+        sold30: 0,
+        returns30: 0,
+        receipts30: 0,
+        transfers30: 0,
+        loss30: 0,
+        inStockDays: 0,
+      };
       if (asOf && byDate.has(asOf)) {
         a.sellable = byDate.get(asOf)!.sellableEnding;
         a.unsellable = byDate.get(asOf)!.unsellableEnding;
@@ -218,8 +236,15 @@ export function buildScViews(input: ScInput): ScViews {
   const skuStockFlagByKey = new Map<string, string>();
   for (const [k, locs] of fcAgg) {
     const id = ident.get(k)!;
-    let sellable = 0, unsellable = 0, sold7 = 0, sold30 = 0, returns30 = 0, receipts30 = 0, loss30 = 0;
-    let fcsInStock = 0, fcsStockedOut = 0;
+    let sellable = 0,
+      unsellable = 0,
+      sold7 = 0,
+      sold30 = 0,
+      returns30 = 0,
+      receipts30 = 0,
+      loss30 = 0;
+    let fcsInStock = 0,
+      fcsStockedOut = 0;
     for (const a of locs.values()) {
       sellable += a.sellable;
       unsellable += a.unsellable;
@@ -243,13 +268,42 @@ export function buildScViews(input: ScInput): ScViews {
     skuStockFlagByKey.set(k, stockFlag);
     const returnRatePct = pct(returns30, sold30);
     const demandTrendPct = changePct(drr30 ?? 0, drr7 ?? 0);
-    const health = skuHealth({ stockFlag: stockFlag as never, fcStockouts: fcsStockedOut, returnRatePct: returnRatePct ?? 0, agedSharePct: 0, drr7, drr30 }, T);
+    const health = skuHealth(
+      {
+        stockFlag: stockFlag as never,
+        fcStockouts: fcsStockedOut,
+        returnRatePct: returnRatePct ?? 0,
+        agedSharePct: 0,
+        drr7,
+        drr30,
+      },
+      T
+    );
     skus.push({
-      msku: id.msku, asin: id.asin, fnsku: id.fnsku, product: shortName(id.title, id.msku || id.fnsku),
+      msku: id.msku,
+      asin: id.asin,
+      fnsku: id.fnsku,
+      product: shortName(id.title, id.msku || id.fnsku),
       category: catOf(id.asin),
-      sellable, unsellable, fcsInStock, fcsStockedOut, sold7, sold30, returns30, returnRatePct,
-      drr7, drr30, drrInStock, daysOnHand, inbound, daysOfCoverInclInbound: doh(sellable + inbound, drrInStock),
-      receipts30, lossDamaged30: loss30, demandTrendPct, stockFlag, health,
+      sellable,
+      unsellable,
+      fcsInStock,
+      fcsStockedOut,
+      sold7,
+      sold30,
+      returns30,
+      returnRatePct,
+      drr7,
+      drr30,
+      drrInStock,
+      daysOnHand,
+      inbound,
+      daysOfCoverInclInbound: doh(sellable + inbound, drrInStock),
+      receipts30,
+      lossDamaged30: loss30,
+      demandTrendPct,
+      stockFlag,
+      health,
     });
   }
   skus.sort((a, b) => b.sold30 - a.sold30);
@@ -276,10 +330,24 @@ export function buildScViews(input: ScInput): ScViews {
       const daysOnHand = doh(a.sellable, drrInStock);
       const flag = skuFcFlag({ sellable: a.sellable, unitsSold30: a.sold30, daysOnHand }, T);
       skuWarehouse.push({
-        msku: id.msku, asin: id.asin, product: shortName(id.title, id.msku || id.fnsku), category: catOf(id.asin), fc: loc,
-        sellable: a.sellable, unsellable: a.unsellable, sold7: a.sold7, sold30: a.sold30, inStockDays: a.inStockDays,
-        drrInStock, daysOnHand, shareOfSkuNationalPct: pct(a.sold30, skuSold30), receipts30: a.receipts30,
-        transfers: a.transfers30, lossDamaged: a.loss30, flag, health: skuFcHealth({ fcFlag: flag }, T),
+        msku: id.msku,
+        asin: id.asin,
+        product: shortName(id.title, id.msku || id.fnsku),
+        category: catOf(id.asin),
+        fc: loc,
+        sellable: a.sellable,
+        unsellable: a.unsellable,
+        sold7: a.sold7,
+        sold30: a.sold30,
+        inStockDays: a.inStockDays,
+        drrInStock,
+        daysOnHand,
+        shareOfSkuNationalPct: pct(a.sold30, skuSold30),
+        receipts30: a.receipts30,
+        transfers: a.transfers30,
+        lossDamaged: a.loss30,
+        flag,
+        health: skuFcHealth({ fcFlag: flag }, T),
       });
     }
   }
@@ -287,16 +355,30 @@ export function buildScViews(input: ScInput): ScViews {
 
   // ── Shipments ──
   const reportDate =
-    [asOf, ...shipments.flatMap((s) => [s.lastUpdated, s.created])].filter((d): d is string => !!d).sort().at(-1) ?? asOf;
+    [asOf, ...shipments.flatMap((s) => [s.lastUpdated, s.created])]
+      .filter((d): d is string => !!d)
+      .sort()
+      .at(-1) ?? asOf;
   const shipRows: ApiShipmentRow[] = shipments.map((s) => {
     const shortfall = shipmentShortfall(s.status, s.unitsExpected, s.unitsLocated);
     const fillRate = fillRatePct(s.unitsLocated, s.unitsExpected);
     const daysSinceCreated = reportDate && s.created ? daysBetween(s.created, reportDate) : null;
     const flag = shipmentFlag({ status: s.status, shortfall, daysSinceCreated }, T);
     return {
-      shipmentId: s.shipmentId, name: s.shipmentName, status: s.status, created: s.created, lastUpdated: s.lastUpdated,
-      destFc: s.destination, city: geo.get(s.destination)?.city ?? null, skus: s.skus, unitsExpected: s.unitsExpected,
-      unitsLocated: s.unitsLocated, shortfall, fillRatePct: fillRate, daysSinceCreated, shipmentFlag: flag,
+      shipmentId: s.shipmentId,
+      name: s.shipmentName,
+      status: s.status,
+      created: s.created,
+      lastUpdated: s.lastUpdated,
+      destFc: s.destination,
+      city: geo.get(s.destination)?.city ?? null,
+      skus: s.skus,
+      unitsExpected: s.unitsExpected,
+      unitsLocated: s.unitsLocated,
+      shortfall,
+      fillRatePct: fillRate,
+      daysSinceCreated,
+      shipmentFlag: flag,
       health: shipmentHealth({ flag, status: s.status, shortfall, fillRate }, T),
     };
   });
@@ -321,7 +403,8 @@ export function buildScViews(input: ScInput): ScViews {
       add(fcClosedLocated, fc, s.unitsLocated);
       add(fcShipShort, fc, s.shortfall);
     }
-    if (s.shipmentFlag === 'Receiving - stuck' || s.shipmentFlag === 'In transit - delayed') add(fcStuck, fc, 1);
+    if (s.shipmentFlag === 'Receiving - stuck' || s.shipmentFlag === 'In transit - delayed')
+      add(fcStuck, fc, 1);
   }
 
   // ── Warehouse level ──
@@ -331,8 +414,17 @@ export function buildScViews(input: ScInput): ScViews {
   for (const fc of fcInbound.keys()) fcKeys.add(fc);
   const warehouses: ScWarehouseRow[] = [];
   for (const fc of fcKeys) {
-    let sellable = 0, unsellable = 0, sold7 = 0, sold30 = 0, receipts30 = 0, transfers = 0, loss30 = 0;
-    let skusInStock = 0, skusStockedOut = 0, lowCover = 0, excess = 0;
+    let sellable = 0,
+      unsellable = 0,
+      sold7 = 0,
+      sold30 = 0,
+      receipts30 = 0,
+      transfers = 0,
+      loss30 = 0;
+    let skusInStock = 0,
+      skusStockedOut = 0,
+      lowCover = 0,
+      excess = 0;
     const fcInStockDates = new Set<string>();
     for (const [k, locs] of fcAgg) {
       const a = locs.get(fc);
@@ -349,38 +441,77 @@ export function buildScViews(input: ScInput): ScViews {
       const kAsin = ident.get(k)!.asin;
       const kDur = durDrrOf(kAsin);
       const kSold30 = [...(fcAgg.get(k)?.values() ?? [])].reduce((s2, x) => s2 + x.sold30, 0);
-      const kFcDrr = kDur != null ? kDur * (kSold30 > 0 ? a.sold30 / kSold30 : 0) : drr(a.sold30, a.inStockDays);
-      const flag = skuFcFlag({ sellable: a.sellable, unitsSold30: a.sold30, daysOnHand: doh(a.sellable, kFcDrr) }, T);
+      const kFcDrr =
+        kDur != null ? kDur * (kSold30 > 0 ? a.sold30 / kSold30 : 0) : drr(a.sold30, a.inStockDays);
+      const flag = skuFcFlag(
+        { sellable: a.sellable, unitsSold30: a.sold30, daysOnHand: doh(a.sellable, kFcDrr) },
+        T
+      );
       if (flag === 'Low cover') lowCover += 1;
       if (flag === 'Excess') excess += 1;
       void k;
     }
-    for (const byDate of [...cells.values()].map((b) => b.get(fc)).filter((b): b is Map<string, Cell> => !!b)) {
+    for (const byDate of [...cells.values()]
+      .map((b) => b.get(fc))
+      .filter((b): b is Map<string, Cell> => !!b)) {
       for (const [d, c] of byDate) if (in30(d) && (c.sellableEnding > 0 || c.cust < 0)) fcInStockDates.add(d);
     }
     const fcDrr = fcHasDur.has(fc) ? (fcDurDrr.get(fc) ?? 0) : drr(sold30, fcInStockDates.size);
     const closedExp = fcClosedExpected.get(fc) ?? 0;
     warehouses.push({
-      fc, city: geo.get(fc)?.city ?? null, state: geo.get(fc)?.state ?? null, sellable, unsellable,
-      skusInStock, skusStockedOut, sold7, sold30, shareOfNationalPct: pct(sold30, totalSold30), drr: fcDrr,
-      daysOnHand: doh(sellable, fcDrr), receipts30, transfersInOut: transfers, lossDamaged30: loss30,
-      unitsExpected: fcShipExpected.get(fc) ?? 0, unitsLocated: fcShipLocated.get(fc) ?? 0, inbound: fcInbound.get(fc) ?? 0,
-      unitsShort: fcShipShort.get(fc) ?? 0, fillRateClosedPct: fillRatePct(fcClosedLocated.get(fc) ?? 0, closedExp),
-      health: warehouseHealth({ skusStockedOut, shipmentsShort: (fcShipShort.get(fc) ?? 0) > 0 ? 1 : 0, shipmentsStuckOrDelayed: fcStuck.get(fc) ?? 0, lowCoverSkus: lowCover, excessSkus: excess }, T),
+      fc,
+      city: geo.get(fc)?.city ?? null,
+      state: geo.get(fc)?.state ?? null,
+      sellable,
+      unsellable,
+      skusInStock,
+      skusStockedOut,
+      sold7,
+      sold30,
+      shareOfNationalPct: pct(sold30, totalSold30),
+      drr: fcDrr,
+      daysOnHand: doh(sellable, fcDrr),
+      receipts30,
+      transfersInOut: transfers,
+      lossDamaged30: loss30,
+      unitsExpected: fcShipExpected.get(fc) ?? 0,
+      unitsLocated: fcShipLocated.get(fc) ?? 0,
+      inbound: fcInbound.get(fc) ?? 0,
+      unitsShort: fcShipShort.get(fc) ?? 0,
+      fillRateClosedPct: fillRatePct(fcClosedLocated.get(fc) ?? 0, closedExp),
+      health: warehouseHealth(
+        {
+          skusStockedOut,
+          shipmentsShort: (fcShipShort.get(fc) ?? 0) > 0 ? 1 : 0,
+          shipmentsStuckOrDelayed: fcStuck.get(fc) ?? 0,
+          lowCoverSkus: lowCover,
+          excessSkus: excess,
+        },
+        T
+      ),
     });
   }
   warehouses.sort((a, b) => b.sellable - a.sellable);
 
   // ── Summary ──
   const unsellableByTypeMap = new Map<string, number>();
-  let sellableTotal = 0, unsellableTotal = 0, sold7Total = 0, sold30Total = 0, returnsTotal = 0, receiptsTotal = 0, lossTotal = 0;
+  let sellableTotal = 0,
+    unsellableTotal = 0,
+    sold7Total = 0,
+    sold30Total = 0,
+    returnsTotal = 0,
+    receiptsTotal = 0,
+    lossTotal = 0;
   if (asOf) {
     for (const r of ledger) {
       if (r.date !== asOf) continue;
       if (r.disposition === SELLABLE) sellableTotal += r.endingBalance;
       else {
         unsellableTotal += r.endingBalance;
-        unsellableByTypeMap.set(r.disposition, (unsellableByTypeMap.get(r.disposition) ?? 0) + r.endingBalance);
+        unsellableByTypeMap.set(
+          r.disposition,
+          (unsellableByTypeMap.get(r.disposition) ?? 0) + r.endingBalance
+        );
       }
     }
   }
@@ -396,7 +527,10 @@ export function buildScViews(input: ScInput): ScViews {
   const fcsHolding = new Set(skuWarehouse.filter((r) => r.sellable > 0).map((r) => r.fc)).size;
   const skusInStockCount = skus.filter((r) => r.sellable > 0).length;
   const nationalStockDates = new Set<string>();
-  for (const byLoc of cells.values()) for (const byDate of byLoc.values()) for (const [d, c] of byDate) if (in30(d) && (c.sellableEnding > 0 || c.cust < 0)) nationalStockDates.add(d);
+  for (const byLoc of cells.values())
+    for (const byDate of byLoc.values())
+      for (const [d, c] of byDate)
+        if (in30(d) && (c.sellableEnding > 0 || c.cust < 0)) nationalStockDates.add(d);
   // National DRR: sum each SKU's DUR demand rate where its ASIN has DUR rows,
   // and the ledger demand rate for SKUs without DUR — so the total still
   // reflects every SKU. Falls back entirely to the ledger when no DUR exists.
@@ -432,11 +566,23 @@ export function buildScViews(input: ScInput): ScViews {
   for (const r of skus) healthCounts[r.health.status] += 1;
 
   const summary: ScSummary = {
-    asOf, numLedgerDates: dates.length, sellable: sellableTotal, unsellable: unsellableTotal,
-    unsellableByType: [...unsellableByTypeMap.entries()].map(([disposition, units]) => ({ disposition, units })).sort((a, b) => b.units - a.units),
-    skusInStock: skusInStockCount, fcsHoldingStock: fcsHolding, sold7: sold7Total, sold30: sold30Total,
-    returns30: returnsTotal, receipts30: receiptsTotal, lossDamaged30: lossTotal, nationalDrr,
-    daysOnHand: doh(sellableTotal, nationalDrr), skusByFlag,
+    asOf,
+    numLedgerDates: dates.length,
+    sellable: sellableTotal,
+    unsellable: unsellableTotal,
+    unsellableByType: [...unsellableByTypeMap.entries()]
+      .map(([disposition, units]) => ({ disposition, units }))
+      .sort((a, b) => b.units - a.units),
+    skusInStock: skusInStockCount,
+    fcsHoldingStock: fcsHolding,
+    sold7: sold7Total,
+    sold30: sold30Total,
+    returns30: returnsTotal,
+    receipts30: receiptsTotal,
+    lossDamaged30: lossTotal,
+    nationalDrr,
+    daysOnHand: doh(sellableTotal, nationalDrr),
+    skusByFlag,
     shipmentsByStatus: [...statusAgg.entries()].map(([status, a]) => ({ status, ...a })),
     inboundUnits: [...fcInbound.values()].reduce((s, v) => s + v, 0),
     unitsShortClosed: shipRows.reduce((s, r) => s + r.shortfall, 0),
@@ -445,8 +591,12 @@ export function buildScViews(input: ScInput): ScViews {
   };
 
   // ── Trend ──
-  const dailyMap = new Map<string, { sellable: number; sold: number; receipts: number; returns: number; loss: number }>();
-  for (const d of dates.slice(-30)) dailyMap.set(d, { sellable: 0, sold: 0, receipts: 0, returns: 0, loss: 0 });
+  const dailyMap = new Map<
+    string,
+    { sellable: number; sold: number; receipts: number; returns: number; loss: number }
+  >();
+  for (const d of dates.slice(-30))
+    dailyMap.set(d, { sellable: 0, sold: 0, receipts: 0, returns: 0, loss: 0 });
   for (const r of ledger) {
     const p = dailyMap.get(r.date);
     if (!p) continue;
@@ -473,8 +623,17 @@ export function buildScViews(input: ScInput): ScViews {
     weekMap.set(w, a);
   }
   const trend: ScTrend = {
-    daily: [...dailyMap.entries()].map(([date, p]) => ({ date, sellable: p.sellable, sold: p.sold, receipts: p.receipts, returns: p.returns, lossDamaged: p.loss })),
-    weeklyShipments: [...weekMap.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([weekStart, a]) => ({ weekStart, ...a })),
+    daily: [...dailyMap.entries()].map(([date, p]) => ({
+      date,
+      sellable: p.sellable,
+      sold: p.sold,
+      receipts: p.receipts,
+      returns: p.returns,
+      lossDamaged: p.loss,
+    })),
+    weeklyShipments: [...weekMap.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([weekStart, a]) => ({ weekStart, ...a })),
   };
 
   return { summary, skus, warehouses, shipments: shipRows, skuWarehouse, trend };

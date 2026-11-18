@@ -8,7 +8,11 @@
 
    Bands are configurable via DOC_BANDS env / query (days). */
 
-export interface DocBands { critical: number; low: number; excess: number }
+export interface DocBands {
+  critical: number;
+  low: number;
+  excess: number;
+}
 export const DEFAULT_DOC_BANDS: DocBands = { critical: 7, low: 15, excess: 45 };
 
 export type DocStatus = 'stock-out' | 'critical' | 'low' | 'healthy' | 'excess' | 'no-sales' | 'inactive';
@@ -33,7 +37,10 @@ export function daysOfCover(stock: number, drr: number): number | null {
 }
 
 export function docStatus(
-  sellable: number, sold7d: number, sold30d: number, bands: DocBands = DEFAULT_DOC_BANDS,
+  sellable: number,
+  sold7d: number,
+  sold30d: number,
+  bands: DocBands = DEFAULT_DOC_BANDS
 ): DocStatus {
   const drr = runRate(sold7d);
   if (sellable <= 0) return sold30d > 0 || sold7d > 0 ? 'stock-out' : 'inactive';
@@ -47,12 +54,30 @@ export function docStatus(
 
 /** "Bengaluru B5 - Feeder" → Bengaluru, "Kundli Feeder" → Delhi NCR … */
 const FEEDER_CITY_OVERRIDES: Record<string, string> = {
-  kundli: 'Delhi NCR', farukhnagar: 'Delhi NCR', faridabad: 'Delhi NCR', noida: 'Delhi NCR', gurgaon: 'Delhi NCR',
-  rajpura: 'Punjab (Rajpura)', bengaluru: 'Bengaluru', mumbai: 'Mumbai', pune: 'Pune', hyderabad: 'Hyderabad',
-  kolkata: 'Kolkata', chennai: 'Chennai', ahmedabad: 'Ahmedabad', lucknow: 'Lucknow', nagpur: 'Nagpur',
-  jaipur: 'Jaipur', coimbatore: 'Coimbatore', surat: 'Surat',
+  kundli: 'Delhi NCR',
+  farukhnagar: 'Delhi NCR',
+  faridabad: 'Delhi NCR',
+  noida: 'Delhi NCR',
+  gurgaon: 'Delhi NCR',
+  rajpura: 'Punjab (Rajpura)',
+  bengaluru: 'Bengaluru',
+  mumbai: 'Mumbai',
+  pune: 'Pune',
+  hyderabad: 'Hyderabad',
+  kolkata: 'Kolkata',
+  chennai: 'Chennai',
+  ahmedabad: 'Ahmedabad',
+  lucknow: 'Lucknow',
+  nagpur: 'Nagpur',
+  jaipur: 'Jaipur',
+  coimbatore: 'Coimbatore',
+  surat: 'Surat',
 };
 export function feederCity(facilityName: string): string {
-  const first = String(facilityName).trim().split(/[\s-]+/)[0]?.toLowerCase() ?? '';
+  const first =
+    String(facilityName)
+      .trim()
+      .split(/[\s-]+/)[0]
+      ?.toLowerCase() ?? '';
   return FEEDER_CITY_OVERRIDES[first] ?? (first ? first.charAt(0).toUpperCase() + first.slice(1) : 'Unknown');
 }

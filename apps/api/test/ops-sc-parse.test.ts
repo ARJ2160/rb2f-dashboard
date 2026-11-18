@@ -17,14 +17,82 @@ function csv(lines: string[][]): Buffer {
 }
 const sheet = (buf: Buffer) => readWorkbook(buf)[0]!;
 
-const LEDGER_H = ['Date', 'FNSKU', 'ASIN', 'MSKU', 'Title', 'Disposition', 'Starting Warehouse Balance', 'In Transit Between Warehouses', 'Receipts', 'Customer Shipments', 'Customer Returns', 'Vendor Returns', 'Warehouse Transfer In/Out', 'Found', 'Lost', 'Damaged', 'Disposed', 'Other Events', 'Ending Warehouse Balance', 'Unknown Events', 'Location'];
+const LEDGER_H = [
+  'Date',
+  'FNSKU',
+  'ASIN',
+  'MSKU',
+  'Title',
+  'Disposition',
+  'Starting Warehouse Balance',
+  'In Transit Between Warehouses',
+  'Receipts',
+  'Customer Shipments',
+  'Customer Returns',
+  'Vendor Returns',
+  'Warehouse Transfer In/Out',
+  'Found',
+  'Lost',
+  'Damaged',
+  'Disposed',
+  'Other Events',
+  'Ending Warehouse Balance',
+  'Unknown Events',
+  'Location',
+];
 
 test('ledger: US MM/DD/YYYY date, negative outflows, disposition & FC', () => {
-  const s = sheet(csv([
-    LEDGER_H,
-    ['11/14/2026', 'X1', 'B0CL4V4H9X', 'EHJ-MX-SB', 'Jam', 'SELLABLE', '9', '0', '0', '-3', '1', '0', '0', '0', '0', '0', '0', '0', '7', '0', 'BLR8'],
-    ['11/09/2026', 'X1', 'B0CL4V4H9X', 'EHJ-MX-SB', 'Jam', 'DEFECTIVE', '22', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '0', '22', '0', 'DEL4'],
-  ]));
+  const s = sheet(
+    csv([
+      LEDGER_H,
+      [
+        '11/14/2026',
+        'X1',
+        'B0CL4V4H9X',
+        'EHJ-MX-SB',
+        'Jam',
+        'SELLABLE',
+        '9',
+        '0',
+        '0',
+        '-3',
+        '1',
+        '0',
+        '0',
+        '0',
+        '0',
+        '0',
+        '0',
+        '0',
+        '7',
+        '0',
+        'BLR8',
+      ],
+      [
+        '11/09/2026',
+        'X1',
+        'B0CL4V4H9X',
+        'EHJ-MX-SB',
+        'Jam',
+        'DEFECTIVE',
+        '22',
+        '0',
+        '0',
+        '0',
+        '0',
+        '0',
+        '0',
+        '0',
+        '0',
+        '0',
+        '0',
+        '0',
+        '22',
+        '0',
+        'DEL4',
+      ],
+    ])
+  );
   const r = parseLedgerSummary(s.headers, s.rows, ctx);
   assert.equal(r.error, undefined);
   assert.equal(r.records.length, 2);
@@ -43,10 +111,21 @@ test('ledger: US MM/DD/YYYY date, negative outflows, disposition & FC', () => {
 
 test('fba: accepts either column spelling and stashes unknown columns in extra', () => {
   // Uses the "sales-shipped-last-30-days" spelling and "Total Reserved Quantity"; adds an unknown column.
-  const s = sheet(csv([
-    ['snapshot-date', 'sku', 'fnsku', 'asin', 'available', 'sales-shipped-last-30-days', 'Total Reserved Quantity', 'some-new-column'],
-    ['2026-11-16', 'EHJ-2MX-240', 'X9', 'B0CL4WQ3L8', '99', '140', '17', 'surprise'],
-  ]));
+  const s = sheet(
+    csv([
+      [
+        'snapshot-date',
+        'sku',
+        'fnsku',
+        'asin',
+        'available',
+        'sales-shipped-last-30-days',
+        'Total Reserved Quantity',
+        'some-new-column',
+      ],
+      ['2026-11-16', 'EHJ-2MX-240', 'X9', 'B0CL4WQ3L8', '99', '140', '17', 'surprise'],
+    ])
+  );
   const r = parseFbaInventory(s.headers, s.rows, ctx);
   assert.equal(r.error, undefined);
   const rec = r.records[0]!;
@@ -58,7 +137,12 @@ test('fba: accepts either column spelling and stashes unknown columns in extra',
 });
 
 test('fba: missing `available` degrades gracefully with a warning', () => {
-  const s = sheet(csv([['snapshot-date', 'sku', 'units-shipped-t30'], ['2026-11-16', 'SKU1', '10']]));
+  const s = sheet(
+    csv([
+      ['snapshot-date', 'sku', 'units-shipped-t30'],
+      ['2026-11-16', 'SKU1', '10'],
+    ])
+  );
   const r = parseFbaInventory(s.headers, s.rows, ctx);
   assert.equal(r.records.length, 1);
   assert.ok(r.missingColumns.includes('available'));
@@ -67,10 +151,32 @@ test('fba: missing `available` degrades gracefully with a warning', () => {
 
 test('shipment ID is the code in the LAST parentheses; 3- and 4-letter months parse', () => {
   assert.equal(shipmentIdFromName('FBA STA (27/10/2026 10:29)-DED5 (FBA15MS2NJ5Z)'), 'FBA15MS2NJ5Z');
-  const s = sheet(csv([
-    ['Shipment name', 'Status', 'Created', 'Last updated', 'Destination', 'Delivery window', 'SKUs', 'Units expected', 'Units located'],
-    ['FBA STA (27/10/2026 10:29)-DED5 (FBA15MS2NJ5Z)', 'Closed', '27 Oct 2026', '29 Sept 2026', 'DED5', '', '3', '100', '98'],
-  ]));
+  const s = sheet(
+    csv([
+      [
+        'Shipment name',
+        'Status',
+        'Created',
+        'Last updated',
+        'Destination',
+        'Delivery window',
+        'SKUs',
+        'Units expected',
+        'Units located',
+      ],
+      [
+        'FBA STA (27/10/2026 10:29)-DED5 (FBA15MS2NJ5Z)',
+        'Closed',
+        '27 Oct 2026',
+        '29 Sept 2026',
+        'DED5',
+        '',
+        '3',
+        '100',
+        '98',
+      ],
+    ])
+  );
   const r = parseShipments(s.headers, s.rows, ctx);
   const rec = r.records[0]!;
   assert.equal(rec.shipmentId, 'FBA15MS2NJ5Z');
@@ -83,7 +189,12 @@ test('shipment ID is the code in the LAST parentheses; 3- and 4-letter months pa
 });
 
 test('shipment contents maps shipped vs received', () => {
-  const s = sheet(csv([['Shipment ID', 'MSKU', 'Shipped', 'Received'], ['FBA15MS2NJ5Z', 'EHJ-MX-SB', '50', '48']]));
+  const s = sheet(
+    csv([
+      ['Shipment ID', 'MSKU', 'Shipped', 'Received'],
+      ['FBA15MS2NJ5Z', 'EHJ-MX-SB', '50', '48'],
+    ])
+  );
   const r = parseShipmentContents(s.headers, s.rows, ctx);
   assert.equal(r.records[0]!.unitsShipped, 50);
   assert.equal(r.records[0]!.unitsReceived, 48);

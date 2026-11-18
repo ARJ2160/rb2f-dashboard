@@ -12,5 +12,9 @@ export function Notes({ notes }: { notes: string[] }) {
 }
 
 export function ErrorBox({ message }: { message: string }) {
-  return <div role="alert" className="alert alert-error alert-soft text-sm">{message}</div>;
+  return (
+    <div role="alert" className="alert alert-error alert-soft text-sm">
+      {message}
+    </div>
+  );
 }

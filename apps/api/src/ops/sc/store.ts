@@ -62,30 +62,51 @@ export async function upsertProducts(tx: Tx, brandId: string, products: ScProduc
 }
 
 /** Replace-by-date: wipe this brand's ledger rows for the dates the file covers, then insert. */
-export async function storeLedgerSummary(tx: Tx, brandId: string, uploadId: string, records: ScLedgerRecord[]): Promise<void> {
+export async function storeLedgerSummary(
+  tx: Tx,
+  brandId: string,
+  uploadId: string,
+  records: ScLedgerRecord[]
+): Promise<void> {
   const dates = uniq(records.map((r) => r.date));
   for (const d of chunks(dates)) {
-    await tx.delete(scLedgerSummary).where(and(eq(scLedgerSummary.brandId, brandId), inArray(scLedgerSummary.date, d)));
+    await tx
+      .delete(scLedgerSummary)
+      .where(and(eq(scLedgerSummary.brandId, brandId), inArray(scLedgerSummary.date, d)));
   }
   for (const c of chunks(records)) {
     await tx.insert(scLedgerSummary).values(c.map((r) => ({ brandId, uploadId, ...r })));
   }
 }
 
-export async function storeLedgerDetail(tx: Tx, brandId: string, uploadId: string, records: ScLedgerDetailRecord[]): Promise<void> {
+export async function storeLedgerDetail(
+  tx: Tx,
+  brandId: string,
+  uploadId: string,
+  records: ScLedgerDetailRecord[]
+): Promise<void> {
   const dates = uniq(records.map((r) => r.date));
   for (const d of chunks(dates)) {
-    await tx.delete(scLedgerDetail).where(and(eq(scLedgerDetail.brandId, brandId), inArray(scLedgerDetail.date, d)));
+    await tx
+      .delete(scLedgerDetail)
+      .where(and(eq(scLedgerDetail.brandId, brandId), inArray(scLedgerDetail.date, d)));
   }
   for (const c of chunks(records)) {
     await tx.insert(scLedgerDetail).values(c.map((r) => ({ brandId, uploadId, ...r })));
   }
 }
 
-export async function storeFbaInventory(tx: Tx, brandId: string, uploadId: string, records: ScFbaRecord[]): Promise<void> {
+export async function storeFbaInventory(
+  tx: Tx,
+  brandId: string,
+  uploadId: string,
+  records: ScFbaRecord[]
+): Promise<void> {
   const dates = uniq(records.map((r) => r.snapshotDate));
   for (const d of chunks(dates)) {
-    await tx.delete(scFbaInventory).where(and(eq(scFbaInventory.brandId, brandId), inArray(scFbaInventory.snapshotDate, d)));
+    await tx
+      .delete(scFbaInventory)
+      .where(and(eq(scFbaInventory.brandId, brandId), inArray(scFbaInventory.snapshotDate, d)));
   }
   for (const c of chunks(records)) {
     await tx.insert(scFbaInventory).values(c.map((r) => ({ brandId, uploadId, ...r })));
@@ -125,7 +146,17 @@ export async function storeShipments(
     for (const c of chunks(records)) {
       await tx
         .insert(scShipmentsHistory)
-        .values(c.map((r) => ({ brandId, shipmentId: r.shipmentId, asOf, status: r.status, unitsExpected: r.unitsExpected, unitsLocated: r.unitsLocated, uploadId })))
+        .values(
+          c.map((r) => ({
+            brandId,
+            shipmentId: r.shipmentId,
+            asOf,
+            status: r.status,
+            unitsExpected: r.unitsExpected,
+            unitsLocated: r.unitsLocated,
+            uploadId,
+          }))
+        )
         .onConflictDoUpdate({
           target: [scShipmentsHistory.brandId, scShipmentsHistory.shipmentId, scShipmentsHistory.asOf],
           set: {
@@ -139,10 +170,17 @@ export async function storeShipments(
   }
 }
 
-export async function storeShipmentContents(tx: Tx, brandId: string, uploadId: string, records: ScShipmentContentRecord[]): Promise<void> {
+export async function storeShipmentContents(
+  tx: Tx,
+  brandId: string,
+  uploadId: string,
+  records: ScShipmentContentRecord[]
+): Promise<void> {
   const shipmentIds = uniq(records.map((r) => r.shipmentId));
   for (const ids of chunks(shipmentIds)) {
-    await tx.delete(scShipmentContents).where(and(eq(scShipmentContents.brandId, brandId), inArray(scShipmentContents.shipmentId, ids)));
+    await tx
+      .delete(scShipmentContents)
+      .where(and(eq(scShipmentContents.brandId, brandId), inArray(scShipmentContents.shipmentId, ids)));
   }
   for (const c of chunks(records)) {
     await tx.insert(scShipmentContents).values(c.map((r) => ({ brandId, uploadId, ...r })));

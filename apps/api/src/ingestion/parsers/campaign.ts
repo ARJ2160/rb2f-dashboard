@@ -20,8 +20,22 @@ const CLICKS = ['Clicks'];
 const SPEND = ['Spend', 'Spend (₹)', 'Cost'];
 // SP attributes on 7 days, SB/SD on 14. Exact-name matching keeps
 // "14 Day Total Sales - (Click)" from being picked up by mistake.
-const SALES = ['7 Day Total Sales', '7 Day Total Sales (₹)', '14 Day Total Sales', '14 Day Total Sales (₹)', 'Total Sales', 'Sales'];
-const UNITS = ['7 Day Total Units (#)', '14 Day Total Units (#)', '7 Day Total Units', '14 Day Total Units', 'Total Units', 'Units'];
+const SALES = [
+  '7 Day Total Sales',
+  '7 Day Total Sales (₹)',
+  '14 Day Total Sales',
+  '14 Day Total Sales (₹)',
+  'Total Sales',
+  'Sales',
+];
+const UNITS = [
+  '7 Day Total Units (#)',
+  '14 Day Total Units (#)',
+  '7 Day Total Units',
+  '14 Day Total Units',
+  'Total Units',
+  'Units',
+];
 const ORDERS = ['7 Day Total Orders (#)', '14 Day Total Orders (#)', 'Total Orders (#)', 'Orders'];
 
 /**
@@ -46,7 +60,9 @@ export function parseCampaignReport(
 
   const hourlyExport = hasColumn(headers, ['Start Time']);
   if (hourlyExport) {
-    warnings.push('Hourly export (has "Start Time") — stored per hour for Hour-wise, and summed per day everywhere else.');
+    warnings.push(
+      'Hourly export (has "Start Time") — stored per hour for Hour-wise, and summed per day everywhere else.'
+    );
   }
 
   const acc = new Map<string, AdRecord>();
@@ -80,9 +96,16 @@ export function parseCampaignReport(
       adUnits: num(pick(r, hasUnits ? UNITS : ORDERS)),
     };
     const key = `${date}|${campaignName}`;
-    const cur =
-      acc.get(key) ??
-      { date, channel, campaignName, impressions: 0, clicks: 0, spend: 0, adSales: 0, adUnits: 0 };
+    const cur = acc.get(key) ?? {
+      date,
+      channel,
+      campaignName,
+      impressions: 0,
+      clicks: 0,
+      spend: 0,
+      adSales: 0,
+      adUnits: 0,
+    };
     cur.impressions += m.impressions;
     cur.clicks += m.clicks;
     cur.spend += m.spend;
@@ -91,13 +114,27 @@ export function parseCampaignReport(
     acc.set(key, cur);
 
     const videoViews = VIDEO_VIEWS.reduce((a, c) => a + num(pick(r, [c])), 0);
-    attrs.push({ campaignName, channel, isVideo: looksVideo(campaignName) || (channel === 'sb' && videoViews > 0) });
+    attrs.push({
+      campaignName,
+      channel,
+      isVideo: looksVideo(campaignName) || (channel === 'sb' && videoViews > 0),
+    });
 
     if (hourlyExport) {
       const hour = parseHourCell(pick(r, ['Start Time']));
       if (hour != null) {
         const hk = `${date}|${hour}|${campaignName}`;
-        const h = hourAcc.get(hk) ?? { date, hour, channel, campaignName, impressions: 0, clicks: 0, spend: 0, adSales: 0, adUnits: 0 };
+        const h = hourAcc.get(hk) ?? {
+          date,
+          hour,
+          channel,
+          campaignName,
+          impressions: 0,
+          clicks: 0,
+          spend: 0,
+          adSales: 0,
+          adUnits: 0,
+        };
         h.impressions += m.impressions;
         h.clicks += m.clicks;
         h.spend += m.spend;
@@ -114,11 +151,26 @@ export function parseCampaignReport(
     );
   if (undated) warnings.push(`${undated} row(s) skipped: no readable date.`);
 
-  const records = [...acc.values()].map((r) => ({ ...r, spend: round2(r.spend), adSales: round2(r.adSales) }));
-  const hourly = [...hourAcc.values()].map((r) => ({ ...r, spend: round2(r.spend), adSales: round2(r.adSales) }));
+  const records = [...acc.values()].map((r) => ({
+    ...r,
+    spend: round2(r.spend),
+    adSales: round2(r.adSales),
+  }));
+  const hourly = [...hourAcc.values()].map((r) => ({
+    ...r,
+    spend: round2(r.spend),
+    adSales: round2(r.adSales),
+  }));
   const a = collectAttrs(attrs);
   if (records.length === 0 && rows.length > 0 && !warnings.length) {
-    return { records, hourly, attrs: a, rowsRead: rows.length, warnings, error: 'No campaign rows with a date could be read.' };
+    return {
+      records,
+      hourly,
+      attrs: a,
+      rowsRead: rows.length,
+      warnings,
+      error: 'No campaign rows with a date could be read.',
+    };
   }
   return { records, hourly, attrs: a, rowsRead: rows.length, warnings };
 }

@@ -37,6 +37,7 @@ export function parseSearchRank(rows: Row[], _ctx: ParseContext): ParseResult<Se
   }
   if (undated) warnings.push(`${undated} row(s) skipped: missing ASIN / month / year.`);
   const records = [...acc.values()];
-  if (!records.length && rows.length) return { records, rowsRead: rows.length, warnings, error: 'No ranked rows.' };
+  if (!records.length && rows.length)
+    return { records, rowsRead: rows.length, warnings, error: 'No ranked rows.' };
   return { records, rowsRead: rows.length, warnings };
 }

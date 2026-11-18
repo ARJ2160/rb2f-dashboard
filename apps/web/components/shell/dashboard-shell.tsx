@@ -114,19 +114,23 @@ export function DashboardShell<T extends string>({
                   (collapsed ? (
                     i > 0 && <div className="mx-3 my-2 border-t border-line" aria-hidden />
                   ) : (
-                    <div className={`px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted ${i > 0 ? 'pt-4' : 'pt-1'}`}>{t.group}</div>
+                    <div
+                      className={`px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted ${i > 0 ? 'pt-4' : 'pt-1'}`}
+                    >
+                      {t.group}
+                    </div>
                   ))}
-              <button
-                onClick={() => onTab(t.id)}
-                title={collapsed ? `${t.label} — ${t.hint}` : t.hint}
-                aria-current={on ? 'page' : undefined}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[14.5px] transition-colors ${
-                  collapsed ? 'justify-center px-0' : ''
-                } ${on ? 'bg-brand-soft font-semibold text-brand' : 'text-ink/75 hover:bg-black/[0.04] hover:text-ink'}`}
-              >
-                <Icon name={t.icon} className="size-[19px] shrink-0" />
-                {!collapsed && <span className="truncate">{t.label}</span>}
-              </button>
+                <button
+                  onClick={() => onTab(t.id)}
+                  title={collapsed ? `${t.label} — ${t.hint}` : t.hint}
+                  aria-current={on ? 'page' : undefined}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2 text-left text-[14.5px] transition-colors ${
+                    collapsed ? 'justify-center px-0' : ''
+                  } ${on ? 'bg-brand-soft font-semibold text-brand' : 'text-ink/75 hover:bg-black/[0.04] hover:text-ink'}`}
+                >
+                  <Icon name={t.icon} className="size-[19px] shrink-0" />
+                  {!collapsed && <span className="truncate">{t.label}</span>}
+                </button>
               </div>
             );
           })}
@@ -226,7 +230,11 @@ export function presetRange(id: Exclude<PresetId, 'custom'>, latest: string, ear
 }
 
 /** Which preset (if any) a range corresponds to. */
-export function presetOf(r: { from: string; to: string }, latest: string, earliest?: string | null): PresetId {
+export function presetOf(
+  r: { from: string; to: string },
+  latest: string,
+  earliest?: string | null
+): PresetId {
   for (const p of PRESETS) {
     if (p.id === 'custom') continue;
     const x = presetRange(p.id, latest, earliest);
@@ -236,7 +244,12 @@ export function presetOf(r: { from: string; to: string }, latest: string, earlie
 }
 
 /** "Last 7 days ▾" + the date range, like the Brand Central header. */
-export function PeriodPicker({ value, onChange, latest, earliest }: {
+export function PeriodPicker({
+  value,
+  onChange,
+  latest,
+  earliest,
+}: {
   value: { from: string; to: string };
   onChange: (v: { from: string; to: string }) => void;
   latest: string;
@@ -248,7 +261,9 @@ export function PeriodPicker({ value, onChange, latest, earliest }: {
       <FieldSelect
         label="Period"
         value={preset}
-        onChange={(v) => v !== 'custom' && onChange(presetRange(v as Exclude<PresetId, 'custom'>, latest, earliest))}
+        onChange={(v) =>
+          v !== 'custom' && onChange(presetRange(v as Exclude<PresetId, 'custom'>, latest, earliest))
+        }
         options={PRESETS.map((p) => ({ value: p.id, label: p.label }))}
       />
       <DateRangePicker value={value} onChange={onChange} />
@@ -257,7 +272,13 @@ export function PeriodPicker({ value, onChange, latest, earliest }: {
 }
 
 /** Bordered select with its label inside the box. */
-export function FieldSelect({ label, value, onChange, options, allLabel = null }: {
+export function FieldSelect({
+  label,
+  value,
+  onChange,
+  options,
+  allLabel = null,
+}: {
   label: string;
   value: string;
   onChange: (v: string) => void;

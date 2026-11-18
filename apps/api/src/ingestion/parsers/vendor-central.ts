@@ -58,7 +58,13 @@ export function parseVendorCentral(headers: string[], rows: Row[], ctx: ParseCon
   const hasGlance = hasColumn(headers, GLANCE_VIEWS);
 
   if (!useOrdered && !hasShipped) {
-    return { records: [], states: [], rowsRead: rows.length, warnings, error: 'No Ordered or Shipped Revenue/Units columns found.' };
+    return {
+      records: [],
+      states: [],
+      rowsRead: rows.length,
+      warnings,
+      error: 'No Ordered or Shipped Revenue/Units columns found.',
+    };
   }
   warnings.push(
     useOrdered
@@ -149,7 +155,15 @@ export function parseVendorCentral(headers: string[], rows: Row[], ctx: ParseCon
     if (hasState) {
       const state = normalizeIndianState(pick(r, ['State', 'Ship State', 'Ship-to State']));
       const sk = `${date}|${state}|${asin}`;
-      const sc = stateAcc.get(sk) ?? { date, state, asin, units: 0, sales: 0, orders: null, unpricedUnits: 0 };
+      const sc = stateAcc.get(sk) ?? {
+        date,
+        state,
+        asin,
+        units: 0,
+        sales: 0,
+        orders: null,
+        unpricedUnits: 0,
+      };
       sc.units += units;
       sc.sales += revenue;
       sc.unpricedUnits += unpriced;
@@ -164,11 +178,15 @@ export function parseVendorCentral(headers: string[], rows: Row[], ctx: ParseCon
       `${pricedLater} row(s) had Shipped Units but ₹0 Shipped Revenue — revenue = units × ASIN-mapper selling price.`
     );
   if (skippedLines) warnings.push(`${skippedLines} repeated header / note row(s) skipped.`);
-  if (undated) warnings.push(`${undated} row(s) skipped: no date (no Date column, no single-day "Viewing Range").`);
+  if (undated)
+    warnings.push(`${undated} row(s) skipped: no date (no Date column, no single-day "Viewing Range").`);
 
   const records = [...acc.values()].map((r) => ({ ...r, sales: round2(r.sales) }));
   const states = [...stateAcc.values()].map((r) => ({ ...r, sales: round2(r.sales) }));
-  if (hasState) warnings.push(`State view — ${new Set(states.map((x) => x.state)).size} state(s) also stored for State Wise Data.`);
+  if (hasState)
+    warnings.push(
+      `State view — ${new Set(states.map((x) => x.state)).size} state(s) also stored for State Wise Data.`
+    );
   if (records.length === 0) {
     return {
       records,

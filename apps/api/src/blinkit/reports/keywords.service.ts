@@ -7,7 +7,7 @@ export interface KwArgs extends RangeArgs {
   campaignId?: string;
   /** geo unit key from meta.geoUnits — selects campaigns that target EXACTLY that unit */
   geo?: string;
-  adType?: string;           // PL | PR | BL
+  adType?: string; // PL | PR | BL
   grain: 'kw' | 'kwc';
   search?: string;
   minImpr?: number;
@@ -29,11 +29,19 @@ export async function keywords(a: KwArgs): Promise<BkKeywordsResponse> {
   }
   const params: unknown[] = [a.profileId, a.from, a.to];
   let where = `profile_id=$1 and date between $2 and $3`;
-  if (camps) { params.push(camps); where += inList('campaign_id', params.length, camps); }
-  if (a.adType) { params.push(a.adType); where += ` and ad_type = $${params.length}`; }
+  if (camps) {
+    params.push(camps);
+    where += inList('campaign_id', params.length, camps);
+  }
+  if (a.adType) {
+    params.push(a.adType);
+    where += ` and ad_type = $${params.length}`;
+  }
   const kwExpr = `case when targeting_value <> '' then targeting_value else '[Reco] ' || targeting_type end`;
   const rows = await q(
-    `select ${kwExpr} kw, campaign_id, ad_type, ${ADS_SUMS} from bk_daily_ads where ${where} group by 1,2,3`, params);
+    `select ${kwExpr} kw, campaign_id, ad_type, ${ADS_SUMS} from bk_daily_ads where ${where} group by 1,2,3`,
+    params
+  );
 
   const m = new Map<string, BkKeywordRow & { cats: Set<string>; cps: Set<string> }>();
   for (const r of rows) {
@@ -42,15 +50,31 @@ export async function keywords(a: KwArgs): Promise<BkKeywordsResponse> {
     const key = a.grain === 'kwc' ? kw + '\u0001' + r.campaign_id : kw;
     let k = m.get(key);
     if (!k) {
-      k = { keyword: kw, campaign: a.grain === 'kwc' ? c?.name ?? String(r.campaign_id) : null, adType: String(r.ad_type),
-        campaigns: [], categories: [], sums: blank(), cats: new Set(), cps: new Set() };
+      k = {
+        keyword: kw,
+        campaign: a.grain === 'kwc' ? (c?.name ?? String(r.campaign_id)) : null,
+        adType: String(r.ad_type),
+        campaigns: [],
+        categories: [],
+        sums: blank(),
+        cats: new Set(),
+        cps: new Set(),
+      };
       m.set(key, k);
     }
-    k.cats.add(c?.category ?? 'Unmapped'); k.cps.add(c?.name ?? String(r.campaign_id));
+    k.cats.add(c?.category ?? 'Unmapped');
+    k.cps.add(c?.name ?? String(r.campaign_id));
     addInto(k.sums, adsRow(r));
   }
-  let list = [...m.values()].map(({ cats, cps, ...k }) => ({ ...k, categories: [...cats], campaigns: [...cps] }));
-  if (a.search) { const s = a.search.toLowerCase(); list = list.filter((k) => k.keyword.toLowerCase().includes(s)); }
+  let list = [...m.values()].map(({ cats, cps, ...k }) => ({
+    ...k,
+    categories: [...cats],
+    campaigns: [...cps],
+  }));
+  if (a.search) {
+    const s = a.search.toLowerCase();
+    list = list.filter((k) => k.keyword.toLowerCase().includes(s));
+  }
   if (a.minImpr) list = list.filter((k) => k.sums.impr >= a.minImpr!);
   const total = blank();
   for (const k of list) addInto(total, k.sums);

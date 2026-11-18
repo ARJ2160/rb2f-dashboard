@@ -41,24 +41,47 @@ async function json<T>(res: Response): Promise<T> {
 const qs = (p: Record<string, string | undefined>) =>
   new URLSearchParams(Object.entries(p).filter((e): e is [string, string] => !!e[1])).toString();
 
-
-export async function getDsr(profileId: string, from: string, to: string, category = ''): Promise<DsrResponse> {
-  return json(await fetch(`${API_URL}/api/reports/dsr?${qs({ profileId, from, to, category })}`, { cache: 'no-store' }));
+export async function getDsr(
+  profileId: string,
+  from: string,
+  to: string,
+  category = ''
+): Promise<DsrResponse> {
+  return json(
+    await fetch(`${API_URL}/api/reports/dsr?${qs({ profileId, from, to, category })}`, { cache: 'no-store' })
+  );
 }
 
-export async function getDur(profileId: string, from: string, to: string, metric: DurMetric, category = ''): Promise<DurResponse> {
-  return json(await fetch(`${API_URL}/api/reports/dur?${qs({ profileId, from, to, metric, category })}`, { cache: 'no-store' }));
+export async function getDur(
+  profileId: string,
+  from: string,
+  to: string,
+  metric: DurMetric,
+  category = ''
+): Promise<DurResponse> {
+  return json(
+    await fetch(`${API_URL}/api/reports/dur?${qs({ profileId, from, to, metric, category })}`, {
+      cache: 'no-store',
+    })
+  );
 }
 
-export async function getSummary(profileId: string, f: { asOf?: string; category?: string } = {}): Promise<SummaryResponse> {
-  return json(await fetch(`${API_URL}/api/reports/summary?${qs({ profileId, ...f })}`, { cache: 'no-store' }));
+export async function getSummary(
+  profileId: string,
+  f: { asOf?: string; category?: string } = {}
+): Promise<SummaryResponse> {
+  return json(
+    await fetch(`${API_URL}/api/reports/summary?${qs({ profileId, ...f })}`, { cache: 'no-store' })
+  );
 }
 
 export async function getSummaryCompare(
   profileId: string,
   f: { aFrom: string; aTo: string; bFrom: string; bTo: string; category?: string }
 ): Promise<SummaryCompareResponse> {
-  return json(await fetch(`${API_URL}/api/reports/summary-compare?${qs({ profileId, ...f })}`, { cache: 'no-store' }));
+  return json(
+    await fetch(`${API_URL}/api/reports/summary-compare?${qs({ profileId, ...f })}`, { cache: 'no-store' })
+  );
 }
 
 export async function getCoverage(profileId: string): Promise<CoverageResponse> {
@@ -67,20 +90,45 @@ export async function getCoverage(profileId: string): Promise<CoverageResponse> 
 
 export type Filters = Record<string, string | undefined>;
 
-export async function getCategory(profileId: string, from: string, to: string, f: Filters = {}): Promise<CategoryResponse> {
-  return json(await fetch(`${API_URL}/api/reports/category?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' }));
+export async function getCategory(
+  profileId: string,
+  from: string,
+  to: string,
+  f: Filters = {}
+): Promise<CategoryResponse> {
+  return json(
+    await fetch(`${API_URL}/api/reports/category?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' })
+  );
 }
 
 export async function getAds(profileId: string, from: string, to: string, f: Filters): Promise<AdsResponse> {
-  return json(await fetch(`${API_URL}/api/reports/ads?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' }));
+  return json(
+    await fetch(`${API_URL}/api/reports/ads?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' })
+  );
 }
 
-export async function getHourly(profileId: string, from: string, to: string, f: Filters): Promise<HourlyResponse> {
-  return json(await fetch(`${API_URL}/api/reports/hourly?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' }));
+export async function getHourly(
+  profileId: string,
+  from: string,
+  to: string,
+  f: Filters
+): Promise<HourlyResponse> {
+  return json(
+    await fetch(`${API_URL}/api/reports/hourly?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' })
+  );
 }
 
-export async function getNegations(profileId: string, from: string, to: string, f: Filters = {}): Promise<NegationsResponse> {
-  return json(await fetch(`${API_URL}/api/reports/negations?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' }));
+export async function getNegations(
+  profileId: string,
+  from: string,
+  to: string,
+  f: Filters = {}
+): Promise<NegationsResponse> {
+  return json(
+    await fetch(`${API_URL}/api/reports/negations?${qs({ profileId, from, to, ...f })}`, {
+      cache: 'no-store',
+    })
+  );
 }
 
 export async function getTermRules(
@@ -92,26 +140,48 @@ export async function getTermRules(
   f: Filters = {}
 ): Promise<TermRulesResponse> {
   return json(
-    await fetch(`${API_URL}/api/reports/term-rules?${qs({ profileId, from, to, grain, rules: JSON.stringify(rules), ...f })}`, {
-      cache: 'no-store',
-    })
+    await fetch(
+      `${API_URL}/api/reports/term-rules?${qs({ profileId, from, to, grain, rules: JSON.stringify(rules), ...f })}`,
+      {
+        cache: 'no-store',
+      }
+    )
   );
 }
 
-export async function getBidActions(profileId: string, from: string, to: string, f: Filters = {}): Promise<BidActionsResponse> {
-  return json(await fetch(`${API_URL}/api/reports/bid-actions?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' }));
+export async function getBidActions(
+  profileId: string,
+  from: string,
+  to: string,
+  f: Filters = {}
+): Promise<BidActionsResponse> {
+  return json(
+    await fetch(`${API_URL}/api/reports/bid-actions?${qs({ profileId, from, to, ...f })}`, {
+      cache: 'no-store',
+    })
+  );
 }
 
 export async function getSearchRank(profileId: string): Promise<SearchRankResponse> {
   return json(await fetch(`${API_URL}/api/reports/search-rank?${qs({ profileId })}`, { cache: 'no-store' }));
 }
 
-export async function getGlanceViews(profileId: string, f: { from?: string; to?: string; category?: string } = {}): Promise<GlanceViewsResponse> {
-  return json(await fetch(`${API_URL}/api/reports/glance-views?${qs({ profileId, ...f })}`, { cache: 'no-store' }));
+export async function getGlanceViews(
+  profileId: string,
+  f: { from?: string; to?: string; category?: string } = {}
+): Promise<GlanceViewsResponse> {
+  return json(
+    await fetch(`${API_URL}/api/reports/glance-views?${qs({ profileId, ...f })}`, { cache: 'no-store' })
+  );
 }
 
-export async function getKeywordSov(profileId: string, f: { duration?: string; date?: string; keywordType?: string } = {}): Promise<KeywordSovResponse> {
-  return json(await fetch(`${API_URL}/api/reports/keyword-sov?${qs({ profileId, ...f })}`, { cache: 'no-store' }));
+export async function getKeywordSov(
+  profileId: string,
+  f: { duration?: string; date?: string; keywordType?: string } = {}
+): Promise<KeywordSovResponse> {
+  return json(
+    await fetch(`${API_URL}/api/reports/keyword-sov?${qs({ profileId, ...f })}`, { cache: 'no-store' })
+  );
 }
 
 export async function getBrandTerms(profileId: string): Promise<{ terms: string[] }> {
@@ -128,16 +198,41 @@ export async function saveBrandTerms(profileId: string, terms: string[]): Promis
   );
 }
 
-export async function getSearchTerms(profileId: string, from: string, to: string, f: Filters): Promise<SearchTermResponse> {
-  return json(await fetch(`${API_URL}/api/reports/search-terms?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' }));
+export async function getSearchTerms(
+  profileId: string,
+  from: string,
+  to: string,
+  f: Filters
+): Promise<SearchTermResponse> {
+  return json(
+    await fetch(`${API_URL}/api/reports/search-terms?${qs({ profileId, from, to, ...f })}`, {
+      cache: 'no-store',
+    })
+  );
 }
 
-export async function getPlacements(profileId: string, from: string, to: string, f: Filters): Promise<PlacementResponse> {
-  return json(await fetch(`${API_URL}/api/reports/placements?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' }));
+export async function getPlacements(
+  profileId: string,
+  from: string,
+  to: string,
+  f: Filters
+): Promise<PlacementResponse> {
+  return json(
+    await fetch(`${API_URL}/api/reports/placements?${qs({ profileId, from, to, ...f })}`, {
+      cache: 'no-store',
+    })
+  );
 }
 
-export async function getStates(profileId: string, from: string, to: string, f: Filters): Promise<StateResponse> {
-  return json(await fetch(`${API_URL}/api/reports/states?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' }));
+export async function getStates(
+  profileId: string,
+  from: string,
+  to: string,
+  f: Filters
+): Promise<StateResponse> {
+  return json(
+    await fetch(`${API_URL}/api/reports/states?${qs({ profileId, from, to, ...f })}`, { cache: 'no-store' })
+  );
 }
 
 /** Search Query Performance for one reporting period (newest when periodStart is empty). */
@@ -147,7 +242,9 @@ export async function getSqp(profileId: string, f: Filters): Promise<SqpResponse
 
 /** Keyword harvesting: SP / SB search terms with orders that aren't manual targets yet. */
 export async function getHarvest(profileId: string, f: Filters): Promise<HarvestResponse> {
-  return json(await fetch(`${API_URL}/api/reports/harvest?${qs({ profileId, ...f })}`, { cache: 'no-store' }));
+  return json(
+    await fetch(`${API_URL}/api/reports/harvest?${qs({ profileId, ...f })}`, { cache: 'no-store' })
+  );
 }
 
 // ── GCS warehouse (read-only) ──
@@ -155,13 +252,22 @@ export async function getHarvest(profileId: string, f: Filters): Promise<Harvest
 /** Marketplace folder synced from GCS: `<brand>/amazon/` (default) or `<brand>/blinkit/`. */
 export type Marketplace = 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto';
 
-export async function getGcsBrands(refresh = false, marketplace: Marketplace = 'amazon'): Promise<GcsBrandsResponse> {
+export async function getGcsBrands(
+  refresh = false,
+  marketplace: Marketplace = 'amazon'
+): Promise<GcsBrandsResponse> {
   return json(
-    await fetch(`${API_URL}/api/gcs/brands?${qs({ refresh: refresh ? '1' : undefined, marketplace })}`, { cache: 'no-store' })
+    await fetch(`${API_URL}/api/gcs/brands?${qs({ refresh: refresh ? '1' : undefined, marketplace })}`, {
+      cache: 'no-store',
+    })
   );
 }
 
-export async function startGcsSync(brand: string, force = false, marketplace: Marketplace = 'amazon'): Promise<GcsSyncJob> {
+export async function startGcsSync(
+  brand: string,
+  force = false,
+  marketplace: Marketplace = 'amazon'
+): Promise<GcsSyncJob> {
   return json(
     await fetch(`${API_URL}/api/gcs/sync`, {
       method: 'POST',
@@ -171,7 +277,10 @@ export async function startGcsSync(brand: string, force = false, marketplace: Ma
   );
 }
 
-export async function getGcsFiles(brand: string, marketplace: Marketplace = 'amazon'): Promise<GcsFileEntry[]> {
+export async function getGcsFiles(
+  brand: string,
+  marketplace: Marketplace = 'amazon'
+): Promise<GcsFileEntry[]> {
   return json(await fetch(`${API_URL}/api/gcs/files?${qs({ brand, marketplace })}`, { cache: 'no-store' }));
 }
 
@@ -200,10 +309,9 @@ export interface IngestResponse {
 
 export async function getGcsReportTypes(marketplace?: Marketplace): Promise<ReportType[]> {
   return json(
-    await fetch(
-      `${API_URL}/api/gcs/report-types${marketplace ? `?marketplace=${marketplace}` : ''}`,
-      { cache: 'no-store' }
-    )
+    await fetch(`${API_URL}/api/gcs/report-types${marketplace ? `?marketplace=${marketplace}` : ''}`, {
+      cache: 'no-store',
+    })
   );
 }
 

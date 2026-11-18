@@ -18,7 +18,13 @@ const blinkit: Qc = { flavour: QC_FLAVOURS.blinkit, api: qcApi(QC_FLAVOURS.blink
 const Ctx = createContext<Qc>(blinkit);
 
 export function QcProvider({ market, children }: { market: QcMarket; children: ReactNode }) {
-  const value = useMemo<Qc>(() => (market === 'blinkit' ? blinkit : { flavour: QC_FLAVOURS[market], api: qcApi(QC_FLAVOURS[market].apiBase) }), [market]);
+  const value = useMemo<Qc>(
+    () =>
+      market === 'blinkit'
+        ? blinkit
+        : { flavour: QC_FLAVOURS[market], api: qcApi(QC_FLAVOURS[market].apiBase) },
+    [market]
+  );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

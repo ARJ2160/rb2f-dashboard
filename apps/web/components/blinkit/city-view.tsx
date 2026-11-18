@@ -1,6 +1,13 @@
 'use client';
 
-import { blank, type BkCityAdsResponse, type BkCityAdsRow, type BkGeoResponse, type MetricKey, type Sums } from '@dash/shared/blinkit';
+import {
+  blank,
+  type BkCityAdsResponse,
+  type BkCityAdsRow,
+  type BkGeoResponse,
+  type MetricKey,
+  type Sums,
+} from '@dash/shared/blinkit';
 import type { StateRow } from '@dash/shared';
 import { useState } from 'react';
 
@@ -19,14 +26,35 @@ const MAP_METRICS: Array<{ value: MapMetric; label: string }> = [
   { value: 'units', label: 'Units' },
   { value: 'orders', label: 'Orders' },
 ];
-const AD_COLS: MetricKey[] = ['spend', 'impr', 'clicks', 'ctr', 'cpm', 'asales', 'roas', 'rev', 'tacos', 'acos'];
+const AD_COLS: MetricKey[] = [
+  'spend',
+  'impr',
+  'clicks',
+  'ctr',
+  'cpm',
+  'asales',
+  'roas',
+  'rev',
+  'tacos',
+  'acos',
+];
 const AD_COL_LABEL: Partial<Record<MetricKey, string>> = {
-  rev: 'Sales (these cities)', tacos: 'TACoS', acos: 'ACoS', roas: 'ROAS', cpm: 'CPM', impr: 'Impressions', asales: 'Ad Sales', spend: 'Spends', clicks: 'Clicks', ctr: 'CTR',
+  rev: 'Sales (these cities)',
+  tacos: 'TACoS',
+  acos: 'ACoS',
+  roas: 'ROAS',
+  cpm: 'CPM',
+  impr: 'Impressions',
+  asales: 'Ad Sales',
+  spend: 'Spends',
+  clicks: 'Clicks',
+  ctr: 'CTR',
 };
 
 /** BkGeoRow[] → the Amazon StateRow shape the India map reads. */
 function toStateRows(rows: { key: string; sums: Sums }[]): StateRow[] {
-  const tu = rows.reduce((a, r) => a + r.sums.units, 0), ts = rows.reduce((a, r) => a + r.sums.rev, 0);
+  const tu = rows.reduce((a, r) => a + r.sums.units, 0),
+    ts = rows.reduce((a, r) => a + r.sums.rev, 0);
   return rows.map((r) => ({
     state: r.key,
     units: r.sums.units,
@@ -61,7 +89,8 @@ export function CityView(p: BkViewProps) {
   );
   const comparing = !!cmp;
   const [geo, geoB, ads, adsB] = data ?? [null, null, null, null];
-  const dA = days(p), dB = cmp ? days(cmp) : 1;
+  const dA = days(p),
+    dB = cmp ? days(cmp) : 1;
   const val = (s: Sums) => (metric === 'sales' ? s.rev : metric === 'units' ? s.units : s.orders);
   const fmt = metric === 'sales' ? fmtMoney : fmtInt;
 
@@ -75,19 +104,45 @@ export function CityView(p: BkViewProps) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-3">
-        <Select label="Map metric" value={metric} onChange={(v) => setMetric(v as MapMetric)} options={MAP_METRICS.filter((m) => m.value !== 'orders' || byOrders)} allLabel={null} />
-        <Select label="State (city table)" value={state} onChange={setState} options={(geo?.states ?? []).map((s) => s.key).sort()} allLabel="All states" />
+        <Select
+          label="Map metric"
+          value={metric}
+          onChange={(v) => setMetric(v as MapMetric)}
+          options={MAP_METRICS.filter((m) => m.value !== 'orders' || byOrders)}
+          allLabel={null}
+        />
+        <Select
+          label="State (city table)"
+          value={state}
+          onChange={setState}
+          options={(geo?.states ?? []).map((s) => s.key).sort()}
+          allLabel="All states"
+        />
         {loading && <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />}
       </div>
       {error && <ErrorBox message={error} />}
       {geo && ads && (
         <>
           <div className="grid gap-3 lg:grid-cols-[3fr_2fr]">
-            <Card title={`${MAP_METRICS.find((m) => m.value === metric)!.label} by ${flavour.nativeAdCity ? '' : 'customer '}state`}>
-              <IndiaMap rows={toStateRows(geo.states)} prev={geoB ? toStateRows(geoB.states) : null} metric={metric} />
+            <Card
+              title={`${MAP_METRICS.find((m) => m.value === metric)!.label} by ${flavour.nativeAdCity ? '' : 'customer '}state`}
+            >
+              <IndiaMap
+                rows={toStateRows(geo.states)}
+                prev={geoB ? toStateRows(geoB.states) : null}
+                metric={metric}
+              />
             </Card>
             <Card title={`${state || 'All states'} · top ${state ? 'cities' : 'states'}`}>
-              <Donut items={sorted.map((r) => ({ label: r.key, value: val(r.sums), prev: prevRows.has(r.key) ? val(prevRows.get(r.key)!) : null }))} fmt={fmt} comparing={comparing} />
+              <Donut
+                items={sorted.map((r) => ({
+                  label: r.key,
+                  value: val(r.sums),
+                  prev: prevRows.has(r.key) ? val(prevRows.get(r.key)!) : null,
+                }))}
+                fmt={fmt}
+                comparing={comparing}
+              />
             </Card>
           </div>
 
@@ -105,11 +160,28 @@ export function CityView(p: BkViewProps) {
               </thead>
               <tbody>
                 {sorted.map((r) => (
-                  <tr key={r.key} className={`${ROW} ${state ? '' : 'cursor-pointer'}`} onClick={() => !state && setState(r.key)} title={state ? '' : 'Click to see its cities'}>
+                  <tr
+                    key={r.key}
+                    className={`${ROW} ${state ? '' : 'cursor-pointer'}`}
+                    onClick={() => !state && setState(r.key)}
+                    title={state ? '' : 'Click to see its cities'}
+                  >
                     <td className={TD_LEFT}>{r.key}</td>
-                    <td className="num px-3 py-1.5 text-right align-top">{totShare ? fmtPct((shareOf(r.sums) / totShare) * 100) : '—'}</td>
-                    {((byOrders ? ['orders', 'rev', 'units', 'aov'] : ['rev', 'units', 'asp']) as MetricKey[]).map((k) => (
-                      <BkCell key={k} k={k} s={r.sums} prev={prevRows.get(r.key) ?? (comparing ? blank() : null)} comparing={comparing} daysA={dA} daysB={dB} />
+                    <td className="num px-3 py-1.5 text-right align-top">
+                      {totShare ? fmtPct((shareOf(r.sums) / totShare) * 100) : '—'}
+                    </td>
+                    {(
+                      (byOrders ? ['orders', 'rev', 'units', 'aov'] : ['rev', 'units', 'asp']) as MetricKey[]
+                    ).map((k) => (
+                      <BkCell
+                        key={k}
+                        k={k}
+                        s={r.sums}
+                        prev={prevRows.get(r.key) ?? (comparing ? blank() : null)}
+                        comparing={comparing}
+                        daysA={dA}
+                        daysB={dB}
+                      />
                     ))}
                   </tr>
                 ))}
@@ -131,7 +203,15 @@ export function CityView(p: BkViewProps) {
   );
 }
 
-function CityAds({ ads, prev, comparing, dA, dB, state, geo }: {
+function CityAds({
+  ads,
+  prev,
+  comparing,
+  dA,
+  dB,
+  state,
+  geo,
+}: {
   ads: BkCityAdsResponse;
   prev: BkCityAdsResponse | null;
   comparing: boolean;
@@ -146,7 +226,8 @@ function CityAds({ ads, prev, comparing, dA, dB, state, geo }: {
   const stateOf = new Map(geo.cities.map((c) => [c.key, c.state]));
   const inState = (u: BkCityAdsRow) => !state || u.cities.some((c) => stateOf.get(c) === state);
   const prevBy = new Map([...(prev?.rows ?? []), ...(prev?.groups ?? [])].map((u) => [u.key, u.sums]));
-  const rows = ads.rows.filter(inState), groups = ads.groups.filter(inState);
+  const rows = ads.rows.filter(inState),
+    groups = ads.groups.filter(inState);
   const attributed = ads.totalSpend - ads.notAttributable.spend;
 
   const table = (list: BkCityAdsRow[]) => (
@@ -171,7 +252,15 @@ function CityAds({ ads, prev, comparing, dA, dB, state, geo }: {
                 {u.label !== u.key && <div className="text-[11px] text-muted">{u.cities.join(', ')}</div>}
               </td>
               {cols.map((c) => (
-                <BkCell key={c} k={c} s={u.sums} prev={prevBy.get(u.key) ?? (comparing ? blank() : null)} comparing={comparing} daysA={dA} daysB={dB} />
+                <BkCell
+                  key={c}
+                  k={c}
+                  s={u.sums}
+                  prev={prevBy.get(u.key) ?? (comparing ? blank() : null)}
+                  comparing={comparing}
+                  daysA={dA}
+                  daysB={dB}
+                />
               ))}
               <td className="max-w-72 truncate px-3 py-1.5 text-xs text-muted" title={u.campaigns.join('\n')}>
                 {u.campaigns.length === 1 ? u.campaigns[0] : `${u.campaigns.length} campaigns`}
@@ -184,38 +273,55 @@ function CityAds({ ads, prev, comparing, dA, dB, state, geo }: {
   );
 
   return (
-    <Card title={`Ad spend by city${native ? '' : ' — exact city targeting only'}${state ? ` · ${state}` : ''}`}>
+    <Card
+      title={`Ad spend by city${native ? '' : ' — exact city targeting only'}${state ? ` · ${state}` : ''}`}
+    >
       <div className="space-y-3">
         {rows.length === 0 && native ? (
-          <div role="note" className="alert alert-soft block px-4 py-3 text-xs">No ad spend in this period{state ? ` in ${state}` : ''}.</div>
+          <div role="note" className="alert alert-soft block px-4 py-3 text-xs">
+            No ad spend in this period{state ? ` in ${state}` : ''}.
+          </div>
         ) : rows.length === 0 ? (
           <div role="note" className="alert alert-warning alert-soft block px-4 py-3 text-xs">
-            <b>No campaign in this period targets a single, known city</b>, so no ad spend is shown at city level. {fmtMoney(ads.notAttributable.spend)} of{' '}
-            {fmtMoney(ads.totalSpend)} spend ({ads.notAttributable.campaigns} campaigns) is Top City / ROC / Pan-India or has no city in the campaign mapper. Add a{' '}
-            <b>City</b> column to the campaign mapper (e.g. &ldquo;Pune&rdquo;, &ldquo;Delhi NCR&rdquo;, &ldquo;Gurgaon + Delhi&rdquo;) to bring a campaign in here.
+            <b>No campaign in this period targets a single, known city</b>, so no ad spend is shown at city
+            level. {fmtMoney(ads.notAttributable.spend)} of {fmtMoney(ads.totalSpend)} spend (
+            {ads.notAttributable.campaigns} campaigns) is Top City / ROC / Pan-India or has no city in the
+            campaign mapper. Add a <b>City</b> column to the campaign mapper (e.g. &ldquo;Pune&rdquo;,
+            &ldquo;Delhi NCR&rdquo;, &ldquo;Gurgaon + Delhi&rdquo;) to bring a campaign in here.
           </div>
         ) : (
           table(rows)
         )}
         {groups.length > 0 && (
           <>
-            <h4 className="text-xs font-semibold text-muted">Multi-city campaigns — shown as a group, never split</h4>
+            <h4 className="text-xs font-semibold text-muted">
+              Multi-city campaigns — shown as a group, never split
+            </h4>
             {table(groups)}
           </>
         )}
         {native ? (
           <p className="text-[11px] text-muted">
-            Instamart&apos;s ads report gives the city on every row, so each city&apos;s spend, impressions and ad sales are exact — nothing is inferred or split.
-            The city&apos;s sales (all of it, ads and organic) come from the sales export for the same city.
-            {ads.notAttributable.spend > 0 && <> Rows without a city: {fmtMoney(ads.notAttributable.spend)} of {fmtMoney(ads.totalSpend)} spend.</>}
+            Instamart&apos;s ads report gives the city on every row, so each city&apos;s spend, impressions
+            and ad sales are exact — nothing is inferred or split. The city&apos;s sales (all of it, ads and
+            organic) come from the sales export for the same city.
+            {ads.notAttributable.spend > 0 && (
+              <>
+                {' '}
+                Rows without a city: {fmtMoney(ads.notAttributable.spend)} of {fmtMoney(ads.totalSpend)}{' '}
+                spend.
+              </>
+            )}
           </p>
         ) : (
-        <p className="text-[11px] text-muted">
-          Blinkit ad reports carry no city. A campaign counts here only when its targeting is exactly one city or cities inside one metro (Delhi NCR, Mumbai
-          MMR, Chandigarh Tricity) — from the campaign mapper&apos;s City column, else an unambiguous city in the campaign name. Its real, unsplit spend is set
-          against the sales of those cities; nothing is allocated by revenue share. Reconciliation: attributable {fmtMoney(attributed)} + not city-attributable{' '}
-          {fmtMoney(ads.notAttributable.spend)} = total {fmtMoney(ads.totalSpend)}.
-        </p>
+          <p className="text-[11px] text-muted">
+            Blinkit ad reports carry no city. A campaign counts here only when its targeting is exactly one
+            city or cities inside one metro (Delhi NCR, Mumbai MMR, Chandigarh Tricity) — from the campaign
+            mapper&apos;s City column, else an unambiguous city in the campaign name. Its real, unsplit spend
+            is set against the sales of those cities; nothing is allocated by revenue share. Reconciliation:
+            attributable {fmtMoney(attributed)} + not city-attributable {fmtMoney(ads.notAttributable.spend)}{' '}
+            = total {fmtMoney(ads.totalSpend)}.
+          </p>
         )}
       </div>
     </Card>

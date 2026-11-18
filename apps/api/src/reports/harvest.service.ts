@@ -127,7 +127,14 @@ export async function getHarvest(profileId: string, o: HarvestOptions): Promise<
     const orders = Number(r.orders);
     const spOrders = Number(r.sp_orders ?? 0);
     const sbOrders = Number(r.sb_orders ?? 0);
-    const d = decideHarvest({ orders, spOrders, sbOrders, manualSp: r.manual_sp, manualSb: r.manual_sb, minOrders: o.minOrders });
+    const d = decideHarvest({
+      orders,
+      spOrders,
+      sbOrders,
+      manualSp: r.manual_sp,
+      manualSb: r.manual_sb,
+      minOrders: o.minOrders,
+    });
     if (!d) continue;
     const clicks = Number(r.clicks);
     const spend = Number(r.spend);
@@ -184,7 +191,8 @@ export async function getHarvest(profileId: string, o: HarvestOptions): Promise<
     .sort((a, b) => {
       const av = k(a);
       const bv = k(b);
-      if (av == null || bv == null) return av == null && bv == null ? b.orders - a.orders : av == null ? 1 : -1;
+      if (av == null || bv == null)
+        return av == null && bv == null ? b.orders - a.orders : av == null ? 1 : -1;
       return bv - av || b.orders - a.orders || a.searchTerm.localeCompare(b.searchTerm);
     });
 
@@ -197,7 +205,8 @@ export async function getHarvest(profileId: string, o: HarvestOptions): Promise<
     notes.unshift(
       'Some search-term data here has no Targeting column (GCS warehouse export), so for it "manual target" means the term ran in a manual keyword / product campaign (KT / PT in the campaign name). A broad or phrase keyword in such a campaign can make a term look targeted when it isn\'t — upload the console search-term report with the Targeting column for an exact check.'
     );
-  if (filtered.length > o.limit) notes.push(`Showing the first ${o.limit} of ${filtered.length} terms. Use search to find others.`);
+  if (filtered.length > o.limit)
+    notes.push(`Showing the first ${o.limit} of ${filtered.length} terms. Use search to find others.`);
 
   return {
     ...empty,

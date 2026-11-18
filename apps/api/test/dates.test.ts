@@ -13,20 +13,35 @@ test('filename: D_Month_-_D_Month range', () => {
 });
 
 test('filename: single day, free text, duplicate-download suffix', () => {
-  assert.deepEqual(datesFromFilename('RB2F__YPLAYZ__10 april- data (1).xlsx', NOW), { from: '2026-04-10', to: '2026-04-10' });
+  assert.deepEqual(datesFromFilename('RB2F__YPLAYZ__10 april- data (1).xlsx', NOW), {
+    from: '2026-04-10',
+    to: '2026-04-10',
+  });
 });
 
 test('filename: no-separator form and future month rolls back a year', () => {
-  assert.deepEqual(datesFromFilename('SP_campaign_1JUNE-30JUNE.csv', NOW), { from: '2026-06-01', to: '2026-06-30' });
-  assert.deepEqual(datesFromFilename('Business_Report_5_Dec.xlsx', NOW), { from: '2025-12-05', to: '2025-12-05' });
+  assert.deepEqual(datesFromFilename('SP_campaign_1JUNE-30JUNE.csv', NOW), {
+    from: '2026-06-01',
+    to: '2026-06-30',
+  });
+  assert.deepEqual(datesFromFilename('Business_Report_5_Dec.xlsx', NOW), {
+    from: '2025-12-05',
+    to: '2025-12-05',
+  });
 });
 
 test('filename: Dec → Jan range wraps the start year', () => {
-  assert.deepEqual(datesFromFilename('Vendor_20_Dec_-_5_Jan.xlsx', NOW), { from: '2025-12-20', to: '2026-01-05' });
+  assert.deepEqual(datesFromFilename('Vendor_20_Dec_-_5_Jan.xlsx', NOW), {
+    from: '2025-12-20',
+    to: '2026-01-05',
+  });
 });
 
 test('filename: ISO dates and no dates', () => {
-  assert.deepEqual(datesFromFilename('report_2026-04-01_2026-04-30.csv', NOW), { from: '2026-04-01', to: '2026-04-30' });
+  assert.deepEqual(datesFromFilename('report_2026-04-01_2026-04-30.csv', NOW), {
+    from: '2026-04-01',
+    to: '2026-04-30',
+  });
   assert.equal(datesFromFilename('Feb-March - data.xlsx', NOW), null);
 });
 

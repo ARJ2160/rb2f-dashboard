@@ -80,7 +80,16 @@ export interface ScLedgerParse extends ScParseBase {
 export function parseLedgerSummary(headers: string[], rows: Row[], _ctx: ParseContext): ScLedgerParse {
   const warnings: string[] = [];
   if (!hasColumn(headers, ['Ending Warehouse Balance']) || !hasColumn(headers, ['Location'])) {
-    return { records: [], products: [], warehouses: [], rowsRead: rows.length, warnings, error: 'Not an Inventory Ledger Summary (missing Ending Warehouse Balance / Location).', from: null, to: null };
+    return {
+      records: [],
+      products: [],
+      warehouses: [],
+      rowsRead: rows.length,
+      warnings,
+      error: 'Not an Inventory Ledger Summary (missing Ending Warehouse Balance / Location).',
+      from: null,
+      to: null,
+    };
   }
   const records: ScLedgerRecord[] = [];
   const products: ScProductDim[] = [];
@@ -128,7 +137,14 @@ export function parseLedgerSummary(headers: string[], rows: Row[], _ctx: ParseCo
     });
   }
   if (skipped) warnings.push(`${skipped} row(s) skipped (missing date, FNSKU or location).`);
-  return { records, products: dedupeProducts(products), warehouses: [...warehouses], rowsRead: rows.length, warnings, ...range(dates) };
+  return {
+    records,
+    products: dedupeProducts(products),
+    warehouses: [...warehouses],
+    rowsRead: rows.length,
+    warnings,
+    ...range(dates),
+  };
 }
 
 // ── FBA Inventory snapshot ──────────────────────────────────────────────────
@@ -194,14 +210,25 @@ const normKey = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 export function parseFbaInventory(headers: string[], rows: Row[], _ctx: ParseContext): ScFbaParse {
   const warnings: string[] = [];
   if (!hasColumn(headers, FBA_ALIASES.snapshotDate) || !hasColumn(headers, FBA_ALIASES.sku)) {
-    return { records: [], products: [], warehouses: [], missingColumns: [], rowsRead: rows.length, warnings, error: 'Not an FBA Inventory export (missing snapshot-date / sku).', from: null, to: null };
+    return {
+      records: [],
+      products: [],
+      warehouses: [],
+      missingColumns: [],
+      rowsRead: rows.length,
+      warnings,
+      error: 'Not an FBA Inventory export (missing snapshot-date / sku).',
+      from: null,
+      to: null,
+    };
   }
   // Columns we consume → anything else goes into `extra` so nothing is lost.
   const consumed = new Set<string>();
   for (const aliases of Object.values(FBA_ALIASES)) for (const a of aliases) consumed.add(normKey(a));
   const expected = ['available', 'units-shipped-t30', 'sales-shipped-last-30-days'];
   const missingColumns = expected.filter((c) => !hasColumn(headers, [c]));
-  if (missingColumns.includes('available')) warnings.push('No `available` column — sellable stock from FBA Inventory will be 0.');
+  if (missingColumns.includes('available'))
+    warnings.push('No `available` column — sellable stock from FBA Inventory will be 0.');
 
   const records: ScFbaRecord[] = [];
   const products: ScProductDim[] = [];
@@ -261,7 +288,15 @@ export function parseFbaInventory(headers: string[], rows: Row[], _ctx: ParseCon
   }
   if (skipped) warnings.push(`${skipped} row(s) skipped (missing snapshot-date or sku).`);
   if (missingColumns.length) warnings.push(`Missing expected columns: ${missingColumns.join(', ')}.`);
-  return { records, products: dedupeProducts(products), warehouses: [], missingColumns, rowsRead: rows.length, warnings, ...range(dates) };
+  return {
+    records,
+    products: dedupeProducts(products),
+    warehouses: [],
+    missingColumns,
+    rowsRead: rows.length,
+    warnings,
+    ...range(dates),
+  };
 }
 
 // ── Shipments list ──────────────────────────────────────────────────────────
@@ -294,7 +329,17 @@ export function shipmentIdFromName(name: string): string | null {
 export function parseShipments(headers: string[], rows: Row[], _ctx: ParseContext): ScShipmentParse {
   const warnings: string[] = [];
   if (!hasColumn(headers, ['Shipment name']) || !hasColumn(headers, ['Units expected'])) {
-    return { records: [], products: [], warehouses: [], asOf: null, rowsRead: rows.length, warnings, error: 'Not a Shipments list (missing Shipment name / Units expected).', from: null, to: null };
+    return {
+      records: [],
+      products: [],
+      warehouses: [],
+      asOf: null,
+      rowsRead: rows.length,
+      warnings,
+      error: 'Not a Shipments list (missing Shipment name / Units expected).',
+      from: null,
+      to: null,
+    };
   }
   const records: ScShipmentRecord[] = [];
   const warehouses = new Set<string>();
@@ -329,7 +374,15 @@ export function parseShipments(headers: string[], rows: Row[], _ctx: ParseContex
   }
   if (skipped) warnings.push(`${skipped} shipment(s) skipped (could not read a shipment ID from the name).`);
   const r = range(dates);
-  return { records, products: [], warehouses: [...warehouses], asOf: r.to, rowsRead: rows.length, warnings, ...r };
+  return {
+    records,
+    products: [],
+    warehouses: [...warehouses],
+    asOf: r.to,
+    rowsRead: rows.length,
+    warnings,
+    ...r,
+  };
 }
 
 // ── Inventory Ledger — Detailed (optional) ──────────────────────────────────
@@ -356,8 +409,20 @@ export interface ScLedgerDetailParse extends ScParseBase {
 
 export function parseLedgerDetail(headers: string[], rows: Row[], _ctx: ParseContext): ScLedgerDetailParse {
   const warnings: string[] = [];
-  if (!hasColumn(headers, ['Event Type']) || !hasColumn(headers, ['Fulfillment Center', 'Fulfilment Center'])) {
-    return { records: [], products: [], warehouses: [], rowsRead: rows.length, warnings, error: 'Not an Inventory Ledger Detailed view (missing Event Type / Fulfillment Center).', from: null, to: null };
+  if (
+    !hasColumn(headers, ['Event Type']) ||
+    !hasColumn(headers, ['Fulfillment Center', 'Fulfilment Center'])
+  ) {
+    return {
+      records: [],
+      products: [],
+      warehouses: [],
+      rowsRead: rows.length,
+      warnings,
+      error: 'Not an Inventory Ledger Detailed view (missing Event Type / Fulfillment Center).',
+      from: null,
+      to: null,
+    };
   }
   const seen = new Set<string>();
   const records: ScLedgerDetailRecord[] = [];
@@ -380,16 +445,51 @@ export function parseLedgerDetail(headers: string[], rows: Row[], _ctx: ParseCon
     const reason = str(pick(r, ['Reason'])) || null;
     const country = str(pick(r, ['Country'])) || null;
     const rowHash = createHash('sha1')
-      .update([date, fnsku, asin, msku, eventType, referenceId, quantity, fulfillmentCenter, disposition, reason, country].join('\u0001'))
+      .update(
+        [
+          date,
+          fnsku,
+          asin,
+          msku,
+          eventType,
+          referenceId,
+          quantity,
+          fulfillmentCenter,
+          disposition,
+          reason,
+          country,
+        ].join('\u0001')
+      )
       .digest('hex');
     if (seen.has(rowHash)) continue;
     seen.add(rowHash);
     if (fulfillmentCenter) warehouses.add(fulfillmentCenter);
     dates.push(date);
     products.push({ asin, msku, fnsku, title });
-    records.push({ rowHash, date, fnsku, asin, msku, title, eventType, referenceId, quantity, fulfillmentCenter, disposition, reason, country });
+    records.push({
+      rowHash,
+      date,
+      fnsku,
+      asin,
+      msku,
+      title,
+      eventType,
+      referenceId,
+      quantity,
+      fulfillmentCenter,
+      disposition,
+      reason,
+      country,
+    });
   }
-  return { records, products: dedupeProducts(products), warehouses: [...warehouses], rowsRead: rows.length, warnings, ...range(dates) };
+  return {
+    records,
+    products: dedupeProducts(products),
+    warehouses: [...warehouses],
+    rowsRead: rows.length,
+    warnings,
+    ...range(dates),
+  };
 }
 
 // ── Shipment contents (optional) ────────────────────────────────────────────
@@ -407,11 +507,24 @@ export interface ScShipmentContentParse extends ScParseBase {
   records: ScShipmentContentRecord[];
 }
 
-export function parseShipmentContents(headers: string[], rows: Row[], _ctx: ParseContext): ScShipmentContentParse {
+export function parseShipmentContents(
+  headers: string[],
+  rows: Row[],
+  _ctx: ParseContext
+): ScShipmentContentParse {
   const warnings: string[] = [];
   const hasId = hasColumn(headers, ['Shipment ID', 'Shipment Id', 'FBA Shipment ID']);
   if (!hasId || !hasColumn(headers, ['MSKU', 'SKU', 'Merchant SKU'])) {
-    return { records: [], products: [], warehouses: [], rowsRead: rows.length, warnings, error: 'Not a Shipment contents export (missing Shipment ID / SKU).', from: null, to: null };
+    return {
+      records: [],
+      products: [],
+      warehouses: [],
+      rowsRead: rows.length,
+      warnings,
+      error: 'Not a Shipment contents export (missing Shipment ID / SKU).',
+      from: null,
+      to: null,
+    };
   }
   const records: ScShipmentContentRecord[] = [];
   const products: ScProductDim[] = [];
@@ -431,10 +544,22 @@ export function parseShipmentContents(headers: string[], rows: Row[], _ctx: Pars
       sku,
       fnsku,
       asin,
-      unitsShipped: Math.round(num(pick(r, ['Shipped', 'Units shipped', 'Shipped quantity', 'Quantity shipped']))),
-      unitsReceived: Math.round(num(pick(r, ['Received', 'Units received', 'Received quantity', 'Quantity received']))),
+      unitsShipped: Math.round(
+        num(pick(r, ['Shipped', 'Units shipped', 'Shipped quantity', 'Quantity shipped']))
+      ),
+      unitsReceived: Math.round(
+        num(pick(r, ['Received', 'Units received', 'Received quantity', 'Quantity received']))
+      ),
     });
   }
   if (skipped) warnings.push(`${skipped} content row(s) skipped (missing shipment ID or SKU).`);
-  return { records, products: dedupeProducts(products), warehouses: [], rowsRead: rows.length, warnings, from: null, to: null };
+  return {
+    records,
+    products: dedupeProducts(products),
+    warehouses: [],
+    rowsRead: rows.length,
+    warnings,
+    from: null,
+    to: null,
+  };
 }

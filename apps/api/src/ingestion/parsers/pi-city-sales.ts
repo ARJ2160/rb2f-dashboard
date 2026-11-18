@@ -51,9 +51,19 @@ export function parsePiCitySales(rows: Row[], ctx: ParseContext): ParseResult<Pi
     if (asin && title) titles.set(asin, title);
 
     const key = `${date}|${asin}|${state}|${city}|${postalCode}`;
-    const cur =
-      acc.get(key) ??
-      { date, asin, state, city, postalCode, grossSales: 0, grossUnits: 0, netSales: 0, netUnits: 0, indexedGlanceViews: 0, title };
+    const cur = acc.get(key) ?? {
+      date,
+      asin,
+      state,
+      city,
+      postalCode,
+      grossSales: 0,
+      grossUnits: 0,
+      netSales: 0,
+      netUnits: 0,
+      indexedGlanceViews: 0,
+      title,
+    };
     cur.grossSales += num(pick(r, ['grossSales', 'gross sales']));
     cur.grossUnits += num(pick(r, ['grossUnits', 'gross units']));
     cur.netSales += num(pick(r, ['netSales', 'net sales']));
@@ -70,6 +80,7 @@ export function parsePiCitySales(rows: Row[], ctx: ParseContext): ParseResult<Pi
     indexedGlanceViews: round2(r.indexedGlanceViews),
     title: r.asin ? (titles.get(r.asin) ?? r.title) : r.title,
   }));
-  if (!records.length && rows.length) return { records, rowsRead: rows.length, warnings, error: 'No dated sales rows.' };
+  if (!records.length && rows.length)
+    return { records, rowsRead: rows.length, warnings, error: 'No dated sales rows.' };
   return { records, rowsRead: rows.length, warnings };
 }

@@ -31,10 +31,23 @@ export function bkFmt(k: MetricKey, v: number | null): string {
 export const bkShow = (k: MetricKey, s: Sums) => bkFmt(k, bkVal(k, s));
 
 /** Change vs the comparison period; volumes are compared per day when the two windows differ in length. */
-export function BkDelta({ k, cur, prev, daysA = 1, daysB = 1 }: { k: MetricKey; cur: Sums; prev: Sums | null | undefined; daysA?: number; daysB?: number }) {
+export function BkDelta({
+  k,
+  cur,
+  prev,
+  daysA = 1,
+  daysB = 1,
+}: {
+  k: MetricKey;
+  cur: Sums;
+  prev: Sums | null | undefined;
+  daysA?: number;
+  daysB?: number;
+}) {
   if (!prev) return <div className="text-[10px] text-muted">—</div>;
   const per = METRICS[k].additive && daysA !== daysB;
-  const a = bkVal(k, cur), b = bkVal(k, prev);
+  const a = bkVal(k, cur),
+    b = bkVal(k, prev);
   if (a == null || b == null) return <div className="text-[10px] text-muted">—</div>;
   if (b === 0) return <div className="text-[10px] text-muted">{a === 0 ? '0%' : 'new'}</div>;
   const d = ((a / (per ? daysA : 1) - b / (per ? daysB : 1)) / Math.abs(b / (per ? daysB : 1))) * 100;
@@ -48,7 +61,15 @@ export function BkDelta({ k, cur, prev, daysA = 1, daysB = 1 }: { k: MetricKey; 
 }
 
 /** Numeric cell, with the comparison value and change underneath when comparing. */
-export function BkCell({ k, s, prev, comparing, daysA, daysB, className = '' }: {
+export function BkCell({
+  k,
+  s,
+  prev,
+  comparing,
+  daysA,
+  daysB,
+  className = '',
+}: {
   k: MetricKey;
   s: Sums;
   prev?: Sums | null | undefined;
@@ -83,4 +104,5 @@ export interface BkViewProps {
   category: string;
   compare: { from: string; to: string } | null;
 }
-export const days = (p: { from: string; to: string }) => Math.round((Date.parse(p.to) - Date.parse(p.from)) / 86_400_000) + 1;
+export const days = (p: { from: string; to: string }) =>
+  Math.round((Date.parse(p.to) - Date.parse(p.from)) / 86_400_000) + 1;

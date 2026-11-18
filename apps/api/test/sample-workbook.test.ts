@@ -39,7 +39,9 @@ if (file) {
         const adSales = r.records.reduce((a, x) => a + x.adSales, 0);
         summary = `campaigns=${r.records.length} spend=${spend.toFixed(2)} adSales=${adSales.toFixed(2)} ${r.warnings.join('; ')}`;
       }
-      console.log(`  [${s.sheetName}] rows=${s.rows.length} → ${d ? `${d.reportType} (${d.detectedBy})` : 'unrecognised'} ${summary}`);
+      console.log(
+        `  [${s.sheetName}] rows=${s.rows.length} → ${d ? `${d.reportType} (${d.detectedBy})` : 'unrecognised'} ${summary}`
+      );
     }
   });
 }

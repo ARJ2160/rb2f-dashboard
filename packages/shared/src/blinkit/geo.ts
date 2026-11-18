@@ -19,25 +19,90 @@ export const normKey = (s: unknown): string =>
 
 /** Display-name aliases → canonical city (keys are normKey'd). */
 const CITY_ALIASES: Record<string, string> = {
-  bangalore: 'Bengaluru', banglore: 'Bengaluru', bengaluru: 'Bengaluru', blr: 'Bengaluru', bang: 'Bengaluru',
-  gurgaon: 'Gurgaon', gurugram: 'Gurgaon', ggn: 'Gurgaon', ggm: 'Gurgaon',
-  delhi: 'Delhi', 'new delhi': 'Delhi', del: 'Delhi',
-  noida: 'Noida', 'greater noida': 'Greater Noida', ghaziabad: 'Ghaziabad', faridabad: 'Faridabad', fbd: 'Faridabad',
-  hyderabad: 'Hyderabad', hyd: 'Hyderabad',
-  mumbai: 'Mumbai', mum: 'Mumbai', bombay: 'Mumbai', bom: 'Mumbai', thane: 'Thane', 'navi mumbai': 'Navi Mumbai',
-  pune: 'Pune', pnq: 'Pune',
-  chennai: 'Chennai', hennai: 'Chennai', madras: 'Chennai', maa: 'Chennai',
-  kolkata: 'Kolkata', calcutta: 'Kolkata', kol: 'Kolkata', ccu: 'Kolkata',
-  ahmedabad: 'Ahmedabad', amd: 'Ahmedabad', ahm: 'Ahmedabad', ahd: 'Ahmedabad', jaipur: 'Jaipur', lucknow: 'Lucknow', lko: 'Lucknow',
-  kochi: 'Kochi', cochin: 'Kochi', trivandrum: 'Trivandrum', thiruvananthapuram: 'Trivandrum',
-  chandigarh: 'Chandigarh', mohali: 'Mohali', panchkula: 'Panchkula', zirakpur: 'Zirakpur', kharar: 'Kharar',
-  surat: 'Surat', indore: 'Indore', bhopal: 'Bhopal', nagpur: 'Nagpur', vadodara: 'Vadodara', baroda: 'Vadodara',
-  ludhiana: 'Ludhiana', dehradun: 'Dehradun', coimbatore: 'Coimbatore', mysore: 'Mysore', mysuru: 'Mysore',
-  'udaipur rajasthan': 'Udaipur (Rajasthan)', udaipur: 'Udaipur (Rajasthan)', goa: 'Goa',
+  bangalore: 'Bengaluru',
+  banglore: 'Bengaluru',
+  bengaluru: 'Bengaluru',
+  blr: 'Bengaluru',
+  bang: 'Bengaluru',
+  gurgaon: 'Gurgaon',
+  gurugram: 'Gurgaon',
+  ggn: 'Gurgaon',
+  ggm: 'Gurgaon',
+  delhi: 'Delhi',
+  'new delhi': 'Delhi',
+  del: 'Delhi',
+  noida: 'Noida',
+  'greater noida': 'Greater Noida',
+  ghaziabad: 'Ghaziabad',
+  faridabad: 'Faridabad',
+  fbd: 'Faridabad',
+  hyderabad: 'Hyderabad',
+  hyd: 'Hyderabad',
+  mumbai: 'Mumbai',
+  mum: 'Mumbai',
+  bombay: 'Mumbai',
+  bom: 'Mumbai',
+  thane: 'Thane',
+  'navi mumbai': 'Navi Mumbai',
+  pune: 'Pune',
+  pnq: 'Pune',
+  chennai: 'Chennai',
+  hennai: 'Chennai',
+  madras: 'Chennai',
+  maa: 'Chennai',
+  kolkata: 'Kolkata',
+  calcutta: 'Kolkata',
+  kol: 'Kolkata',
+  ccu: 'Kolkata',
+  ahmedabad: 'Ahmedabad',
+  amd: 'Ahmedabad',
+  ahm: 'Ahmedabad',
+  ahd: 'Ahmedabad',
+  jaipur: 'Jaipur',
+  lucknow: 'Lucknow',
+  lko: 'Lucknow',
+  kochi: 'Kochi',
+  cochin: 'Kochi',
+  trivandrum: 'Trivandrum',
+  thiruvananthapuram: 'Trivandrum',
+  chandigarh: 'Chandigarh',
+  mohali: 'Mohali',
+  panchkula: 'Panchkula',
+  zirakpur: 'Zirakpur',
+  kharar: 'Kharar',
+  surat: 'Surat',
+  indore: 'Indore',
+  bhopal: 'Bhopal',
+  nagpur: 'Nagpur',
+  vadodara: 'Vadodara',
+  baroda: 'Vadodara',
+  ludhiana: 'Ludhiana',
+  dehradun: 'Dehradun',
+  coimbatore: 'Coimbatore',
+  mysore: 'Mysore',
+  mysuru: 'Mysore',
+  'udaipur rajasthan': 'Udaipur (Rajasthan)',
+  udaipur: 'Udaipur (Rajasthan)',
+  goa: 'Goa',
 };
 
 /** 3-letter codes accepted inside campaign NAMES (other short aliases are too ambiguous there). */
-const NAME_CODES = new Set(['hyd', 'ahm', 'ahd', 'amd', 'pnq', 'blr', 'ggn', 'mum', 'bom', 'lko', 'fbd', 'ccu', 'maa', 'kol']);
+const NAME_CODES = new Set([
+  'hyd',
+  'ahm',
+  'ahd',
+  'amd',
+  'pnq',
+  'blr',
+  'ggn',
+  'mum',
+  'bom',
+  'lko',
+  'fbd',
+  'ccu',
+  'maa',
+  'kol',
+]);
 
 /**
  * Blinkit's Sales report books every UP-NCR order (Noida, Greater Noida) under
@@ -55,14 +120,23 @@ export const CLUSTERS: Record<string, string[]> = {
   'Chandigarh Tricity': ['Chandigarh', 'Mohali', 'Panchkula', 'Zirakpur', 'Kharar', 'New Chandigarh'],
 };
 const CLUSTER_ALIASES: Record<string, string> = {
-  ncr: 'Delhi NCR', 'delhi ncr': 'Delhi NCR', 'delhi ncr region': 'Delhi NCR', 'hr ncr': 'Delhi NCR', 'up ncr': 'Delhi NCR',
-  mmr: 'Mumbai MMR', 'mumbai mmr': 'Mumbai MMR', tricity: 'Chandigarh Tricity', 'chandigarh tricity': 'Chandigarh Tricity',
+  ncr: 'Delhi NCR',
+  'delhi ncr': 'Delhi NCR',
+  'delhi ncr region': 'Delhi NCR',
+  'hr ncr': 'Delhi NCR',
+  'up ncr': 'Delhi NCR',
+  mmr: 'Mumbai MMR',
+  'mumbai mmr': 'Mumbai MMR',
+  tricity: 'Chandigarh Tricity',
+  'chandigarh tricity': 'Chandigarh Tricity',
 };
 
 /** Tokens that mean "many cities we cannot name" → never city-attributable. */
-const NON_CITY = /\b(pan ?india|all ?india|all|top ?\d* ?cit(y|ies)|roc\d*|rest of (india|cities)|oth(er)? ?top ?\d* ?cities|national|india)\b/;
+const NON_CITY =
+  /\b(pan ?india|all ?india|all|top ?\d* ?cit(y|ies)|roc\d*|rest of (india|cities)|oth(er)? ?top ?\d* ?cities|national|india)\b/;
 /** Stricter version for campaign NAMES ("All in One NCR" is a product, not "all cities"). */
-const NON_CITY_NAME = /\b(pan ?india|all ?india|top ?\d* ?cit(y|ies)|roc ?\d*|rest of (india|cities)|oth(er)? ?top ?\d* ?cities)\b/;
+const NON_CITY_NAME =
+  /\b(pan ?india|all ?india|top ?\d* ?cit(y|ies)|roc ?\d*|rest of (india|cities)|oth(er)? ?top ?\d* ?cities)\b/;
 
 export function canonicalCity(raw: unknown): string {
   const k = normKey(raw);
@@ -106,9 +180,15 @@ export function parseCityList(text: unknown, source: 'mapper' | 'name' = 'mapper
   for (const p of parts) {
     const k = normKey(p);
     const cluster = CLUSTER_ALIASES[k];
-    if (cluster) { cities.push(...(CLUSTERS[cluster] ?? [])); continue; }
+    if (cluster) {
+      cities.push(...(CLUSTERS[cluster] ?? []));
+      continue;
+    }
     const alias = CITY_ALIASES[k];
-    if (alias) { cities.push(alias); continue; }
+    if (alias) {
+      cities.push(alias);
+      continue;
+    }
     if (k) cities.push(canonicalCity(p));
   }
   return unitFromCities(cities, source);
@@ -123,7 +203,8 @@ export function geoFromCampaignName(name: string): CampaignGeo {
   for (const [alias, cl] of Object.entries(CLUSTER_ALIASES))
     if (new RegExp(`\\b${alias}\\b`).test(k)) found.push(...(CLUSTERS[cl] ?? []));
   for (const [alias, city] of Object.entries(CITY_ALIASES))
-    if ((alias.length >= 4 || NAME_CODES.has(alias)) && new RegExp(`\\b${alias}\\b`).test(k)) found.push(city);
+    if ((alias.length >= 4 || NAME_CODES.has(alias)) && new RegExp(`\\b${alias}\\b`).test(k))
+      found.push(city);
   if (!found.length) return { kind: 'none', reason: 'no city in mapper or name' };
   return unitFromCities(found, 'name');
 }

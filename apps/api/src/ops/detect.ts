@@ -28,11 +28,22 @@ export function detectOpsFile(headers: string[], preamble: readonly string[] = [
 
   // ── Seller Central ─────────────────────────────────────────────────────
   // Inventory Ledger — Summary view (aggregate by FC).
-  if (has('FNSKU') && has('MSKU') && has('Disposition') && has('Ending Warehouse Balance') && has('Location')) {
+  if (
+    has('FNSKU') &&
+    has('MSKU') &&
+    has('Disposition') &&
+    has('Ending Warehouse Balance') &&
+    has('Location')
+  ) {
     return { fileType: 'sc_ledger_summary', channel: 'sc', detectedBy: 'headers' };
   }
   // Inventory Ledger — Detailed view (one row per event).
-  if (has('Event Type') && has('Reference ID') && has('Quantity') && has('Fulfillment Center', 'Fulfilment Center')) {
+  if (
+    has('Event Type') &&
+    has('Reference ID') &&
+    has('Quantity') &&
+    has('Fulfillment Center', 'Fulfilment Center')
+  ) {
     return { fileType: 'sc_ledger_detail', channel: 'sc', detectedBy: 'headers' };
   }
   // FBA Inventory snapshot (national per SKU).
@@ -60,7 +71,14 @@ export function detectOpsFile(headers: string[], preamble: readonly string[] = [
   }
   // Retail Analytics — Inventory vs Sales share one metadata block; split by columns.
   if (isRetailAnalytics(preamble) && has('ASIN')) {
-    if (has('Sellable On Hand Units', 'Sellable On-Hand Inventory', 'Net Received Units', 'Open Purchase Order Quantity')) {
+    if (
+      has(
+        'Sellable On Hand Units',
+        'Sellable On-Hand Inventory',
+        'Net Received Units',
+        'Open Purchase Order Quantity'
+      )
+    ) {
       return { fileType: 'vc_inventory', channel: 'vc', detectedBy: 'metadata' };
     }
     if (has('Shipped Units', 'Ordered Units', 'Shipped Revenue', 'Ordered Revenue')) {

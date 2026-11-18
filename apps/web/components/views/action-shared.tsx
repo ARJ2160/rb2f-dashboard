@@ -10,7 +10,12 @@ import { TABLE_WRAP, THEAD } from './shared';
 const x2 = (v: number | null) => (v == null ? '—' : v.toFixed(2));
 
 /** Metric columns shared by the negation / rule / bid-move tables (orders + ad metrics + ROAS). */
-const COLUMNS: Array<{ key: string; label: string; fmt: (v: number | null) => string; get: (r: TermActionRow) => number | null }> = [
+const COLUMNS: Array<{
+  key: string;
+  label: string;
+  fmt: (v: number | null) => string;
+  get: (r: TermActionRow) => number | null;
+}> = [
   { key: 'orders', label: 'Orders', fmt: fmtInt, get: (r) => r.orders },
   { key: 'impressions', label: 'Impressions', fmt: fmtInt, get: (r) => r.impressions },
   { key: 'clicks', label: 'Clicks', fmt: fmtInt, get: (r) => r.clicks },
@@ -50,7 +55,8 @@ export interface UiRule {
   value: string;
 }
 
-export const defaultUiRules = (): UiRule[] => DEFAULT_RULE_METRICS.map((metric) => ({ metric, op: 'gte', value: '' }));
+export const defaultUiRules = (): UiRule[] =>
+  DEFAULT_RULE_METRICS.map((metric) => ({ metric, op: 'gte', value: '' }));
 
 /** The active (non-blank) rules as the API wants them. */
 export const activeRules = (rules: UiRule[]): TermRule[] =>
@@ -73,14 +79,20 @@ export function ActionTable({
   leading?: { label: string; render: (r: TermActionRow) => ReactNode };
 }) {
   if (rows.length === 0) {
-    return <p className="rounded-xl border border-line bg-surface px-4 py-8 text-center text-sm text-muted">{emptyText}</p>;
+    return (
+      <p className="rounded-xl border border-line bg-surface px-4 py-8 text-center text-sm text-muted">
+        {emptyText}
+      </p>
+    );
   }
   return (
     <div className={TABLE_WRAP}>
       <table className="table table-sm">
         <thead className={THEAD}>
           <tr className="text-xs text-muted">
-            <th className="sticky left-0 z-30 min-w-64 bg-side px-3 py-2 text-left font-medium">{keyLabel}</th>
+            <th className="sticky left-0 z-30 min-w-64 bg-side px-3 py-2 text-left font-medium">
+              {keyLabel}
+            </th>
             {grain === 'target' && <th className="px-3 py-2 text-left font-medium">Type</th>}
             <th className="px-3 py-2 text-left font-medium">Channel</th>
             {leading && <th className="px-3 py-2 text-left font-medium">{leading.label}</th>}
@@ -93,7 +105,10 @@ export function ActionTable({
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={`${r.key}|${r.matchType ?? ''}`} className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft">
+            <tr
+              key={`${r.key}|${r.matchType ?? ''}`}
+              className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft"
+            >
               <td className="sticky left-0 z-10 max-w-80 bg-inherit px-3 py-1.5">
                 <div className="truncate font-medium" title={r.key}>
                   {r.key}
@@ -126,10 +141,12 @@ export function ActionTable({
  * shows all data until you type a threshold.
  */
 export function RuleBuilder({ rules, onChange }: { rules: UiRule[]; onChange: (r: UiRule[]) => void }) {
-  const set = (i: number, patch: Partial<UiRule>) => onChange(rules.map((r, j) => (i === j ? { ...r, ...patch } : r)));
+  const set = (i: number, patch: Partial<UiRule>) =>
+    onChange(rules.map((r, j) => (i === j ? { ...r, ...patch } : r)));
   const used = new Set(rules.map((r) => r.metric));
   const nextMetric = (RULE_METRICS.find((m) => !used.has(m.value)) ?? RULE_METRICS[0]!).value;
-  const add = () => rules.length < MAX_RULES && onChange([...rules, { metric: nextMetric, op: 'gte', value: '' }]);
+  const add = () =>
+    rules.length < MAX_RULES && onChange([...rules, { metric: nextMetric, op: 'gte', value: '' }]);
   const remove = (i: number) => onChange(rules.filter((_, j) => j !== i));
   const activeCount = rules.filter((r) => r.value.trim() !== '').length;
 
@@ -182,13 +199,21 @@ export function RuleBuilder({ rules, onChange }: { rules: UiRule[]; onChange: (r
               className="input input-sm input-bordered w-28"
               step="any"
             />
-            <button onClick={() => remove(i)} className="btn btn-sm btn-ghost text-muted" aria-label="Remove rule">
+            <button
+              onClick={() => remove(i)}
+              className="btn btn-sm btn-ghost text-muted"
+              aria-label="Remove rule"
+            >
               ✕
             </button>
           </div>
         ))}
       </div>
-      <p className="text-xs text-muted">{activeCount === 0 ? 'Showing all data — type a value in any row to filter.' : `Filtering by ${activeCount} metric${activeCount === 1 ? '' : 's'}.`}</p>
+      <p className="text-xs text-muted">
+        {activeCount === 0
+          ? 'Showing all data — type a value in any row to filter.'
+          : `Filtering by ${activeCount} metric${activeCount === 1 ? '' : 's'}.`}
+      </p>
     </div>
   );
 }

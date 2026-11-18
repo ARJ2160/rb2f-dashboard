@@ -2,7 +2,9 @@
 export function num(v: unknown): number {
   if (v == null) return 0;
   if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
-  const s = String(v).replace(/[₹,%\s]/g, '').replace(/^Rs\.?/i, '');
+  const s = String(v)
+    .replace(/[₹,%\s]/g, '')
+    .replace(/^Rs\.?/i, '');
   if (!s || s === '-' || s === '--' || /^n\/?a$/i.test(s)) return 0;
   const n = Number(s);
   return Number.isFinite(n) ? n : 0;
@@ -39,13 +41,15 @@ export function fileDateRange(fileName: string): [string, string] | null {
 }
 
 export function inferDateOrder(values: unknown[], fileName = ''): DateOrder {
-  let dayFirst = 0, monthFirst = 0;
+  let dayFirst = 0,
+    monthFirst = 0;
   const amb: [number, number, string][] = [];
   for (const v of values) {
     if (typeof v !== 'string') continue;
     const m = v.trim().match(PARTS);
     if (!m) continue;
-    const a = Number(m[1]), b = Number(m[2]);
+    const a = Number(m[1]),
+      b = Number(m[2]);
     if (a > 12 && b <= 12) dayFirst++;
     else if (b > 12 && a <= 12) monthFirst++;
     else amb.push([a, b, m[3] ?? '']);
@@ -57,7 +61,8 @@ export function inferDateOrder(values: unknown[], fileName = ''): DateOrder {
       const iso = `${y}-${pad(mo)}-${pad(d)}`;
       return iso >= range[0] && iso <= range[1];
     };
-    let dmy = 0, mdy = 0;
+    let dmy = 0,
+      mdy = 0;
     for (const [a, b, y] of amb.slice(0, 2000)) {
       if (inside(y, b, a)) dmy++;
       if (inside(y, a, b)) mdy++;
@@ -89,7 +94,9 @@ export function toISODate(v: unknown, order: DateOrder = 'dmy'): string | null {
   }
   m = s.match(/^(\d{1,2})[-\s]([A-Za-z]{3})[a-z]*[-\s,]+(\d{4})/);
   if (m) {
-    const mon = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(g(m, 2).toLowerCase());
+    const mon = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'].indexOf(
+      g(m, 2).toLowerCase()
+    );
     if (mon >= 0) return `${g(m, 3)}-${pad(mon + 1)}-${pad(+g(m, 1))}`;
   }
   return null;

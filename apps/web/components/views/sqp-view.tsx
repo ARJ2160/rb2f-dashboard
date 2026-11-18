@@ -31,21 +31,32 @@ const periodKey = (p: Pick<SqpPeriod, 'from' | 'to'>) => `${p.from}|${p.to}`;
 
 function periodLabel(p: SqpPeriod) {
   const days = Math.round((Date.parse(p.to) - Date.parse(p.from)) / 86_400_000) + 1;
-  const kind = days === 7 ? 'Week' : days >= 28 && days <= 31 ? 'Month' : days >= 89 && days <= 92 ? 'Quarter' : `${days} days`;
+  const kind =
+    days === 7
+      ? 'Week'
+      : days >= 28 && days <= 31
+        ? 'Month'
+        : days >= 89 && days <= 92
+          ? 'Quarter'
+          : `${days} days`;
   return `${kind} · ${fmtDateLong(p.from)} – ${fmtDateLong(p.to)}`;
 }
 
 function StrengthBadge({ s }: { s: SqpStrength | null }) {
   if (!s) return <>{DASH}</>;
   const tone = s === 'Strong' ? 'badge-success' : s === 'Medium' ? 'badge-warning' : 'badge-ghost';
-  return <span className={`badge badge-sm whitespace-nowrap ${s === 'Low' ? 'badge-soft' : ''} ${tone}`}>{s}</span>;
+  return (
+    <span className={`badge badge-sm whitespace-nowrap ${s === 'Low' ? 'badge-soft' : ''} ${tone}`}>{s}</span>
+  );
 }
 
 /** Total / Brand / Share cells for one funnel stage. */
 function Stage({ total, brand, share }: { total: number; brand: number; share: number | null }) {
   return (
     <>
-      <td className="num whitespace-nowrap border-l border-line/60 px-3 py-1.5 text-right">{fmtInt(total)}</td>
+      <td className="num whitespace-nowrap border-l border-line/60 px-3 py-1.5 text-right">
+        {fmtInt(total)}
+      </td>
       <td className="num whitespace-nowrap px-3 py-1.5 text-right">{fmtInt(brand)}</td>
       <td className="num whitespace-nowrap px-3 py-1.5 text-right font-medium">{rate(share)}</td>
     </>
@@ -54,7 +65,13 @@ function Stage({ total, brand, share }: { total: number; brand: number; share: n
 
 function ChannelBadge({ label }: { label: string }) {
   const tone =
-    label === 'SP' ? 'badge-info' : label === 'SB' ? 'badge-secondary' : label === 'SP & SB' ? 'badge-primary' : 'badge-ghost';
+    label === 'SP'
+      ? 'badge-info'
+      : label === 'SB'
+        ? 'badge-secondary'
+        : label === 'SP & SB'
+          ? 'badge-primary'
+          : 'badge-ghost';
   return <span className={`badge badge-sm badge-soft whitespace-nowrap ${tone}`}>{label}</span>;
 }
 
@@ -79,16 +96,32 @@ function AdCells({ r }: { r: SqpRow }) {
   const tone = r.acosVsAccount === 'worse' ? 'text-bad' : r.acosVsAccount === 'better' ? 'text-good' : '';
   return (
     <>
-      <td className={`num whitespace-nowrap px-3 py-1.5 text-right ${r.acosPct == null ? 'text-muted' : `font-semibold ${tone}`}`}>
+      <td
+        className={`num whitespace-nowrap px-3 py-1.5 text-right ${r.acosPct == null ? 'text-muted' : `font-semibold ${tone}`}`}
+      >
         {rate(r.acosPct)}
       </td>
-      <td className={`num whitespace-nowrap px-3 py-1.5 text-right ${r.spend == null ? 'text-muted' : ''}`}>{fmtMoney(r.spend)}</td>
+      <td className={`num whitespace-nowrap px-3 py-1.5 text-right ${r.spend == null ? 'text-muted' : ''}`}>
+        {fmtMoney(r.spend)}
+      </td>
     </>
   );
 }
 
-const Th = ({ children, right = false, className = '' }: { children: ReactNode; right?: boolean; className?: string }) => (
-  <th className={`whitespace-nowrap px-3 py-2 font-medium ${right ? 'text-right' : 'text-left'} ${className}`}>{children}</th>
+const Th = ({
+  children,
+  right = false,
+  className = '',
+}: {
+  children: ReactNode;
+  right?: boolean;
+  className?: string;
+}) => (
+  <th
+    className={`whitespace-nowrap px-3 py-2 font-medium ${right ? 'text-right' : 'text-left'} ${className}`}
+  >
+    {children}
+  </th>
 );
 
 /**
@@ -172,11 +205,20 @@ export function SqpView({ profileId }: { profileId: string }) {
                   className={`btn btn-sm join-item ${view === v ? 'btn-primary' : 'font-normal'}`}
                 >
                   {v === 'opportunities' ? 'Opportunities' : 'SQP report'}
-                  {k && <span className="opacity-70">({fmtInt(v === 'opportunities' ? k.opportunities : k.queries)})</span>}
+                  {k && (
+                    <span className="opacity-70">
+                      ({fmtInt(v === 'opportunities' ? k.opportunities : k.queries)})
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
-            <input value={qDraft} onChange={(e) => setQDraft(e.target.value)} placeholder="Search queries…" className="input input-sm w-52" />
+            <input
+              value={qDraft}
+              onChange={(e) => setQDraft(e.target.value)}
+              placeholder="Search queries…"
+              className="input input-sm w-52"
+            />
             {isOpp && (
               <>
                 <Select label="Strength" value={strength} onChange={setStrength} options={STRENGTHS} />
@@ -184,17 +226,27 @@ export function SqpView({ profileId }: { profileId: string }) {
                 <Select label="Targeted?" value={targeted} onChange={setTargeted} options={TARGETED} />
               </>
             )}
-            <Select label="Sort by" value={sort} onChange={(v) => setSort(v as SqpSort)} allLabel={null} options={isOpp ? OPP_SORTS : REPORT_SORTS} />
+            <Select
+              label="Sort by"
+              value={sort}
+              onChange={(v) => setSort(v as SqpSort)}
+              allLabel={null}
+              options={isOpp ? OPP_SORTS : REPORT_SORTS}
+            />
           </>
         ) : undefined
       }
     >
       {data && !hasReport && (
         <div className="rounded-box border border-line bg-surface px-4 py-6 text-sm shadow-sm">
-          No Search Query Performance report for this profile yet. Export the <b>Brand View</b> report from Brand Analytics and upload it
-          on the Upload page. The period is read from Amazon&apos;s &ldquo;Select week / month / quarter&rdquo; line above the header, or
-          from the file name if that line was removed — e.g.{' '}
-          <code className="rounded bg-base-200 px-1 py-0.5 text-xs">Search_Query_Performance_1_July_-_31_July.csv</code>.
+          No Search Query Performance report for this profile yet. Export the <b>Brand View</b> report from
+          Brand Analytics and upload it on the Upload page. The period is read from Amazon&apos;s
+          &ldquo;Select week / month / quarter&rdquo; line above the header, or from the file name if that
+          line was removed — e.g.{' '}
+          <code className="rounded bg-base-200 px-1 py-0.5 text-xs">
+            Search_Query_Performance_1_July_-_31_July.csv
+          </code>
+          .
         </div>
       )}
 
@@ -202,11 +254,23 @@ export function SqpView({ profileId }: { profileId: string }) {
         <>
           <div className="stats stats-vertical w-full border border-line bg-base-100 shadow-sm sm:stats-horizontal">
             {[
-              { label: 'Opportunities', value: fmtInt(k.opportunities), desc: `of ${fmtInt(k.queries)} queries` },
-              { label: 'Strong', value: fmtInt(k.strong), desc: 'CTR, add-to-cart and purchase % all beat category' },
+              {
+                label: 'Opportunities',
+                value: fmtInt(k.opportunities),
+                desc: `of ${fmtInt(k.queries)} queries`,
+              },
+              {
+                label: 'Strong',
+                value: fmtInt(k.strong),
+                desc: 'CTR, add-to-cart and purchase % all beat category',
+              },
               { label: 'Medium', value: fmtInt(k.medium), desc: '2 of the 3 beat category' },
               { label: 'Low', value: fmtInt(k.low), desc: '1 of the 3 beats category' },
-              { label: 'Launch in SP & SB', value: fmtInt(k.launchBoth), desc: `SP only ${fmtInt(k.launchSp)} · SB only ${fmtInt(k.launchSb)}` },
+              {
+                label: 'Launch in SP & SB',
+                value: fmtInt(k.launchBoth),
+                desc: `SP only ${fmtInt(k.launchSp)} · SB only ${fmtInt(k.launchSb)}`,
+              },
               { label: 'Account ACoS', value: rate(data.accountAcosPct), desc: 'search terms, same period' },
             ].map((s) => (
               <div key={s.label} className="stat px-4 py-3">
@@ -236,13 +300,19 @@ export function SqpView({ profileId }: { profileId: string }) {
                   {data.rows.length === 0 && (
                     <tr>
                       <td colSpan={8} className="px-3 py-8 text-center text-muted">
-                        No query in this period beats the category on any of CTR, add-to-cart or purchase % with enough clicks — or the filters exclude them.
+                        No query in this period beats the category on any of CTR, add-to-cart or purchase %
+                        with enough clicks — or the filters exclude them.
                       </td>
                     </tr>
                   )}
                   {data.rows.map((r) => (
-                    <tr key={r.query} className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft">
-                      <td className="sticky left-0 z-10 max-w-72 bg-inherit px-3 py-1.5 font-medium">{r.query}</td>
+                    <tr
+                      key={r.query}
+                      className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft"
+                    >
+                      <td className="sticky left-0 z-10 max-w-72 bg-inherit px-3 py-1.5 font-medium">
+                        {r.query}
+                      </td>
                       <td className="px-3 py-1.5">
                         <StrengthBadge s={r.strength} />
                       </td>
@@ -250,7 +320,9 @@ export function SqpView({ profileId }: { profileId: string }) {
                         <ChannelBadge label={r.targeted} />
                       </td>
                       <td className="num px-3 py-1.5 text-right">{fmtInt(r.volume)}</td>
-                      <td className="px-3 py-1.5">{r.launchIn ? <ChannelBadge label={r.launchIn} /> : DASH}</td>
+                      <td className="px-3 py-1.5">
+                        {r.launchIn ? <ChannelBadge label={r.launchIn} /> : DASH}
+                      </td>
                       <td className="max-w-md whitespace-normal px-3 py-1.5 text-xs text-muted">
                         <Basis text={r.basis} />
                       </td>
@@ -265,14 +337,24 @@ export function SqpView({ profileId }: { profileId: string }) {
               <table className="table table-sm">
                 <thead className={THEAD}>
                   <tr className="text-xs text-muted">
-                    <th rowSpan={2} className="sticky left-0 z-30 min-w-56 bg-base-200 px-3 py-2 text-left align-bottom font-medium">
+                    <th
+                      rowSpan={2}
+                      className="sticky left-0 z-30 min-w-56 bg-base-200 px-3 py-2 text-left align-bottom font-medium"
+                    >
                       Search query
                     </th>
-                    <th rowSpan={2} className="whitespace-nowrap px-3 py-2 text-right align-bottom font-medium">
+                    <th
+                      rowSpan={2}
+                      className="whitespace-nowrap px-3 py-2 text-right align-bottom font-medium"
+                    >
                       Search volume
                     </th>
                     {['Impressions', 'Clicks', 'Cart adds', 'Purchases'].map((g) => (
-                      <th key={g} colSpan={3} className="border-l border-line/60 px-3 pt-2 pb-0 text-center font-semibold text-ink">
+                      <th
+                        key={g}
+                        colSpan={3}
+                        className="border-l border-line/60 px-3 pt-2 pb-0 text-center font-semibold text-ink"
+                      >
                         {g}
                       </th>
                     ))}
@@ -280,7 +362,9 @@ export function SqpView({ profileId }: { profileId: string }) {
                   <tr className="text-xs text-muted">
                     {['Impressions', 'Clicks', 'Cart adds', 'Purchases'].map((g) => (
                       <Fragment key={g}>
-                        <Th right className="border-l border-line/60">Total</Th>
+                        <Th right className="border-l border-line/60">
+                          Total
+                        </Th>
                         <Th right>Brand</Th>
                         <Th right>Share</Th>
                       </Fragment>
@@ -296,10 +380,19 @@ export function SqpView({ profileId }: { profileId: string }) {
                     </tr>
                   )}
                   {data.rows.map((r) => (
-                    <tr key={r.query} className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft">
-                      <td className="sticky left-0 z-10 max-w-72 bg-inherit px-3 py-1.5 font-medium">{r.query}</td>
+                    <tr
+                      key={r.query}
+                      className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft"
+                    >
+                      <td className="sticky left-0 z-10 max-w-72 bg-inherit px-3 py-1.5 font-medium">
+                        {r.query}
+                      </td>
                       <td className="num px-3 py-1.5 text-right">{fmtInt(r.volume)}</td>
-                      <Stage total={r.impressionsTotal} brand={r.impressionsBrand} share={r.impressionShare} />
+                      <Stage
+                        total={r.impressionsTotal}
+                        brand={r.impressionsBrand}
+                        share={r.impressionShare}
+                      />
                       <Stage total={r.clicksTotal} brand={r.clicksBrand} share={r.clickShare} />
                       <Stage total={r.cartAddsTotal} brand={r.cartAddsBrand} share={r.cartAddShare} />
                       <Stage total={r.purchasesTotal} brand={r.purchasesBrand} share={r.purchaseShare} />

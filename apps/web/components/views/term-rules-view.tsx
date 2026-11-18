@@ -67,7 +67,8 @@ export function TermRulesView({
       {data && (
         <>
           <div className="text-sm text-muted">
-            {applied.length === 0 ? 'All' : 'Matching'} {noun}: <span className="font-semibold text-ink">{fmtInt(data.totalMatched)}</span>
+            {applied.length === 0 ? 'All' : 'Matching'} {noun}:{' '}
+            <span className="font-semibold text-ink">{fmtInt(data.totalMatched)}</span>
           </div>
           <ActionTable
             rows={data.rows}

@@ -62,7 +62,13 @@ export function SearchTermsView(props: RangeProps) {
   const comparing = !!props.compare;
 
   const { data, prev, error, loading } = useCompareReport(
-    (p) => getSearchTerms(props.profileId, p.from, p.to, { channel: channel || 'all', ...filters, q, sort: sort || 'spend' }),
+    (p) =>
+      getSearchTerms(props.profileId, p.from, p.to, {
+        channel: channel || 'all',
+        ...filters,
+        q,
+        sort: sort || 'spend',
+      }),
     [channel, filters.category, filters.adType, filters.targeting, filters.branding, q, sort],
     props
   );
@@ -103,7 +109,9 @@ export function SearchTermsView(props: RangeProps) {
             <table className="table table-sm">
               <thead className={THEAD}>
                 <tr className="text-xs text-muted">
-                  <th className="sticky left-0 z-30 min-w-64 bg-base-200 px-3 py-2 text-left font-medium">Search term</th>
+                  <th className="sticky left-0 z-30 min-w-64 bg-base-200 px-3 py-2 text-left font-medium">
+                    Search term
+                  </th>
                   <th className="px-3 py-2 text-left font-medium">Channel</th>
                   <th className="px-3 py-2 text-left font-medium">Branding</th>
                   <th className="min-w-56 px-3 py-2 text-left font-medium">Targeting</th>
@@ -111,23 +119,34 @@ export function SearchTermsView(props: RangeProps) {
                   <AdHeader />
                 </tr>
                 <tr className="border-b border-line bg-accent-soft font-semibold">
-                  <td className="sticky left-0 z-30 bg-accent-soft px-3 py-1.5">TOTAL · {fmtInt(data.totalTerms)} terms</td>
+                  <td className="sticky left-0 z-30 bg-accent-soft px-3 py-1.5">
+                    TOTAL · {fmtInt(data.totalTerms)} terms
+                  </td>
                   <td colSpan={4} />
                   <AdCells m={data.total} prev={prev?.total} comparing={comparing} />
                 </tr>
               </thead>
               <tbody>
                 {data.rows.map((r) => (
-                  <tr key={r.searchTerm} className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft">
+                  <tr
+                    key={r.searchTerm}
+                    className="border-b border-line/60 align-top odd:bg-surface even:bg-stripe hover:bg-accent-soft"
+                  >
                     <td className="sticky left-0 z-10 max-w-80 bg-inherit px-3 py-1.5">
                       <div className="truncate" title={r.searchTerm}>
                         {r.searchTerm}
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-3 py-1.5 text-xs">{r.channels}</td>
-                    <td className={`whitespace-nowrap px-3 py-1.5 text-xs ${r.branding === 'Competitor' ? 'text-warn' : ''}`}>{r.branding}</td>
+                    <td
+                      className={`whitespace-nowrap px-3 py-1.5 text-xs ${r.branding === 'Competitor' ? 'text-warn' : ''}`}
+                    >
+                      {r.branding}
+                    </td>
                     <td className="max-w-72 px-3 py-1.5">
-                      <div className="mb-0.5 text-[10px] uppercase tracking-wide text-muted">{r.targetTypes.join(' · ')}</div>
+                      <div className="mb-0.5 text-[10px] uppercase tracking-wide text-muted">
+                        {r.targetTypes.join(' · ')}
+                      </div>
                       <List items={r.targets} total={r.targetCount} />
                     </td>
                     <td className="max-w-80 px-3 py-1.5">

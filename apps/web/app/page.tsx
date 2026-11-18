@@ -31,7 +31,9 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 const reportLabel = (t: string) =>
-  REPORT_TYPES[t as keyof typeof REPORT_TYPES]?.label ?? BK_REPORT_LABEL[t as keyof typeof BK_REPORT_LABEL] ?? t;
+  REPORT_TYPES[t as keyof typeof REPORT_TYPES]?.label ??
+  BK_REPORT_LABEL[t as keyof typeof BK_REPORT_LABEL] ??
+  t;
 
 function fmtWhen(iso: string | null): string {
   if (!iso) return 'never';
@@ -173,7 +175,7 @@ export default function GcsPage() {
       if (
         force &&
         !window.confirm(
-          `Re-ingest every ${MARKETPLACES.find(m => m.id === marketplace)?.label ?? marketplace} file for ${brand}?\n\n` +
+          `Re-ingest every ${MARKETPLACES.find((m) => m.id === marketplace)?.label ?? marketplace} file for ${brand}?\n\n` +
             'This re-processes the whole folder and can take several minutes' +
             (reingestEvery ? `; it can run once every ${reingestEvery} minutes per brand.` : '.')
         )
@@ -251,7 +253,11 @@ export default function GcsPage() {
             </p>
           </div>
 
-          <div className="inline-flex rounded-xl border border-line bg-side p-1" role="radiogroup" aria-label="Marketplace">
+          <div
+            className="inline-flex rounded-xl border border-line bg-side p-1"
+            role="radiogroup"
+            aria-label="Marketplace"
+          >
             {MARKETPLACES.map((m) => {
               const on = marketplace === m.id;
               return (
@@ -261,7 +267,9 @@ export default function GcsPage() {
                   aria-checked={on}
                   onClick={() => setMarketplace(m.id)}
                   className={`flex h-9 items-center gap-2 rounded-lg pl-1.5 pr-3.5 text-sm transition-all ${
-                    on ? 'bg-surface font-semibold text-ink shadow-[0_1px_3px_rgb(20_23_28/0.12)] ring-1 ring-line' : 'text-ink/65 hover:text-ink'
+                    on
+                      ? 'bg-surface font-semibold text-ink shadow-[0_1px_3px_rgb(20_23_28/0.12)] ring-1 ring-line'
+                      : 'text-ink/65 hover:text-ink'
                   }`}
                   title={`Sync and view each brand's ${m.id}/ folder`}
                 >
@@ -297,7 +305,11 @@ export default function GcsPage() {
                 onClick={() => void sync(false)}
                 disabled={running || requesting || syncWait > 0}
                 className="btn btn-sm btn-neutral"
-                title={syncWait > 0 ? 'Just synced — available again shortly' : 'Pull new or changed files from GCS'}
+                title={
+                  syncWait > 0
+                    ? 'Just synced — available again shortly'
+                    : 'Pull new or changed files from GCS'
+                }
               >
                 {running ? 'Syncing…' : syncWait > 0 ? `Sync again in ${fmtWait(syncWait)}` : 'Sync now'}
               </button>
@@ -320,7 +332,10 @@ export default function GcsPage() {
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
           {current && <SyncStatus brand={current} />}
           {current && (current.filesSynced > 0 || job) && (
-            <button onClick={() => setShowFiles(!showFiles)} className="text-xs font-medium text-ink/70 underline-offset-2 hover:text-ink hover:underline">
+            <button
+              onClick={() => setShowFiles(!showFiles)}
+              className="text-xs font-medium text-ink/70 underline-offset-2 hover:text-ink hover:underline"
+            >
               {showFiles ? 'Hide files' : `Show files (${current.filesSynced || job?.filesTotal || 0})`}
             </button>
           )}
@@ -351,7 +366,10 @@ export default function GcsPage() {
           subtitle={`Blinkit data from GCS · last synced ${fmtWhen(current.lastSyncedAt)}`}
           emptyState={
             running ? (
-              <>Pulling {current.brand}&apos;s Blinkit files from GCS — the reports appear as soon as the sync finishes.</>
+              <>
+                Pulling {current.brand}&apos;s Blinkit files from GCS — the reports appear as soon as the sync
+                finishes.
+              </>
             ) : (
               <>
                 No Blinkit data synced for {current.brand} yet — expected under{' '}
@@ -377,7 +395,10 @@ export default function GcsPage() {
           subtitle={`Swiggy Instamart data from GCS · last synced ${fmtWhen(current.lastSyncedAt)}`}
           emptyState={
             running ? (
-              <>Pulling {current.brand}&apos;s Instamart files from GCS — the reports appear as soon as the sync finishes.</>
+              <>
+                Pulling {current.brand}&apos;s Instamart files from GCS — the reports appear as soon as the
+                sync finishes.
+              </>
             ) : (
               <>
                 No Instamart data synced for {current.brand} yet — expected under{' '}
@@ -396,7 +417,8 @@ export default function GcsPage() {
 
       {current && marketplace === 'zepto' && (
         <div className="rounded-box border border-line bg-surface px-4 py-6 text-sm text-muted">
-          Zepto files can be uploaded and synced, but there is no Zepto dashboard yet — share a sample of each Zepto export to add one.
+          Zepto files can be uploaded and synced, but there is no Zepto dashboard yet — share a sample of each
+          Zepto export to add one.
         </div>
       )}
 
@@ -433,11 +455,17 @@ function SyncStatus({ brand }: { brand: GcsBrand }) {
   if (!job) {
     const synced = !!brand.lastSyncedAt;
     return (
-      <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ${synced ? 'bg-good/10 text-good' : 'bg-black/[0.05] text-muted'}`}>
+      <span
+        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ${synced ? 'bg-good/10 text-good' : 'bg-black/[0.05] text-muted'}`}
+      >
         <span className={`size-1.5 rounded-full ${synced ? 'bg-good' : 'bg-muted'}`} aria-hidden />
         {synced ? 'Synced' : 'Not synced yet'}
         {synced && <span className="text-ink/70">· {fmtWhen(brand.lastSyncedAt)}</span>}
-        {brand.filesSynced > 0 && <span className="text-ink/70">· {brand.filesSynced} file{brand.filesSynced === 1 ? '' : 's'}</span>}
+        {brand.filesSynced > 0 && (
+          <span className="text-ink/70">
+            · {brand.filesSynced} file{brand.filesSynced === 1 ? '' : 's'}
+          </span>
+        )}
       </span>
     );
   }
@@ -536,9 +564,7 @@ function FilesTable({
                 <td className="num px-3 py-2 text-right text-xs">{r.rowsStored || '—'}</td>
                 <td className="whitespace-nowrap px-3 py-2 text-xs text-muted">{fmtWhen(r.updated)}</td>
                 <td className="px-3 py-2">
-                  <span className={`badge badge-sm badge-soft ${STATUS_STYLE[status] ?? ''}`}>
-                    {status}
-                  </span>
+                  <span className={`badge badge-sm badge-soft ${STATUS_STYLE[status] ?? ''}`}>{status}</span>
                 </td>
               </tr>
             );

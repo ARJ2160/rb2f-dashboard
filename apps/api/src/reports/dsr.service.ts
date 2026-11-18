@@ -17,7 +17,13 @@ import { asinCategorySql, listCategories } from './filters';
 import { piActive } from './pi-sales';
 
 /** One row per day {sales, units, pageViews, unpricedMissing} — same shape whether sourced from Pi or Seller+Vendor. */
-type SalesDayRow = { date: string; sales: string; units: string; pageViews: string | null; unpricedMissing: string };
+type SalesDayRow = {
+  date: string;
+  sales: string;
+  units: string;
+  pageViews: string | null;
+  unpricedMissing: string;
+};
 
 /**
  * DSR — Daily Sales Report (rule book §10.1). One row per calendar day.
@@ -31,9 +37,16 @@ type SalesDayRow = { date: string; sales: string; units: string; pageViews: stri
  * TOTAL sums every day; AVG = TOTAL ÷ days in range (ratios recomputed from
  * the averaged sums, which equals the TOTAL ratios).
  */
-export async function getDsr(profileId: string, from: string, to: string, category?: string): Promise<DsrResponse> {
+export async function getDsr(
+  profileId: string,
+  from: string,
+  to: string,
+  category?: string
+): Promise<DsrResponse> {
   const pi = await piActive(profileId, from, to);
-  const salesCat = category ? sql`and ${asinCategorySql('daily_asin_sales.asin', 'products')} = ${category}` : sql``;
+  const salesCat = category
+    ? sql`and ${asinCategorySql('daily_asin_sales.asin', 'products')} = ${category}`
+    : sql``;
   const piCat = category ? sql`and coalesce(p.mapper_category, 'Unmapped') = ${category}` : sql``;
 
   // When Amazon Pi is present it is the only sales source (gross value/units);
@@ -49,7 +62,7 @@ export async function getDsr(profileId: string, from: string, to: string, catego
         left join products p on p.profile_id = s.profile_id and p.asin = s.asin
         where s.profile_id = ${profileId} and s.date between ${from} and ${to} ${piCat}
         group by s.date`)
-    : db
+    : (db
         .select({
           date: dailyAsinSales.date,
           // Reported revenue + Vendor shipped units valued at the mapper's selling price.
@@ -59,14 +72,37 @@ export async function getDsr(profileId: string, from: string, to: string, catego
           unpricedMissing: sql<string>`coalesce(sum(case when ${products.sellingPrice} is null then ${dailyAsinSales.unpricedUnits} else 0 end), 0)`,
         })
         .from(dailyAsinSales)
-        .leftJoin(products, and(eq(products.profileId, dailyAsinSales.profileId), eq(products.asin, dailyAsinSales.asin)))
-        .where(and(eq(dailyAsinSales.profileId, profileId), between(dailyAsinSales.date, from, to), sql`true ${salesCat}`))
-        .groupBy(dailyAsinSales.date) as unknown as Promise<SalesDayRow[]>;
+        .leftJoin(
+          products,
+          and(eq(products.profileId, dailyAsinSales.profileId), eq(products.asin, dailyAsinSales.asin))
+        )
+        .where(
+          and(
+            eq(dailyAsinSales.profileId, profileId),
+            between(dailyAsinSales.date, from, to),
+            sql`true ${salesCat}`
+          )
+        )
+        .groupBy(dailyAsinSales.date) as unknown as Promise<SalesDayRow[]>);
 
-  const [salesRows, ads, categories] = await Promise.all([salesQuery, getAdMetrics(profileId, from, to, category), listCategories(profileId)]);
+  const [salesRows, ads, categories] = await Promise.all([
+    salesQuery,
+    getAdMetrics(profileId, from, to, category),
+    listCategories(profileId),
+  ]);
 
   const byChannel = (['sp', 'sb', 'sd'] as const).map((channel) => {
-    const out = { channel, days: 0, asinDays: 0, campaignDays: 0, spend: 0, adSales: 0, impressions: 0, clicks: 0, adUnits: 0 };
+    const out = {
+      channel,
+      days: 0,
+      asinDays: 0,
+      campaignDays: 0,
+      spend: 0,
+      adSales: 0,
+      impressions: 0,
+      clicks: 0,
+      adUnits: 0,
+    };
     for (const [date, m] of ads.byDate) {
       const v = m[channel];
       if (!v || date < from || date > to) continue;
@@ -123,7 +159,9 @@ export async function getDsr(profileId: string, from: string, to: string, catego
   }
   const missingChannels = byChannel.filter((c) => c.days === 0).map((c) => c.channel.toUpperCase());
   if (adDays && missingChannels.length) {
-    notes.push(`No ${missingChannels.join(' / ')} ad data in this range — upload those reports for these dates.`);
+    notes.push(
+      `No ${missingChannels.join(' / ')} ad data in this range — upload those reports for these dates.`
+    );
   }
   const fallback = byChannel.filter((c) => c.campaignDays > 0);
   if (fallback.length) {
@@ -131,7 +169,9 @@ export async function getDsr(profileId: string, from: string, to: string, catego
       `ASIN-level report missing on some days, campaign report used instead: ${fallback
         .map((c) => `${c.channel.toUpperCase()} ${c.campaignDays} day(s)`)
         .join(', ')}. Upload ${fallback
-        .map((c) => (c.channel === 'sb' ? 'SB Attributed Purchases' : `${c.channel.toUpperCase()} Advertised Product`))
+        .map((c) =>
+          c.channel === 'sb' ? 'SB Attributed Purchases' : `${c.channel.toUpperCase()} Advertised Product`
+        )
         .join(' / ')} for those dates to follow the rule book exactly.`
     );
   }
@@ -141,7 +181,9 @@ export async function getDsr(profileId: string, from: string, to: string, catego
     );
   }
   if (ads.sbUnmatchedCampaigns > 0) {
-    notes.push(`${ads.sbUnmatchedCampaigns} SB attributed campaign-day(s) have no matching SB Campaign report row — their spend is 0. Upload the SB Campaign report for those dates.`);
+    notes.push(
+      `${ads.sbUnmatchedCampaigns} SB attributed campaign-day(s) have no matching SB Campaign report row — their spend is 0. Upload the SB Campaign report for those dates.`
+    );
   }
   const partial = byChannel.filter((c) => c.days > 0 && c.days < dates.length);
   if (partial.length) {
@@ -156,14 +198,21 @@ export async function getDsr(profileId: string, from: string, to: string, catego
     );
   }
   if (pi) {
-    notes.push('Sales & Units come from Amazon Pi (gross), the sole sales source for this profile. Page Views = Pi indexed glance views.');
+    notes.push(
+      'Sales & Units come from Amazon Pi (gross), the sole sales source for this profile. Page Views = Pi indexed glance views.'
+    );
   }
-  if (salesRows.length === 0) notes.push(pi ? 'No Amazon Pi sales in this range.' : 'No Business Report / Vendor Central data in this range.');
+  if (salesRows.length === 0)
+    notes.push(
+      pi ? 'No Amazon Pi sales in this range.' : 'No Business Report / Vendor Central data in this range.'
+    );
   if (adDays === 0) notes.push('No SP/SB/SD ad data in this range — ad columns are 0.');
   const missingSales = dates.length - salesRows.length;
-  if (salesRows.length && missingSales > 0) notes.push(`${missingSales} day(s) in range have no sales data uploaded.`);
+  if (salesRows.length && missingSales > 0)
+    notes.push(`${missingSales} day(s) in range have no sales data uploaded.`);
   const missingAds = dates.filter((d) => !ads.byDate.has(d)).length;
-  if (adDays && missingAds > 0) notes.push(`${missingAds} day(s) in range have no ad data uploaded (ad columns show 0).`);
+  if (adDays && missingAds > 0)
+    notes.push(`${missingAds} day(s) in range have no ad data uploaded (ad columns show 0).`);
 
   return {
     profileId,

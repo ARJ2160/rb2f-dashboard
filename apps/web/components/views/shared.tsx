@@ -47,7 +47,13 @@ export function useCompareReport<T>(load: (p: Period) => Promise<T>, deps: unkno
   return { data, prev, error, loading };
 }
 
-export function ViewShell({ error, loading, notes, toolbar, children }: {
+export function ViewShell({
+  error,
+  loading,
+  notes,
+  toolbar,
+  children,
+}: {
   error: string | null;
   loading: boolean;
   notes?: string[] | undefined;
@@ -69,7 +75,13 @@ export function ViewShell({ error, loading, notes, toolbar, children }: {
   );
 }
 
-export function Select({ label, value, onChange, options, allLabel = 'All' }: {
+export function Select({
+  label,
+  value,
+  onChange,
+  options,
+  allLabel = 'All',
+}: {
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -99,7 +111,13 @@ export function Select({ label, value, onChange, options, allLabel = 'All' }: {
  * (so it drops into the same CSV query param the API already splits on). Empty =
  * "All".
  */
-export function MultiSelect({ label, value, onChange, options, allLabel = 'All' }: {
+export function MultiSelect({
+  label,
+  value,
+  onChange,
+  options,
+  allLabel = 'All',
+}: {
   label: string;
   value: string;
   onChange: (v: string) => void;
@@ -110,7 +128,8 @@ export function MultiSelect({ label, value, onChange, options, allLabel = 'All' 
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    const onDown = (e: MouseEvent) =>
+      ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
@@ -121,17 +140,27 @@ export function MultiSelect({ label, value, onChange, options, allLabel = 'All' 
   }, [open]);
 
   const opts = options.map((o) => (typeof o === 'string' ? { value: o, label: o } : o));
-  const selected = new Set(value.split(',').map((s) => s.trim()).filter(Boolean));
+  const selected = new Set(
+    value
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
   const toggle = (v: string) => {
     const next = new Set(selected);
     next.has(v) ? next.delete(v) : next.add(v);
-    onChange(opts.filter((o) => next.has(o.value)).map((o) => o.value).join(','));
+    onChange(
+      opts
+        .filter((o) => next.has(o.value))
+        .map((o) => o.value)
+        .join(',')
+    );
   };
   const summary =
     selected.size === 0
       ? allLabel
       : selected.size === 1
-        ? opts.find((o) => selected.has(o.value))?.label ?? [...selected][0]
+        ? (opts.find((o) => selected.has(o.value))?.label ?? [...selected][0])
         : `${selected.size} selected`;
 
   return (
@@ -162,7 +191,12 @@ export function MultiSelect({ label, value, onChange, options, allLabel = 'All' 
                 onClick={() => toggle(o.value)}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-black/5"
               >
-                <input type="checkbox" checked={on} readOnly className="checkbox checkbox-xs checkbox-primary pointer-events-none" />
+                <input
+                  type="checkbox"
+                  checked={on}
+                  readOnly
+                  className="checkbox checkbox-xs checkbox-primary pointer-events-none"
+                />
                 <span className={`truncate ${on ? 'font-medium text-ink' : 'text-ink/80'}`}>{o.label}</span>
               </button>
             );
@@ -185,7 +219,12 @@ export interface AdFilterState {
 
 export const EMPTY_AD_FILTERS: AdFilterState = { category: '', adType: '', targeting: '', branding: '' };
 
-export function AdFilterBar({ value, onChange, options, multi = false }: {
+export function AdFilterBar({
+  value,
+  onChange,
+  options,
+  multi = false,
+}: {
   value: AdFilterState;
   onChange: (v: AdFilterState) => void;
   options: AdFilterOptions | undefined;
@@ -197,9 +236,19 @@ export function AdFilterBar({ value, onChange, options, multi = false }: {
   const Field = multi ? MultiSelect : Select;
   return (
     <>
-      <Field label="Category" value={value.category} onChange={set('category')} options={options.categories} />
+      <Field
+        label="Category"
+        value={value.category}
+        onChange={set('category')}
+        options={options.categories}
+      />
       <Field label="Ad type" value={value.adType} onChange={set('adType')} options={options.adTypes} />
-      <Field label="Targeting" value={value.targeting} onChange={set('targeting')} options={options.targetings} />
+      <Field
+        label="Targeting"
+        value={value.targeting}
+        onChange={set('targeting')}
+        options={options.targetings}
+      />
       <Field label="Branding" value={value.branding} onChange={set('branding')} options={options.brandings} />
     </>
   );
@@ -210,7 +259,15 @@ export function AdFilterBar({ value, onChange, options, multi = false }: {
 /** Metrics where a decrease is an improvement. */
 const LOWER_IS_BETTER = new Set(['cpc', 'acosPct', 'tacosPct']);
 
-export function Delta({ cur, prev, metric }: { cur: number | null | undefined; prev: number | null | undefined; metric?: string }) {
+export function Delta({
+  cur,
+  prev,
+  metric,
+}: {
+  cur: number | null | undefined;
+  prev: number | null | undefined;
+  metric?: string;
+}) {
   if (cur == null || prev == null) return <div className="text-[10px] text-muted">—</div>;
   if (prev === 0) return <div className="text-[10px] text-muted">{cur === 0 ? '0%' : 'new'}</div>;
   const d = ((cur - prev) / Math.abs(prev)) * 100;
@@ -225,7 +282,14 @@ export function Delta({ cur, prev, metric }: { cur: number | null | undefined; p
 }
 
 /** A numeric table cell, with the change vs the comparison period underneath when comparing. */
-export function MCell({ v, prev, fmt, metric, comparing, className = '' }: {
+export function MCell({
+  v,
+  prev,
+  fmt,
+  metric,
+  comparing,
+  className = '',
+}: {
   v: number | null | undefined;
   prev?: number | null | undefined;
   fmt: (v: number | null) => string;
@@ -260,7 +324,15 @@ export const AD_COLUMNS: Array<{ key: keyof AdMetrics; label: string; fmt: (v: n
   { key: 'acosPct', label: 'ACoS', fmt: fmtPct },
 ];
 
-export function AdCells({ m, prev, comparing = false }: { m: AdMetrics; prev?: AdMetrics | undefined; comparing?: boolean }) {
+export function AdCells({
+  m,
+  prev,
+  comparing = false,
+}: {
+  m: AdMetrics;
+  prev?: AdMetrics | undefined;
+  comparing?: boolean;
+}) {
   return (
     <>
       {AD_COLUMNS.map((c) => (
@@ -290,7 +362,10 @@ export function AdHeader() {
 }
 
 /** Metric picker for charts. */
-export const CHART_METRICS: Array<{ value: keyof AdMetrics; label: string }> = AD_COLUMNS.map((c) => ({ value: c.key, label: c.label }));
+export const CHART_METRICS: Array<{ value: keyof AdMetrics; label: string }> = AD_COLUMNS.map((c) => ({
+  value: c.key,
+  label: c.label,
+}));
 export const fmtFor = (k: string) => AD_COLUMNS.find((c) => c.key === k)?.fmt ?? fmtMoney;
 
 export function Card({ title, children, right }: { title: string; children: ReactNode; right?: ReactNode }) {

@@ -28,7 +28,14 @@ import { KeywordSovView } from '@/components/views/keyword-sov-view';
 import type { Period } from '@/components/views/shared';
 import { AmazonOverview } from '@/components/views/overview-view';
 import { InventorySection, type InventorySub } from '@/components/inventory/sc-views';
-import { DashboardShell, FieldSelect, PeriodPicker, SideCard, presetRange, type ShellTab } from '@/components/shell/dashboard-shell';
+import {
+  DashboardShell,
+  FieldSelect,
+  PeriodPicker,
+  SideCard,
+  presetRange,
+  type ShellTab,
+} from '@/components/shell/dashboard-shell';
 import { previousRange } from '@/components/shell/use-load';
 
 type Tab =
@@ -58,41 +65,181 @@ type Tab =
   | 'inv_trend';
 
 const TABS: Array<ShellTab<Tab>> = [
-  { id: 'summary', label: 'Account Overview', hint: 'Month-to-date vs last month, last 7 days vs the 7 before, and a custom period compare', icon: 'mom', group: 'Performance' },
-  { id: 'overview', label: 'Ads Overview', hint: 'Ad performance overview — tick metrics to plot their daily trend', icon: 'overview', group: 'Performance' },
-  { id: 'dsr', label: 'DSR', hint: 'Daily Sales Report — one row per date', icon: 'dsr', group: 'Performance' },
+  {
+    id: 'summary',
+    label: 'Account Overview',
+    hint: 'Month-to-date vs last month, last 7 days vs the 7 before, and a custom period compare',
+    icon: 'mom',
+    group: 'Performance',
+  },
+  {
+    id: 'overview',
+    label: 'Ads Overview',
+    hint: 'Ad performance overview — tick metrics to plot their daily trend',
+    icon: 'overview',
+    group: 'Performance',
+  },
+  {
+    id: 'dsr',
+    label: 'DSR',
+    hint: 'Daily Sales Report — one row per date',
+    icon: 'dsr',
+    group: 'Performance',
+  },
   { id: 'dur', label: 'DUR', hint: 'Daily Units Report — ASIN × date', icon: 'dur', group: 'Performance' },
-  { id: 'category', label: 'Category', hint: 'DSR columns by ASIN-mapper category', icon: 'category', group: 'Analysis' },
-  { id: 'ads', label: 'Ads Analysis', hint: 'Ad types, targeting, Branded / Competitor / Generic', icon: 'ads', group: 'Analysis' },
-  { id: 'placement', label: 'Placements', hint: 'SP + SB by Top of Search / Rest of Search / Product Pages', icon: 'placement', group: 'Analysis' },
-  { id: 'state', label: 'State Wise Data', hint: 'Sales and units by ship-to state', icon: 'map', group: 'Analysis' },
+  {
+    id: 'category',
+    label: 'Category',
+    hint: 'DSR columns by ASIN-mapper category',
+    icon: 'category',
+    group: 'Analysis',
+  },
+  {
+    id: 'ads',
+    label: 'Ads Analysis',
+    hint: 'Ad types, targeting, Branded / Competitor / Generic',
+    icon: 'ads',
+    group: 'Analysis',
+  },
+  {
+    id: 'placement',
+    label: 'Placements',
+    hint: 'SP + SB by Top of Search / Rest of Search / Product Pages',
+    icon: 'placement',
+    group: 'Analysis',
+  },
+  {
+    id: 'state',
+    label: 'State Wise Data',
+    hint: 'Sales and units by ship-to state',
+    icon: 'map',
+    group: 'Analysis',
+  },
   { id: 'hourly', label: 'Hour-wise', hint: 'Ad metrics by hour of day', icon: 'hourly', group: 'Analysis' },
-  { id: 'search', label: 'Search Terms', hint: 'SP + SB search terms, SD targets', icon: 'search', group: 'Keywords' },
-  { id: 'negations', label: 'Search Term Negations', hint: 'Terms with 0 orders & high clicks, or ACoS far above the account with few orders', icon: 'negate', group: 'Keywords' },
-  { id: 'termrules', label: 'Search Term Rules', hint: 'List search terms by your own metric rules (clicks, ACoS, ROAS, …)', icon: 'rules', group: 'Keywords' },
-  { id: 'harvest', label: 'Keyword Harvesting', hint: 'SP / SB search terms with multiple orders that are not manual targets yet', icon: 'harvest', group: 'Keywords' },
+  {
+    id: 'search',
+    label: 'Search Terms',
+    hint: 'SP + SB search terms, SD targets',
+    icon: 'search',
+    group: 'Keywords',
+  },
+  {
+    id: 'negations',
+    label: 'Search Term Negations',
+    hint: 'Terms with 0 orders & high clicks, or ACoS far above the account with few orders',
+    icon: 'negate',
+    group: 'Keywords',
+  },
+  {
+    id: 'termrules',
+    label: 'Search Term Rules',
+    hint: 'List search terms by your own metric rules (clicks, ACoS, ROAS, …)',
+    icon: 'rules',
+    group: 'Keywords',
+  },
+  {
+    id: 'harvest',
+    label: 'Keyword Harvesting',
+    hint: 'SP / SB search terms with multiple orders that are not manual targets yet',
+    icon: 'harvest',
+    group: 'Keywords',
+  },
   // Targeting page hidden for now — uncomment to restore (also the import and render block).
   // { id: 'targeting', label: 'Targeting', hint: 'Target-level rules, bid reduction and bid scale-up (range > 3 days)', icon: 'ads', group: 'Keywords' },
-  { id: 'sqp', label: 'SQP', hint: "Search Query Performance — queries where the brand beats the category but isn't targeted yet", icon: 'sqp', group: 'Keywords' },
-  { id: 'gv', label: 'Glance Views', hint: 'Amazon Pi indexed glance views by ASIN and day', icon: 'eye', group: 'Keywords' },
-  { id: 'searchrank', label: 'Search Rank', hint: 'Amazon Pi monthly organic search rank per ASIN (lower is better)', icon: 'rank', group: 'Keywords' },
-  { id: 'keywordsov', label: 'Keyword SOV', hint: 'Amazon Pi keyword share of voice, CTR / CPC / ACoS across SP, SB and organic', icon: 'pie', group: 'Keywords' },
-  { id: 'inv_overview', label: 'Overview', hint: 'FBA stock, demand and shipments — Seller Central inventory', icon: 'overview', group: 'Inventory' },
-  { id: 'inv_skus', label: 'SKUs', hint: 'Sellable, DRR, days of cover and stock health per SKU', icon: 'dur', group: 'Inventory' },
-  { id: 'inv_warehouses', label: 'Warehouses', hint: 'Stock, sales and shipments per fulfilment centre', icon: 'map', group: 'Inventory' },
-  { id: 'inv_shipments', label: 'Shipments', hint: 'FBA shipments: units expected vs located, fill rate, flags', icon: 'dsr', group: 'Inventory' },
-  { id: 'inv_skufc', label: 'SKU × Warehouse', hint: 'Sellable, demand and cover per SKU × fulfilment centre', icon: 'category', group: 'Inventory' },
-  { id: 'inv_trend', label: 'Trend', hint: 'Daily stock vs units sold and weekly shipments', icon: 'dsr', group: 'Inventory' },
+  {
+    id: 'sqp',
+    label: 'SQP',
+    hint: "Search Query Performance — queries where the brand beats the category but isn't targeted yet",
+    icon: 'sqp',
+    group: 'Keywords',
+  },
+  {
+    id: 'gv',
+    label: 'Glance Views',
+    hint: 'Amazon Pi indexed glance views by ASIN and day',
+    icon: 'eye',
+    group: 'Keywords',
+  },
+  {
+    id: 'searchrank',
+    label: 'Search Rank',
+    hint: 'Amazon Pi monthly organic search rank per ASIN (lower is better)',
+    icon: 'rank',
+    group: 'Keywords',
+  },
+  {
+    id: 'keywordsov',
+    label: 'Keyword SOV',
+    hint: 'Amazon Pi keyword share of voice, CTR / CPC / ACoS across SP, SB and organic',
+    icon: 'pie',
+    group: 'Keywords',
+  },
+  {
+    id: 'inv_overview',
+    label: 'Overview',
+    hint: 'FBA stock, demand and shipments — Seller Central inventory',
+    icon: 'overview',
+    group: 'Inventory',
+  },
+  {
+    id: 'inv_skus',
+    label: 'SKUs',
+    hint: 'Sellable, DRR, days of cover and stock health per SKU',
+    icon: 'dur',
+    group: 'Inventory',
+  },
+  {
+    id: 'inv_warehouses',
+    label: 'Warehouses',
+    hint: 'Stock, sales and shipments per fulfilment centre',
+    icon: 'map',
+    group: 'Inventory',
+  },
+  {
+    id: 'inv_shipments',
+    label: 'Shipments',
+    hint: 'FBA shipments: units expected vs located, fill rate, flags',
+    icon: 'dsr',
+    group: 'Inventory',
+  },
+  {
+    id: 'inv_skufc',
+    label: 'SKU × Warehouse',
+    hint: 'Sellable, demand and cover per SKU × fulfilment centre',
+    icon: 'category',
+    group: 'Inventory',
+  },
+  {
+    id: 'inv_trend',
+    label: 'Trend',
+    hint: 'Daily stock vs units sold and weekly shipments',
+    icon: 'dsr',
+    group: 'Inventory',
+  },
 ];
 
 const INV_SUB: Partial<Record<Tab, InventorySub>> = {
-  inv_overview: 'overview', inv_skus: 'skus', inv_warehouses: 'warehouses', inv_shipments: 'shipments', inv_skufc: 'skuFc', inv_trend: 'trend',
+  inv_overview: 'overview',
+  inv_skus: 'skus',
+  inv_warehouses: 'warehouses',
+  inv_shipments: 'shipments',
+  inv_skufc: 'skuFc',
+  inv_trend: 'trend',
 };
 
 /** Latest / earliest day any source has data. */
 function bounds(c: CoverageResponse | null) {
-  const latest = c?.sources.map((s) => s.to).filter((d): d is string => !!d).sort().at(-1) ?? null;
-  const earliest = c?.sources.map((s) => s.from).filter((d): d is string => !!d).sort()[0] ?? null;
+  const latest =
+    c?.sources
+      .map((s) => s.to)
+      .filter((d): d is string => !!d)
+      .sort()
+      .at(-1) ?? null;
+  const earliest =
+    c?.sources
+      .map((s) => s.from)
+      .filter((d): d is string => !!d)
+      .sort()[0] ?? null;
   return { latest, earliest };
 }
 
@@ -152,8 +299,12 @@ export function ReportsDashboard({
     setError(null);
     const req =
       tab === 'dsr'
-        ? getDsr(profileId, range.from, range.to, category).then((d) => alive && (setDsr(d), setCategories(d.categories)))
-        : getDur(profileId, range.from, range.to, metric, category).then((d) => alive && (setDur(d), setCategories(d.categories)));
+        ? getDsr(profileId, range.from, range.to, category).then(
+            (d) => alive && (setDsr(d), setCategories(d.categories))
+          )
+        : getDur(profileId, range.from, range.to, metric, category).then(
+            (d) => alive && (setDur(d), setCategories(d.categories))
+          );
     req.catch((e: Error) => alive && setError(e.message)).finally(() => alive && setLoading(false));
     return () => {
       alive = false;
@@ -163,11 +314,18 @@ export function ReportsDashboard({
   const { latest, earliest } = bounds(coverage);
   const hasAnyData = coverage?.sources.some((s) => s.days > 0);
   // MoM / WoW, SQP and Keyword Harvesting choose their own periods, so the date range doesn't apply to them.
-  const isSummary = tab === 'summary' || tab === 'sqp' || tab === 'harvest' || tab === 'gv' || tab === 'searchrank' || tab === 'keywordsov';
+  const isSummary =
+    tab === 'summary' ||
+    tab === 'sqp' ||
+    tab === 'harvest' ||
+    tab === 'gv' ||
+    tab === 'searchrank' ||
+    tab === 'keywordsov';
   // Rule / negation / targeting pages use the selected range but have no comparison period.
   const isActionTab = tab === 'negations' || tab === 'termrules' || tab === 'targeting';
   const isInventory = tab.startsWith('inv_');
-  const isView = tab !== 'dsr' && tab !== 'dur' && tab !== 'overview' && !isSummary && !isActionTab && !isInventory;
+  const isView =
+    tab !== 'dsr' && tab !== 'dur' && tab !== 'overview' && !isSummary && !isActionTab && !isInventory;
   const compare: Period | null =
     isView && compareOn && compareRange && compareRange.from <= compareRange.to ? compareRange : null;
   const toggleCompare = () => {
@@ -177,8 +335,14 @@ export function ReportsDashboard({
 
   const toolbar = (
     <>
-      {range && !isSummary && !isInventory &&
-        (latest ? <PeriodPicker value={range} onChange={setRange} latest={latest} earliest={earliest} /> : <DateRangePicker value={range} onChange={setRange} />)}
+      {range &&
+        !isSummary &&
+        !isInventory &&
+        (latest ? (
+          <PeriodPicker value={range} onChange={setRange} latest={latest} earliest={earliest} />
+        ) : (
+          <DateRangePicker value={range} onChange={setRange} />
+        ))}
 
       {(tab === 'overview' || tab === 'dsr' || tab === 'dur') && (
         <FieldSelect
@@ -207,7 +371,12 @@ export function ReportsDashboard({
       {range && isView && (
         <>
           <label className="field cursor-pointer select-none">
-            <input type="checkbox" className="checkbox checkbox-xs checkbox-primary" checked={compareOn} onChange={toggleCompare} />
+            <input
+              type="checkbox"
+              className="checkbox checkbox-xs checkbox-primary"
+              checked={compareOn}
+              onChange={toggleCompare}
+            />
             <span className="font-medium">Compare</span>
           </label>
           {compareOn && compareRange && (
@@ -241,9 +410,15 @@ export function ReportsDashboard({
       heading={tab !== 'overview'}
       sideCard={coverage && hasAnyData ? <CoverageCard coverage={coverage} /> : null}
     >
-      {coverage && !hasAnyData && tab !== 'sqp' && tab !== 'gv' && tab !== 'searchrank' && tab !== 'keywordsov' && !isInventory && (
-        <div className="rounded-xl border border-line bg-side px-5 py-6 text-sm">{emptyState}</div>
-      )}
+      {coverage &&
+        !hasAnyData &&
+        tab !== 'sqp' &&
+        tab !== 'gv' &&
+        tab !== 'searchrank' &&
+        tab !== 'keywordsov' &&
+        !isInventory && (
+          <div className="rounded-xl border border-line bg-side px-5 py-6 text-sm">{emptyState}</div>
+        )}
       {error && <ErrorBox message={error} />}
 
       {tab === 'summary' && <SummaryView profileId={profileId} compareLoad={getSummaryCompare} />}
@@ -262,7 +437,14 @@ export function ReportsDashboard({
       {range && range.from <= range.to && (
         <>
           {tab === 'overview' && hasAnyData && (
-            <AmazonOverview profileId={profileId} from={range.from} to={range.to} category={category} latest={latest} onCategories={setCategories} />
+            <AmazonOverview
+              profileId={profileId}
+              from={range.from}
+              to={range.to}
+              category={category}
+              latest={latest}
+              onCategories={setCategories}
+            />
           )}
           {tab === 'category' && (
             <CategoryView profileId={profileId} from={range.from} to={range.to} compare={compare} />
@@ -280,7 +462,9 @@ export function ReportsDashboard({
             <AdsView profileId={profileId} from={range.from} to={range.to} compare={compare} />
           )}
           {tab === 'negations' && <NegationsView profileId={profileId} from={range.from} to={range.to} />}
-          {tab === 'termrules' && <TermRulesView profileId={profileId} from={range.from} to={range.to} grain="term" />}
+          {tab === 'termrules' && (
+            <TermRulesView profileId={profileId} from={range.from} to={range.to} grain="term" />
+          )}
           {/* Targeting page hidden for now — restore the import, the tab entry, and this line to bring it back. */}
           {/* {tab === 'targeting' && <TargetingView profileId={profileId} from={range.from} to={range.to} />} */}
           {tab === 'hourly' && (
@@ -324,7 +508,8 @@ function CoverageCard({ coverage }: { coverage: CoverageResponse }) {
         <div>
           <dt className="font-semibold text-ink">ASIN mapper match</dt>
           <dd className={rate != null && rate < 50 ? 'font-medium text-warn' : ''}>
-            {rate == null ? '—' : `${rate.toFixed(0)}%`} ({coverage.asinMapper.mappedAsins}/{coverage.asinMapper.asinsWithSales})
+            {rate == null ? '—' : `${rate.toFixed(0)}%`} ({coverage.asinMapper.mappedAsins}/
+            {coverage.asinMapper.asinsWithSales})
           </dd>
         </div>
       </dl>

@@ -1,4 +1,14 @@
-import { daysInRange, enumerateDates, pct, ratio, type DsrMetrics, type SummaryCompareResponse, type SummaryPeriod, type SummaryResponse, type SummaryRow } from '@dash/shared';
+import {
+  daysInRange,
+  enumerateDates,
+  pct,
+  ratio,
+  type DsrMetrics,
+  type SummaryCompareResponse,
+  type SummaryPeriod,
+  type SummaryResponse,
+  type SummaryRow,
+} from '@dash/shared';
 import { sql } from 'drizzle-orm';
 
 import { db } from '../db/client';
@@ -52,17 +62,29 @@ async function sessionsAndVendor(profileId: string, from: string, to: string, ca
     from daily_asin_sales s
     left join products p on p.profile_id = s.profile_id and p.asin = s.asin
     where s.profile_id = ${profileId} and s.date between ${from} and ${to} ${cat}`);
-  return { sessions: r?.sessions == null ? null : Number(r.sessions), vendorUnits: Number(r?.vendor_units ?? 0) };
+  return {
+    sessions: r?.sessions == null ? null : Number(r.sessions),
+    vendorUnits: Number(r?.vendor_units ?? 0),
+  };
 }
 
-async function loadPeriod(profileId: string, p: { from: string; to: string }, category?: string): Promise<PeriodData> {
-  const [dsr, extra] = await Promise.all([getDsr(profileId, p.from, p.to, category), sessionsAndVendor(profileId, p.from, p.to, category)]);
+async function loadPeriod(
+  profileId: string,
+  p: { from: string; to: string },
+  category?: string
+): Promise<PeriodData> {
+  const [dsr, extra] = await Promise.all([
+    getDsr(profileId, p.from, p.to, category),
+    sessionsAndVendor(profileId, p.from, p.to, category),
+  ]);
   return { m: dsr.total, ...extra };
 }
 
 // ── Rows ──────────────────────────────────────────────────────────────
 
-type Def = Pick<SummaryRow, 'key' | 'label' | 'format' | 'better'> & { get: (p: PeriodData) => number | null };
+type Def = Pick<SummaryRow, 'key' | 'label' | 'format' | 'better'> & {
+  get: (p: PeriodData) => number | null;
+};
 
 /** The metric rows, in the order of the team's MoM / WoW sheet. */
 const ROWS: Def[] = [
@@ -71,7 +93,13 @@ const ROWS: Def[] = [
   { key: 'aov', label: 'AOV', format: 'money', better: 'up', get: (p) => p.m.aov },
   { key: 'sessions', label: 'Sessions', format: 'int', better: 'up', get: (p) => p.sessions },
   { key: 'crPct', label: 'CR%', format: 'pct', better: 'up', get: (p) => pct(p.m.unitsSold, p.sessions) },
-  { key: 'organicSales', label: 'Organic Sales', format: 'money', better: 'up', get: (p) => p.m.organicSales },
+  {
+    key: 'organicSales',
+    label: 'Organic Sales',
+    format: 'money',
+    better: 'up',
+    get: (p) => p.m.organicSales,
+  },
   { key: 'adSales', label: 'Ad Sales', format: 'money', better: 'up', get: (p) => p.m.adSales },
   { key: 'spends', label: 'Ad Spends', format: 'money', better: 'none', get: (p) => p.m.spends },
   { key: 'adUnits', label: 'Ad Units', format: 'int', better: 'up', get: (p) => p.m.adUnits },
@@ -86,7 +114,10 @@ const ROWS: Def[] = [
  * so both sides of every comparison cover the same days. E.g. data through
  * 21 Oct → MTD 1–21 Oct vs PMTD 1–21 Sep, L7D 15–21 Oct vs P7D 8–14 Oct.
  */
-export async function getSummary(profileId: string, opts: { asOf?: string; category?: string } = {}): Promise<SummaryResponse> {
+export async function getSummary(
+  profileId: string,
+  opts: { asOf?: string; category?: string } = {}
+): Promise<SummaryResponse> {
   const [latest, categories] = await Promise.all([latestDates(profileId), listCategories(profileId)]);
   const notes: string[] = [];
   const known = [latest.sales, latest.ads].filter((x): x is string => !!x).sort();
@@ -94,7 +125,17 @@ export async function getSummary(profileId: string, opts: { asOf?: string; categ
   const asOf = opts.asOf ?? autoAsOf;
 
   if (!asOf) {
-    return { profileId, asOf: null, autoAsOf: null, latest, category: opts.category ?? null, categories, periods: null, rows: [], notes: ['No data for this profile yet.'] };
+    return {
+      profileId,
+      asOf: null,
+      autoAsOf: null,
+      latest,
+      category: opts.category ?? null,
+      categories,
+      periods: null,
+      rows: [],
+      notes: ['No data for this profile yet.'],
+    };
   }
   if (!opts.asOf && latest.sales && latest.ads && latest.sales !== latest.ads) {
     const behind = latest.sales < latest.ads ? 'Sales' : 'Ads';
@@ -124,7 +165,12 @@ export async function getSummary(profileId: string, opts: { asOf?: string; categ
       missingAdDays: dates.filter((x) => !have.ads.has(x)).length,
     };
   };
-  const periods = { mtd: period('mtd', 'MTD'), pmtd: period('pmtd', 'PMTD'), l7d: period('l7d', 'L7D'), p7d: period('p7d', 'P7D') };
+  const periods = {
+    mtd: period('mtd', 'MTD'),
+    pmtd: period('pmtd', 'PMTD'),
+    l7d: period('l7d', 'L7D'),
+    p7d: period('p7d', 'P7D'),
+  };
 
   const rows: SummaryRow[] = ROWS.map(({ get, ...def }) => {
     const v = { mtd: get(mtd), pmtd: get(pmtd), l7d: get(l7d), p7d: get(p7d) };
@@ -136,14 +182,27 @@ export async function getSummary(profileId: string, opts: { asOf?: string; categ
       p.missingSalesDays ? `${p.missingSalesDays} day(s) without sales data` : '',
       p.missingAdDays ? `${p.missingAdDays} day(s) without ad data` : '',
     ].filter(Boolean);
-    if (gaps.length) notes.push(`${p.short} (${p.label}): ${gaps.join(', ')} — that change % compares incomplete periods.`);
+    if (gaps.length)
+      notes.push(`${p.short} (${p.label}): ${gaps.join(', ')} — that change % compares incomplete periods.`);
   }
   if ([mtd, pmtd, l7d, p7d].some((p) => p.vendorUnits > 0)) {
-    notes.push('Sessions come from the Seller Central Business Report only (Vendor Central has no sessions). CR% = Units ÷ Sessions, so Vendor units make it read high.');
+    notes.push(
+      'Sessions come from the Seller Central Business Report only (Vendor Central has no sessions). CR% = Units ÷ Sessions, so Vendor units make it read high.'
+    );
   }
   if (opts.category) notes.push(`Category "${opts.category}" — same rules as the DSR category filter.`);
 
-  return { profileId, asOf, autoAsOf, latest, category: opts.category ?? null, categories, periods, rows, notes };
+  return {
+    profileId,
+    asOf,
+    autoAsOf,
+    latest,
+    category: opts.category ?? null,
+    categories,
+    periods,
+    rows,
+    notes,
+  };
 }
 
 /**
@@ -168,14 +227,26 @@ export async function getSummaryCompare(
 
   const notes: string[] = [];
   if ([a, b].some((p) => p.vendorUnits > 0)) {
-    notes.push('Sessions come from the Seller Central Business Report only (Vendor Central has no sessions). CR% = Units ÷ Sessions, so Vendor units make it read high.');
+    notes.push(
+      'Sessions come from the Seller Central Business Report only (Vendor Central has no sessions). CR% = Units ÷ Sessions, so Vendor units make it read high.'
+    );
   }
   if (opts.category) notes.push(`Category "${opts.category}" — same rules as the DSR category filter.`);
 
   return {
     profileId,
-    a: { from: opts.aFrom, to: opts.aTo, label: periodLabel(opts.aFrom, opts.aTo), days: daysInRange(opts.aFrom, opts.aTo) },
-    b: { from: opts.bFrom, to: opts.bTo, label: periodLabel(opts.bFrom, opts.bTo), days: daysInRange(opts.bFrom, opts.bTo) },
+    a: {
+      from: opts.aFrom,
+      to: opts.aTo,
+      label: periodLabel(opts.aFrom, opts.aTo),
+      days: daysInRange(opts.aFrom, opts.aTo),
+    },
+    b: {
+      from: opts.bFrom,
+      to: opts.bTo,
+      label: periodLabel(opts.bFrom, opts.bTo),
+      days: daysInRange(opts.bFrom, opts.bTo),
+    },
     category: opts.category ?? null,
     rows,
     notes,

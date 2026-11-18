@@ -13,8 +13,22 @@ import { dimWarehouse } from '../db/schema';
 
 /** Known Amazon-Now (quick-commerce) node codes — super-admins can extend this. */
 export const AMAZON_NOW_CODES = [
-  'HAD1', 'HBA4', 'HBL4', 'HCC6', 'HCI2', 'HDL2', 'HHS1', 'HHS6',
-  'HHY7', 'HKA2', 'HKR2', 'HLK1', 'HMU5', 'HMV4', 'HNR4', 'HPN6',
+  'HAD1',
+  'HBA4',
+  'HBL4',
+  'HCC6',
+  'HCI2',
+  'HDL2',
+  'HHS1',
+  'HHS6',
+  'HHY7',
+  'HKA2',
+  'HKR2',
+  'HLK1',
+  'HMU5',
+  'HMV4',
+  'HNR4',
+  'HPN6',
 ] as const;
 
 const AMAZON_NOW = new Set<string>(AMAZON_NOW_CODES);
@@ -24,7 +38,10 @@ export const WAREHOUSE_GEO_SEED: Record<string, { city: string; state: string }>
   HHS1: { city: 'Gurgaon', state: 'Haryana' },
 };
 
-export const normalizeFcCode = (raw: unknown): string => String(raw ?? '').trim().toUpperCase();
+export const normalizeFcCode = (raw: unknown): string =>
+  String(raw ?? '')
+    .trim()
+    .toUpperCase();
 
 /** Default rule: a code in the Amazon-Now list is 'Amazon Now'; any other code is 'Core'. */
 export const classifyWarehouse = (code: string): WarehouseNetwork =>
@@ -61,9 +78,12 @@ export async function ensureWarehouses(tx: Tx, codes: Iterable<string>): Promise
   if (wanted.length === 0) return [];
 
   const existing = new Set(
-    (await tx.select({ code: dimWarehouse.code }).from(dimWarehouse).where(inArray(dimWarehouse.code, wanted))).map(
-      (r) => r.code
-    )
+    (
+      await tx
+        .select({ code: dimWarehouse.code })
+        .from(dimWarehouse)
+        .where(inArray(dimWarehouse.code, wanted))
+    ).map((r) => r.code)
   );
   const fresh = wanted.filter((c) => !existing.has(c));
   if (fresh.length === 0) return [];

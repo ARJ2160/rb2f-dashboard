@@ -1,4 +1,14 @@
-import { date, index, integer, jsonb, numeric, pgTable, primaryKey, text, timestamp } from 'drizzle-orm/pg-core';
+import {
+  date,
+  index,
+  integer,
+  jsonb,
+  numeric,
+  pgTable,
+  primaryKey,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core';
 
 /**
  * Seller Central (FBA) fact tables. Tenant key `brand_id`; unit of analysis is

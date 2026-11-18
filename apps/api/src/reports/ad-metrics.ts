@@ -29,7 +29,13 @@ export interface AdMetrics {
 }
 
 const zero = (): AdSums => ({ impressions: 0, clicks: 0, spend: 0, adSales: 0, adUnits: 0 });
-const toSums = (r: { impressions: unknown; clicks: unknown; spend: unknown; adSales: unknown; adUnits: unknown }): AdSums => ({
+const toSums = (r: {
+  impressions: unknown;
+  clicks: unknown;
+  spend: unknown;
+  adSales: unknown;
+  adUnits: unknown;
+}): AdSums => ({
   impressions: Number(r.impressions ?? 0),
   clicks: Number(r.clicks ?? 0),
   spend: Number(r.spend ?? 0),
@@ -56,7 +62,12 @@ const campaignKey = (col: string) => sql.raw(`lower(regexp_replace(btrim(${col})
  * to the channel's campaign report so the day is not silently 0. The source
  * used is returned so the UI can say so.
  */
-export async function getAdMetrics(profileId: string, from: string, to: string, category?: string): Promise<AdMetrics> {
+export async function getAdMetrics(
+  profileId: string,
+  from: string,
+  to: string,
+  category?: string
+): Promise<AdMetrics> {
   // Category filter: ASIN-level rows by the ASIN's mapper category; the
   // campaign-report fallback by the campaign's category (campaign_dims).
   const asinCat = category
@@ -78,8 +89,13 @@ export async function getAdMetrics(profileId: string, from: string, to: string, 
         adUnits: sql<string>`sum(${dailyAsinAds.adUnits})`,
       })
       .from(dailyAsinAds)
-      .leftJoin(products, and(eq(products.profileId, dailyAsinAds.profileId), eq(products.asin, dailyAsinAds.asin)))
-      .where(and(eq(dailyAsinAds.profileId, profileId), between(dailyAsinAds.date, from, to), sql`true ${asinCat}`))
+      .leftJoin(
+        products,
+        and(eq(products.profileId, dailyAsinAds.profileId), eq(products.asin, dailyAsinAds.asin))
+      )
+      .where(
+        and(eq(dailyAsinAds.profileId, profileId), between(dailyAsinAds.date, from, to), sql`true ${asinCat}`)
+      )
       .groupBy(dailyAsinAds.date, dailyAsinAds.channel),
     db
       .select({
@@ -92,7 +108,13 @@ export async function getAdMetrics(profileId: string, from: string, to: string, 
         adUnits: sql<string>`sum(${dailyCampaignAds.adUnits})`,
       })
       .from(dailyCampaignAds)
-      .where(and(eq(dailyCampaignAds.profileId, profileId), between(dailyCampaignAds.date, from, to), sql`true ${campCat}`))
+      .where(
+        and(
+          eq(dailyCampaignAds.profileId, profileId),
+          between(dailyCampaignAds.date, from, to),
+          sql`true ${campCat}`
+        )
+      )
       .groupBy(dailyCampaignAds.date, dailyCampaignAds.channel),
     db.execute<{
       date: string;

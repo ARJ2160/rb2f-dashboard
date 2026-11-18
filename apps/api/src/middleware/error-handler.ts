@@ -14,7 +14,8 @@ export class HttpError extends Error {
   }
 }
 
-export const notFound: RequestHandler = (req, _res, next) => next(new HttpError(404, `Not found: ${req.method} ${req.path}`));
+export const notFound: RequestHandler = (req, _res, next) =>
+  next(new HttpError(404, `Not found: ${req.method} ${req.path}`));
 
 export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (res.headersSent) {

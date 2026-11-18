@@ -81,7 +81,16 @@ export function AdsView(props: RangeProps) {
   );
 }
 
-function Section({ title, keyLabel, countLabel, order, group, prev, comparing, extra }: {
+function Section({
+  title,
+  keyLabel,
+  countLabel,
+  order,
+  group,
+  prev,
+  comparing,
+  extra,
+}: {
   title: string;
   keyLabel: string;
   countLabel: string;
@@ -118,7 +127,10 @@ function Section({ title, keyLabel, countLabel, order, group, prev, comparing, e
             {rows.map((r) => {
               const p = prevBy.get(r.key);
               return (
-                <tr key={r.key} className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft">
+                <tr
+                  key={r.key}
+                  className="border-b border-line/60 odd:bg-surface even:bg-stripe hover:bg-accent-soft"
+                >
                   <td className="whitespace-nowrap px-3 py-1.5 align-top font-medium">{r.key}</td>
                   <MCell v={r.count} prev={p?.count} fmt={fmtInt} comparing={comparing} />
                   <MCell v={r.spendSharePct} prev={p?.spendSharePct} fmt={fmtPct} comparing={comparing} />
@@ -163,7 +175,10 @@ function BrandTerms({ profileId, onSaved }: { profileId: string; onSaved: () => 
     setMsg(null);
     saveBrandTerms(
       profileId,
-      text.split(/[,\n]/).map((t) => t.trim()).filter(Boolean)
+      text
+        .split(/[,\n]/)
+        .map((t) => t.trim())
+        .filter(Boolean)
     )
       .then((r) => {
         setText(r.terms.join(', '));

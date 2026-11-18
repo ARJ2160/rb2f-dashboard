@@ -31,9 +31,12 @@ function fmtValue(v: number | null, format: SummaryRow['format']): string {
 function Change({ v, better }: { v: number | null; better: SummaryRow['better'] }) {
   if (v == null) return <span className="text-muted">—</span>;
   const good = better === 'none' || Math.abs(v) < 0.05 ? null : better === 'up' ? v > 0 : v < 0;
-  const tone = good == null ? 'bg-black/[0.05] text-ink/75' : good ? 'bg-good/10 text-good' : 'bg-bad/10 text-bad';
+  const tone =
+    good == null ? 'bg-black/[0.05] text-ink/75' : good ? 'bg-good/10 text-good' : 'bg-bad/10 text-bad';
   return (
-    <span className={`num relative inline-flex min-w-[76px] items-center justify-center gap-1 rounded-full px-2.5 py-0.5 text-[13px] font-medium ${tone}`}>
+    <span
+      className={`num relative inline-flex min-w-[76px] items-center justify-center gap-1 rounded-full px-2.5 py-0.5 text-[13px] font-medium ${tone}`}
+    >
       <span className="text-[10px]" aria-hidden>
         {v > 0 ? '▲' : v < 0 ? '▼' : ''}
       </span>
@@ -46,7 +49,9 @@ function Change({ v, better }: { v: number | null; better: SummaryRow['better'] 
 /** Two-line column head: period on top, its short name below. */
 function PeriodHead({ range, name, first }: { range: string; name: string; first?: boolean }) {
   return (
-    <th className={`whitespace-nowrap px-4 py-2.5 text-right font-normal ${first ? 'border-l border-line' : ''}`}>
+    <th
+      className={`whitespace-nowrap px-4 py-2.5 text-right font-normal ${first ? 'border-l border-line' : ''}`}
+    >
       <div className="font-medium text-ink">{range}</div>
       <div className="text-xs text-muted">{name}</div>
     </th>
@@ -115,11 +120,25 @@ export function SummaryView({
 
   // Load the compare data whenever the toggle, ranges or category change.
   useEffect(() => {
-    if (!compareOn || !compareLoad || !rangeA || !rangeB || rangeA.from > rangeA.to || rangeB.from > rangeB.to) return;
+    if (
+      !compareOn ||
+      !compareLoad ||
+      !rangeA ||
+      !rangeB ||
+      rangeA.from > rangeA.to ||
+      rangeB.from > rangeB.to
+    )
+      return;
     let alive = true;
     setCmpLoading(true);
     setCmpError(null);
-    compareLoad(profileId, { aFrom: rangeA.from, aTo: rangeA.to, bFrom: rangeB.from, bTo: rangeB.to, category })
+    compareLoad(profileId, {
+      aFrom: rangeA.from,
+      aTo: rangeA.to,
+      bFrom: rangeB.from,
+      bTo: rangeB.to,
+      category,
+    })
       .then((d) => alive && setCmp(d))
       .catch((e: Error) => alive && setCmpError(e.message))
       .finally(() => alive && setCmpLoading(false));
@@ -140,14 +159,26 @@ export function SummaryView({
             Back to latest ({fmtDateLong(data.autoAsOf)})
           </button>
         )}
-        <Select label="Category" value={category} onChange={setCategory} options={data?.categories ?? (category ? [category] : [])} />
+        <Select
+          label="Category"
+          value={category}
+          onChange={setCategory}
+          options={data?.categories ?? (category ? [category] : [])}
+        />
         {compareLoad && (
           <label className="field cursor-pointer select-none">
-            <input type="checkbox" className="checkbox checkbox-xs checkbox-primary" checked={compareOn} onChange={() => setCompareOn((v) => !v)} />
+            <input
+              type="checkbox"
+              className="checkbox checkbox-xs checkbox-primary"
+              checked={compareOn}
+              onChange={() => setCompareOn((v) => !v)}
+            />
             <span className="font-medium">Compare periods</span>
           </label>
         )}
-        {data?.asOf && !asOf && <span className="text-sm text-muted">Latest data: {fmtDateLong(data.asOf)}</span>}
+        {data?.asOf && !asOf && (
+          <span className="text-sm text-muted">Latest data: {fmtDateLong(data.asOf)}</span>
+        )}
         {loading && <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />}
       </div>
 
@@ -159,13 +190,22 @@ export function SummaryView({
             <table className="w-full min-w-[820px] border-collapse text-sm">
               <thead className="bg-side text-muted">
                 <tr className="border-b border-line">
-                  <th rowSpan={2} className="sticky left-0 z-10 w-[230px] bg-side px-4 py-2.5 text-left align-bottom font-medium">
+                  <th
+                    rowSpan={2}
+                    className="sticky left-0 z-10 w-[230px] bg-side px-4 py-2.5 text-left align-bottom font-medium"
+                  >
                     Metric
                   </th>
-                  <th colSpan={3} className="border-l border-line px-4 pb-1 pt-2.5 text-left text-[13px] font-semibold text-ink">
+                  <th
+                    colSpan={3}
+                    className="border-l border-line px-4 pb-1 pt-2.5 text-left text-[13px] font-semibold text-ink"
+                  >
                     Month on month
                   </th>
-                  <th colSpan={3} className="border-l border-line px-4 pb-1 pt-2.5 text-left text-[13px] font-semibold text-ink">
+                  <th
+                    colSpan={3}
+                    className="border-l border-line px-4 pb-1 pt-2.5 text-left text-[13px] font-semibold text-ink"
+                  >
                     Week on week
                   </th>
                 </tr>
@@ -181,7 +221,10 @@ export function SummaryView({
               <tbody>
                 {data.rows.map((r) => (
                   <tr key={r.key} className="group border-b border-line/70 last:border-0 hover:bg-side/70">
-                    <th scope="row" className="sticky left-0 z-10 whitespace-nowrap bg-surface px-4 py-3 text-left font-medium text-ink group-hover:bg-side">
+                    <th
+                      scope="row"
+                      className="sticky left-0 z-10 whitespace-nowrap bg-surface px-4 py-3 text-left font-medium text-ink group-hover:bg-side"
+                    >
                       {r.label}
                     </th>
                     <td className={`${td} border-l border-line font-medium`}>{fmtValue(r.mtd, r.format)}</td>
@@ -200,8 +243,8 @@ export function SummaryView({
             </table>
           </div>
           <p className="text-xs text-muted">
-            Green / red = better / worse (for ACOS% and TACOS% a decrease is better; Ad Spends is neutral). Ratios are recomputed from each
-            period&apos;s totals, never averaged.
+            Green / red = better / worse (for ACOS% and TACOS% a decrease is better; Ad Spends is neutral).
+            Ratios are recomputed from each period&apos;s totals, never averaged.
           </p>
         </div>
       )}
@@ -218,7 +261,9 @@ export function SummaryView({
               <span className="font-medium text-ink">B</span>
               <DateRangePicker value={rangeB} onChange={setRangeB} />
             </label>
-            {cmpLoading && <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />}
+            {cmpLoading && (
+              <span className="loading loading-spinner loading-sm text-muted" aria-label="Loading" />
+            )}
           </div>
 
           {cmpError && <ErrorBox message={cmpError} />}
@@ -229,7 +274,9 @@ export function SummaryView({
                 <table className="w-full min-w-[560px] border-collapse text-sm">
                   <thead className="bg-side text-muted">
                     <tr className="border-b border-line">
-                      <th className="sticky left-0 z-10 w-[230px] bg-side px-4 py-2.5 text-left font-medium">Metric</th>
+                      <th className="sticky left-0 z-10 w-[230px] bg-side px-4 py-2.5 text-left font-medium">
+                        Metric
+                      </th>
                       <PeriodHead range={cmp.a.label} name={`A · ${cmp.a.days}d`} first />
                       <PeriodHead range={cmp.b.label} name={`B · ${cmp.b.days}d`} />
                       <th className="px-4 py-2.5 text-center font-medium">Change</th>
@@ -237,11 +284,19 @@ export function SummaryView({
                   </thead>
                   <tbody>
                     {cmp.rows.map((r) => (
-                      <tr key={r.key} className="group border-b border-line/70 last:border-0 hover:bg-side/70">
-                        <th scope="row" className="sticky left-0 z-10 whitespace-nowrap bg-surface px-4 py-3 text-left font-medium text-ink group-hover:bg-side">
+                      <tr
+                        key={r.key}
+                        className="group border-b border-line/70 last:border-0 hover:bg-side/70"
+                      >
+                        <th
+                          scope="row"
+                          className="sticky left-0 z-10 whitespace-nowrap bg-surface px-4 py-3 text-left font-medium text-ink group-hover:bg-side"
+                        >
                           {r.label}
                         </th>
-                        <td className={`${td} border-l border-line font-medium`}>{fmtValue(r.a, r.format)}</td>
+                        <td className={`${td} border-l border-line font-medium`}>
+                          {fmtValue(r.a, r.format)}
+                        </td>
                         <td className={`${td} text-ink/70`}>{fmtValue(r.b, r.format)}</td>
                         <td className="px-4 py-3 text-center">
                           <Change v={r.change} better={r.better} />
@@ -251,7 +306,9 @@ export function SummaryView({
                   </tbody>
                 </table>
               </div>
-              <p className="text-xs text-muted">Change = period A vs period B. {cmp.a.label} compared with {cmp.b.label}.</p>
+              <p className="text-xs text-muted">
+                Change = period A vs period B. {cmp.a.label} compared with {cmp.b.label}.
+              </p>
               {cmp.notes.length > 0 && <Notes notes={cmp.notes} />}
             </>
           )}
