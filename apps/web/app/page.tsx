@@ -101,14 +101,17 @@ export default function GcsPage() {
   }, []);
 
   const load = useCallback(
-    async (refresh = false) => {
+    async (refresh = false, opts?: { quiet?: boolean }) => {
       if (!marketplace) return null;
       try {
         const r = await getGcsBrands(refresh, marketplace);
         setInfo(r);
         return r;
       } catch (e) {
-        setError((e as Error).message);
+        // While a sync runs the dashboard polls every 1.5s; one poll can hit a
+        // transient 502/503 (e.g. the API busy finishing a file). Keep the last
+        // good data and let the next tick recover instead of flashing an error.
+        if (!opts?.quiet) setError((e as Error).message);
         return null;
       }
     },
@@ -193,7 +196,7 @@ export default function GcsPage() {
   // Poll while a sync runs…
   useEffect(() => {
     if (!running) return undefined;
-    const t = setInterval(() => void load(), 1500);
+    const t = setInterval(() => void load(false, { quiet: true }), 1500);
     return () => clearInterval(t);
   }, [running, load]);
 
