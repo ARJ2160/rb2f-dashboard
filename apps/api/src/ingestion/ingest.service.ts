@@ -16,7 +16,8 @@ import { parseBusinessReport } from './parsers/business-report';
 import { parseCampaignReport } from './parsers/campaign';
 import type { ParseContext, ParseResult } from './parsers/types';
 import { parseVendorCentral } from './parsers/vendor-central';
-import { readWorkbook, type SheetData } from './sheet-reader';
+import type { SheetData } from './sheet-reader';
+import { parseAmazonWorkbook } from '../lib/parse-pool';
 import {
   storeAds,
   storeAsinAds,
@@ -58,7 +59,7 @@ export async function ingestFile(profileId: string, filename: string, buffer: Bu
   let sheets: SheetData[];
   try {
     // Cheap preview first; only parse every row if some sheet is a report we ingest.
-    const preview = readWorkbook(buffer, { maxRows: PREVIEW_ROWS });
+    const preview = await parseAmazonWorkbook(buffer, { maxRows: PREVIEW_ROWS });
     const needsFull = preview.some((s) => {
       // Inventory / PO / Shipment (ops) files are detected by their own column
       // signatures, not the ads report registry — count them so the ledger is
@@ -67,7 +68,7 @@ export async function ingestFile(profileId: string, filename: string, buffer: Bu
       const d = detectReportType(s.headers, s.sheetName, filename);
       return d != null && REPORT_TYPES[d.reportType].inScope;
     });
-    sheets = needsFull ? readWorkbook(buffer) : preview;
+    sheets = needsFull ? await parseAmazonWorkbook(buffer) : preview;
   } catch (err) {
     const r: FileUploadResult = { filename, status: 'error', message: `Could not read file: ${(err as Error).message}` };
     await log(profileId, r);

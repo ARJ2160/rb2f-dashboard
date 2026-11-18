@@ -1,12 +1,13 @@
 import { canonicalCity, IM_REPORT_LABEL, normKey, type ImReportType } from '@dash/shared/blinkit';
 import { and, eq, inArray } from 'drizzle-orm';
-import * as XLSX from 'xlsx';
 
 import { inferDateOrder, num, str, toISODate } from '../blinkit/ingestion/clean';
 import { db, type Tx } from '../db/client';
 import { toUtf8Csv } from '../gcs/warehouse';
 import { invalidateImDims } from './dims';
 import { imAds, imSales, imSkuMap } from './schema';
+import { parseInstamartWorkbook } from '../lib/parse-pool';
+import { type Sheet } from './sheet-reader';
 
 /* Swiggy Instamart ingestion: one file → each sheet detected by its COLUMNS →
    parsed → stored replace-by-date. Used by the GCS sync
@@ -32,50 +33,6 @@ export interface ImFileResult {
   rowsStored?: number;
   message?: string;
   warnings?: string[];
-}
-
-interface Sheet {
-  fileName: string;
-  sheetName: string;
-  headers: string[];
-  rows: unknown[][];
-}
-
-const TOKENS = new Set([
-  'ordered date', 'city', 'area name', 'store id', 'item code', 'product name', 'units sold', 'gmv', 'base mrp',
-  'metrics date', 'campaign id', 'campaign name', 'ad property', 'keyword', 'total impressions', 'total budget burnt',
-  'sku', 'category',
-]);
-
-function isBinary(buf: Buffer) {
-  if (buf.length >= 2 && buf[0] === 0x50 && buf[1] === 0x4b) return true;
-  return buf.length >= 4 && buf[0] === 0xd0 && buf[1] === 0xcf && buf[2] === 0x11 && buf[3] === 0xe0;
-}
-
-/** Workbook / CSV → sheets with the header row found by content (first 20 rows). */
-export function readInstamartWorkbook(buf: Buffer, fileName: string): Sheet[] {
-  const binary = isBinary(buf);
-  // CSV: never let SheetJS guess dates (ads write dd-mm-yyyy).
-  const wb = XLSX.read(buf, { type: 'buffer', raw: !binary, cellDates: false, cellNF: false, cellStyles: false });
-  const out: Sheet[] = [];
-  for (const name of wb.SheetNames) {
-    const ws = wb.Sheets[name];
-    if (!ws || !ws['!ref']) continue;
-    const grid = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, raw: true, defval: null, blankrows: false });
-    let h = -1, best = 0;
-    for (let i = 0; i < Math.min(grid.length, 20); i++) {
-      const score = (grid[i] ?? []).filter((c) => c != null && TOKENS.has(normKey(c))).length;
-      if (score > best) { best = score; h = i; }
-    }
-    if (best < 2) { out.push({ fileName, sheetName: name, headers: [], rows: [] }); continue; }
-    out.push({
-      fileName,
-      sheetName: name,
-      headers: (grid[h] ?? []).map((c) => normKey(c)),
-      rows: grid.slice(h + 1).filter((r) => r.some((c) => c != null && c !== '')),
-    });
-  }
-  return out;
 }
 
 export function detectInstamart(s: Sheet): ImReportType {
@@ -295,7 +252,7 @@ export async function storeSkuMap(profileId: string, rows: MapRow[]) {
 export async function ingestInstamartFile(profileId: string, filename: string, raw: Buffer): Promise<ImFileResult[]> {
   let sheets: Sheet[];
   try {
-    sheets = readInstamartWorkbook(toUtf8Csv(raw), filename);
+    sheets = await parseInstamartWorkbook(toUtf8Csv(raw), filename);
   } catch (err) {
     return [{ filename, status: 'error', message: `Could not read file: ${(err as Error).message}` }];
   }

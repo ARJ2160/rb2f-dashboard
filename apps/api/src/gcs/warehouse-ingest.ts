@@ -14,7 +14,8 @@ import { parseCampaignReport } from '../ingestion/parsers/campaign';
 import { parsePlacements } from '../ingestion/parsers/placement';
 import { parseSearchTerms } from '../ingestion/parsers/search-term';
 import type { ParseContext } from '../ingestion/parsers/types';
-import { readWorkbook, type SheetData } from '../ingestion/sheet-reader';
+import type { SheetData } from '../ingestion/sheet-reader';
+import { parseAmazonWorkbook } from '../lib/parse-pool';
 import { pick, str } from '../lib/values';
 import {
   storeAds,
@@ -51,7 +52,7 @@ export async function ingestWarehouseFile(
   const buffer = toUtf8Csv(raw);
   let sheets: SheetData[];
   try {
-    sheets = readWorkbook(buffer);
+    sheets = await parseAmazonWorkbook(buffer);
   } catch (err) {
     const r: FileUploadResult = {
       filename,

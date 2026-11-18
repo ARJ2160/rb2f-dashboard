@@ -7,7 +7,7 @@ import { parseAds, type AdType } from './parsers/ads';
 import { parseInventory } from './parsers/inventory';
 import { parseCampaignMapper, parseSkuMapper } from './parsers/mappers';
 import { parseSales } from './parsers/sales';
-import { readBlinkitWorkbook } from './sheet-reader';
+import { parseBlinkitWorkbook } from '../../lib/parse-pool';
 import { storeAds, storeCampaignMap, storeInventory, storeSales, storeSkuMap } from './store';
 
 /** Same shape as the Amazon FileUploadResult, with Blinkit report types. */
@@ -37,9 +37,9 @@ const AD_TYPES: Partial<Record<BkReportType, AdType>> = {
  */
 export async function ingestBlinkitFile(profileId: string, filename: string, raw: Buffer): Promise<BkFileResult[]> {
   const results: BkFileResult[] = [];
-  let read: ReturnType<typeof readBlinkitWorkbook>;
+  let read: Awaited<ReturnType<typeof parseBlinkitWorkbook>>;
   try {
-    read = readBlinkitWorkbook(toUtf8Csv(raw), filename);
+    read = await parseBlinkitWorkbook(toUtf8Csv(raw), filename);
   } catch (err) {
     return [{ filename, status: 'error', message: `Could not read file: ${(err as Error).message}` }];
   }
