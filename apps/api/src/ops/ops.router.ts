@@ -14,7 +14,8 @@ import { z } from 'zod';
 
 import { db } from '../db/client';
 import { dimWarehouse, importBatches } from '../db/schema';
-import { readWorkbook, type SheetData } from '../ingestion/sheet-reader';
+import type { SheetData } from '../ingestion/sheet-reader';
+import { parseAmazonWorkbook } from '../lib/parse-pool';
 import { ingestSlots } from '../lib/ingest-slots';
 import { log } from '../lib/logger';
 import { cleanFilename, looksLikeSpreadsheet, receiveFiles } from '../lib/upload-files';
@@ -276,7 +277,7 @@ opsRouter.post('/uploads', receiveFiles, async (req, res) => {
     if (!looksLikeSpreadsheet(f.buffer)) { fail(name, 'Not a spreadsheet or CSV file.'); continue; }
     let sheets: SheetData[];
     try {
-      sheets = await ingestSlots.run(async () => readWorkbook(f.buffer));
+      sheets = await ingestSlots.run(() => parseAmazonWorkbook(f.buffer));
     } catch (err) {
       fail(name, `Could not read file: ${(err as Error).message}`);
       continue;
