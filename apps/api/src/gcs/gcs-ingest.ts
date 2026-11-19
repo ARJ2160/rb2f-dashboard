@@ -482,7 +482,9 @@ export async function uploadFilesToGcs(
   const bucket = env.GCS_BUCKET;
 
   // Build a write-capable client. On Cloud Run the metadata-server token
-  // already covers Storage Object Creator if the service account has that role.
+  // picks up whatever IAM the service account has. Note: overwriting an existing
+  // object (replace-by-date) needs storage.objects.delete, so the SA must have
+  // Storage Object Admin, not just Storage Object Creator.
   const client =
     credFile !== null
       ? GcsClient.fromKeyFile(bucket, credFile, READ_WRITE_SCOPE)

@@ -276,7 +276,9 @@ export class GcsClient {
     return Buffer.from(await res.arrayBuffer());
   }
   /**
-   * Upload an object to GCS (requires Storage Object Creator or higher on the bucket).
+   * Upload an object to GCS. Creating a new object needs Storage Object Creator;
+   * overwriting an existing one (replace-by-date re-uploads) also needs
+   * storage.objects.delete, i.e. Storage Object Admin.
    * On Cloud Run the metadata-server token already covers what IAM allows; with a key
    * file, construct this client with READ_WRITE_SCOPE.
    */
@@ -315,7 +317,10 @@ export class GcsClient {
         /* not JSON */
       }
       const hint =
-        res.status === 403 ? ` — give ${this.principal} "Storage Object Creator" on gs://${this.bucket}` : '';
+        res.status === 403
+          ? ` — give ${this.principal} "Storage Object Admin" on gs://${this.bucket} `+
+            `(Storage Object Creator alone cannot overwrite existing objects, which replace-by-date re-uploads do)`
+          : '';
       throw new GcsError(`GCS upload failed (${res.status}): ${msg}${hint}`, res.status);
     }
     const body = (await res.json()) as { name: string; generation: string; size: string };
