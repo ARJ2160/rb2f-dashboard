@@ -63,7 +63,7 @@ gcsRouter.post('/sync', async (req, res) => {
   const body = z
     .object({ brand: brandSchema, force: z.boolean().default(false), marketplace: marketplaceSchema })
     .parse(req.body ?? {});
-  const job = await guard(() => startSync(body.brand, body.force, body.marketplace, requestUser(req)), res);
+  const job = await guard(() => startSync(body.brand, body.force, body.marketplace, requestUser(req), true), res);
   res.status(202).json(job);
 });
 
@@ -172,7 +172,7 @@ gcsRouter.post('/ingest', ingestUpload, async (req, res) => {
   let syncJob: Awaited<ReturnType<typeof startSync>> | null = null;
   if (uploadResults.some((r) => r.status === 'uploaded')) {
     try {
-      syncJob = await startSync(brand, false, marketplace, requestUser(req));
+      syncJob = await startSync(brand, false, marketplace, requestUser(req), true);
     } catch {
       // Sync failure (e.g. cooldown, concurrent job) is non-fatal for the upload.
     }
@@ -297,7 +297,7 @@ gcsRouter.post('/ingest-bulk', ingestUpload, async (req, res) => {
   if (results.some((r) => r.status === 'uploaded')) {
     for (const m of marketplaces) {
       try {
-        syncJobs.push(await startSync(brand, false, m, requestUser(req)));
+        syncJobs.push(await startSync(brand, false, m, requestUser(req), true));
       } catch {
         // cooldown / concurrent job — non-fatal for the upload
       }

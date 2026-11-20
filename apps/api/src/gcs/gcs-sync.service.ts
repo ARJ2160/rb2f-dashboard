@@ -180,7 +180,8 @@ export async function startSync(
   brand: string,
   force = false,
   marketplace: Marketplace = 'amazon',
-  startedBy = 'system'
+  startedBy = 'system',
+  wait = false
 ): Promise<GcsSyncJob> {
   const key = jobKey(marketplace, brand);
   const running = jobs.get(key);
@@ -208,7 +209,8 @@ export async function startSync(
 
   const job = newJob(folder, force, marketplace, startedBy);
   jobs.set(key, job);
-  void execute(job, folder, marketplace);
+  if (wait) await execute(job, folder, marketplace);
+  else void execute(job, folder, marketplace);
   return job;
 }
 
