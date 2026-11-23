@@ -25,6 +25,7 @@ import {
   type SummaryRow,
 } from '@dash/shared';
 
+import { sortRows } from '../blinkit/reports/keywords.service';
 import { inList, q } from '../blinkit/reports/queries';
 import { changePct, periodLabel, summaryPeriods } from '../lib/periods';
 import { AD_KEY_SQL, adKeysIn, getImDims, itemsIn, type ImDims } from './dims';
@@ -87,8 +88,14 @@ function adsWhere(a: RangeArgs, keys: string[] | null, adType?: string) {
     w += inList(AD_KEY_SQL, p.length, keys);
   }
   if (adType) {
-    p.push(adType);
-    w += ` and ad_type = $${p.length}`;
+    const arr = adType
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (arr.length) {
+      p.push(arr);
+      w += inList('ad_type', p.length, arr);
+    }
   }
   return { w, p };
 }
@@ -497,19 +504,27 @@ export interface KwArgs extends RangeArgs {
   search?: string | undefined;
   minImpr?: number;
   sort?: string;
+  dir?: 'asc' | 'desc';
   limit?: number;
 }
 
 export async function keywords(a: KwArgs): Promise<BkKeywordsResponse> {
   const { d, keys } = await scope(a.profileId, a.category);
   const ad = adsWhere(a, keys, a.adType);
-  if (a.campaignId) {
-    ad.p.push(a.campaignId);
-    ad.w += ` and campaign_id = $${ad.p.length}`;
+  const csvArr = (v?: string) =>
+    (v ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+  const campArr = csvArr(a.campaignId);
+  if (campArr.length) {
+    ad.p.push(campArr);
+    ad.w += inList('campaign_id', ad.p.length, campArr);
   }
-  if (a.geo) {
-    ad.p.push(a.geo);
-    ad.w += ` and city = $${ad.p.length}`;
+  const geoArr = csvArr(a.geo);
+  if (geoArr.length) {
+    ad.p.push(geoArr);
+    ad.w += inList('city', ad.p.length, geoArr);
   }
   const kwExpr = `case when keyword <> '' then keyword else '[' || ad_type || '] (no keyword)' end`;
   const rows = await q(
@@ -551,8 +566,7 @@ export async function keywords(a: KwArgs): Promise<BkKeywordsResponse> {
   if (a.minImpr) list = list.filter((k) => k.sums.impr >= a.minImpr!);
   const total = blank();
   for (const k of list) addInto(total, k.sums);
-  const sortKey = (a.sort ?? 'spend') as keyof Sums;
-  list.sort((x, y) => (y.sums[sortKey] ?? 0) - (x.sums[sortKey] ?? 0));
+  sortRows(list, a.sort, a.dir);
   const limit = a.limit ?? 1000;
   return { rows: list.slice(0, limit), total, truncated: list.length > limit };
 }
