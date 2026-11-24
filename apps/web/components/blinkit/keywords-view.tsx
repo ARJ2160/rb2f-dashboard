@@ -4,7 +4,7 @@ import { type BkKeywordsResponse, type BkMetaResponse, type MetricKey } from '@d
 import { useState } from 'react';
 
 import { ErrorBox, Notes } from '@/components/notes';
-import { Select } from '@/components/views/shared';
+import { MultiSelect, Select } from '@/components/views/shared';
 
 import { BkCell, bkShow, days, ROW, TD_LEFT, TH, TH_LEFT, type BkViewProps } from './cells';
 import { useLoad } from './dsr-dur';
@@ -28,7 +28,6 @@ const ALL: MetricKey[] = [
   'mvp',
   'nu',
 ];
-const SORTABLE = new Set<MetricKey>(['spend', 'impr', 'clicks', 'atc', 'aunits', 'asales', 'dsales', 'nu']);
 
 /** Product Listing / Banner keywords and Recommendation placements; city filter = campaigns that target exactly that city. */
 export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
@@ -44,8 +43,9 @@ export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
   const [grain, setGrain] = useState<'kw' | 'kwc'>('kw');
   const [minImpr, setMinImpr] = useState('0');
   const [sort, setSort] = useState<MetricKey>('spend');
+  const [dir, setDir] = useState<'asc' | 'desc'>('desc');
   const cmp = p.compare;
-  const f = { q, geo, campaignId, adType, grain, minImpr, sort, limit: 600 };
+  const f = { q, geo, campaignId, adType, grain, minImpr, sort, dir, limit: 600 };
   const { data, error, loading } = useLoad(
     () =>
       Promise.all([
@@ -68,6 +68,7 @@ export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
       grain,
       minImpr,
       sort,
+      dir,
       flavour.id,
     ]
   );
@@ -90,20 +91,20 @@ export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
           placeholder="Search keyword…"
           className="input input-sm w-48"
         />
-        <Select
+        <MultiSelect
           label="City"
           value={geo}
           onChange={setGeo}
           allLabel={cityUnits.length || native ? 'All' : 'All (no city-targeted campaigns)'}
           options={cityUnits.map((u) => ({ value: u.key, label: u.label }))}
         />
-        <Select
+        <MultiSelect
           label="Campaign"
           value={campaignId}
           onChange={setCampaignId}
           options={camps.map((c) => ({ value: c.id, label: c.name }))}
         />
-        <Select label="Ad type" value={adType} onChange={setAdType} options={flavour.adTypes} />
+        <MultiSelect label="Ad type" value={adType} onChange={setAdType} options={flavour.adTypes} />
         <Select
           label="Rows"
           value={grain}
@@ -154,18 +155,24 @@ export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
             <table className="table table-sm">
               <thead className="sticky top-0 z-20 bg-base-200 shadow-[0_1px_0_var(--color-line)]">
                 <tr className="text-xs text-muted">
-                  <th className={TH_LEFT}>Keyword</th>
-                  <th className="px-3 py-2 text-left font-medium">Campaign</th>
+                  <th className={TH_LEFT}>Campaign</th>
+                  <th className="px-3 py-2 text-left font-medium">Keyword</th>
                   <th className="px-3 py-2 text-left font-medium">Category</th>
                   {shown.filter(show).map((k) => (
                     <th
                       key={k}
-                      className={`${TH} ${SORTABLE.has(k) ? 'cursor-pointer' : ''}`}
-                      onClick={() => SORTABLE.has(k) && setSort(k)}
-                      title={SORTABLE.has(k) ? 'Sort by this column' : ''}
+                      className={`${TH} cursor-pointer select-none`}
+                      onClick={() => {
+                        if (sort === k) setDir((d) => (d === 'desc' ? 'asc' : 'desc'));
+                        else {
+                          setSort(k);
+                          setDir('desc');
+                        }
+                      }}
+                      title="Sort by this column — click again to reverse"
                     >
                       {label(k)}
-                      {sort === k ? ' ▾' : ''}
+                      {sort === k ? (dir === 'desc' ? ' ▾' : ' ▴') : ''}
                     </th>
                   ))}
                 </tr>
@@ -173,14 +180,14 @@ export function KeywordsView(p: BkViewProps & { meta: BkMetaResponse }) {
               <tbody>
                 {cur.rows.map((r) => (
                   <tr key={key(r)} className={ROW}>
-                    <td className={TD_LEFT}>{r.keyword}</td>
                     <td
-                      className="max-w-64 truncate px-3 py-1.5 text-xs text-muted"
+                      className={`${TD_LEFT} max-w-64 truncate text-xs text-muted`}
                       title={r.campaigns.join('\n')}
                     >
                       {r.campaign ??
                         (r.campaigns.length === 1 ? r.campaigns[0] : `${r.campaigns.length} campaigns`)}
                     </td>
+                    <td className="px-3 py-1.5">{r.keyword}</td>
                     <td
                       className="whitespace-nowrap px-3 py-1.5 text-xs text-muted"
                       title={r.categories.join(', ')}

@@ -8,7 +8,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./blinkit": "./src/blinkit/index.ts"
+    "./blinkit": "./src/blinkit/index.ts",
+    "./zepto": "./src/zepto/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

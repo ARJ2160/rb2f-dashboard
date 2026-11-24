@@ -95,14 +95,12 @@ blinkitRouter.get('/keywords', async (req, res) => {
     .object({
       geo: optText,
       campaignId: optText,
-      adType: z
-        .enum(['PL', 'PR', 'BL'])
-        .optional()
-        .or(z.literal('').transform(() => undefined)),
+      adType: optText,
       grain: z.enum(['kw', 'kwc']).default('kw'),
       q: optText,
       minImpr: z.coerce.number().min(0).default(0),
-      sort: z.enum(['spend', 'impr', 'atc', 'aunits', 'asales', 'dsales', 'nu']).default('spend'),
+      sort: optText,
+      dir: z.enum(['asc', 'desc']).default('desc'),
       limit: z.coerce.number().int().min(1).max(5000).default(1000),
     })
     .parse(req.query);
@@ -116,6 +114,7 @@ blinkitRouter.get('/keywords', async (req, res) => {
       search: o.q,
       minImpr: o.minImpr,
       sort: o.sort,
+      dir: o.dir,
       limit: o.limit,
     })
   );

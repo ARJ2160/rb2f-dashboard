@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { env } from './config/env';
 import { blinkitRouter } from './blinkit/blinkit.router';
 import { instamartRouter } from './instamart/instamart.router';
+import { zeptoRouter } from './zepto/zepto.router';
 import { opsRouter } from './ops/ops.router';
 import { productsRouter } from './products/products.router';
 import { scRouter } from './ops/sc/sc.router';
@@ -74,6 +75,7 @@ export function createApp() {
   app.use('/api/gcs', gcsRouter);
   app.use('/api/blinkit', blinkitRouter);
   app.use('/api/instamart', instamartRouter);
+  app.use('/api/zepto', zeptoRouter);
   app.use('/api/ops/sc', scRouter);
   app.use('/api/ops', opsRouter);
   app.use('/api/products', productsRouter);

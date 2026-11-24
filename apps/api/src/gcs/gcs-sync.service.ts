@@ -17,6 +17,7 @@ import { log } from '../lib/logger';
 import { markDimsStale, rebuildCampaignDims } from '../reports/dims';
 import { ingestBlinkitFile } from '../blinkit/ingestion/ingest';
 import { ingestInstamartFile } from '../instamart/ingest';
+import { ingestZeptoFile } from '../zepto/ingest';
 import { GcsClient, GcsError, type GcsObject } from './gcs-client';
 import { ingestWarehouseFile } from './warehouse-ingest';
 import {
@@ -445,7 +446,9 @@ async function ingestObject(
         ? ingestBlinkitFile(profileId, file, buffer)
         : marketplace === 'swiggy_instamart'
           ? ingestInstamartFile(profileId, file, buffer)
-          : ingestWarehouseFile(profileId, file, buffer) // amazon, zepto
+          : marketplace === 'zepto'
+            ? ingestZeptoFile(profileId, file, buffer)
+            : ingestWarehouseFile(profileId, file, buffer) // amazon
   );
   return summarize(file, sheets);
 }

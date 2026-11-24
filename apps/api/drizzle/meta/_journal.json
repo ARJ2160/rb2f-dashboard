@@ -127,6 +127,13 @@
       "when": 1794909577828,
       "tag": "0017_brand_settings_health",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795434534962,
+      "tag": "0018_aspiring_joshua_kane",
+      "breakpoints": true
     }
   ]
 }
