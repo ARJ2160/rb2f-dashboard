@@ -532,11 +532,38 @@ export const gcsObjects = pgTable(
   (t) => [primaryKey({ columns: [t.profileId, t.objectName] })]
 );
 
+/**
+ * Application users and their role, keyed by Google-verified email.
+ *
+ * Authentication (who may sign in) lives in the web app (Google sign-in,
+ * restricted to the allowed email domain). This table is AUTHORIZATION: what a
+ * signed-in person may do, and — for external clients — which brand they may
+ * see.
+ *
+ *   role  'admin'    manage users + everything an operator can do
+ *         'operator' run Sync now / Re-ingest all + upload, view every brand
+ *         'viewer'   view every brand, but cannot trigger expensive actions (default)
+ *         'client'   external; read-only, limited to `scope` (Phase 2)
+ *   scope brand / profileId a client is pinned to (null = all brands)
+ *
+ * A row is created the first time an already-authenticated email is seen.
+ */
+export const appUsers = pgTable('app_users', {
+  email: text('email').primaryKey(),
+  role: text('role').notNull().default('viewer'),
+  scope: text('scope'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 // ── Blinkit (bk_* tables) ──
 export * from '../blinkit/schema';
 
 // ── Swiggy Instamart (im_* tables) ──
 export * from '../instamart/schema';
+
+// ── Zepto (zp_* tables) ──
+export * from '../zepto/schema';
 
 // ── Amazon Inventory / PO / Shipment (brands, dim_warehouse, vc_* / sc_*) ──
 export * from '../ops/schema';

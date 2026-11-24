@@ -17,6 +17,7 @@ import { detectReportType } from '../ingestion/detect-report';
 import { detectOpsFile } from '../ops/detect';
 import type { OpsFileType } from '@dash/shared';
 import { detectInstamart } from '../instamart/ingest';
+import { detectZepto } from '../zepto/ingest';
 import { normKey } from '@dash/shared/blinkit';
 import { readWorkbook } from '../ingestion/sheet-reader';
 import { GcsClient, READ_WRITE_SCOPE } from './gcs-client';
@@ -240,31 +241,87 @@ export const SWIGGY_INSTAMART_REPORT_TYPES: readonly ReportType[] = [
 export const ZEPTO_REPORT_TYPES: readonly ReportType[] = [
   {
     id: 'sales',
-    label: 'Sales',
+    label: 'Total Sales',
     folder: 'sales',
     marketplace: 'zepto',
-    hint: 'Order-level sales export from Zepto portal',
+    hint: 'SALES_OVERVIEW — day × city × SKU (GMV, Quantity)',
   },
   {
-    id: 'ads',
-    label: 'Ads',
-    folder: 'ads',
+    id: 'sp_campaign',
+    label: 'SP Campaign',
+    folder: 'sp_campaign',
     marketplace: 'zepto',
-    hint: 'Campaign-level ad metrics from Zepto',
+    hint: 'Sponsored Product campaign report',
+  },
+  {
+    id: 'sb_campaign',
+    label: 'SB Campaign',
+    folder: 'sb_campaign',
+    marketplace: 'zepto',
+    hint: 'Sponsored Brand campaign report',
+  },
+  {
+    id: 'sd_campaign',
+    label: 'SD Campaign',
+    folder: 'sd_campaign',
+    marketplace: 'zepto',
+    hint: 'Sponsored Display campaign report',
+  },
+  {
+    id: 'sp_keyword',
+    label: 'SP Keyword',
+    folder: 'sp_keyword',
+    marketplace: 'zepto',
+    hint: 'Sponsored Product keyword report',
+  },
+  {
+    id: 'sb_keyword',
+    label: 'SB Keyword',
+    folder: 'sb_keyword',
+    marketplace: 'zepto',
+    hint: 'Sponsored Brand keyword report',
+  },
+  {
+    id: 'sp_product',
+    label: 'SP Product',
+    folder: 'sp_product',
+    marketplace: 'zepto',
+    hint: 'Sponsored Product product (SKU) report',
+  },
+  {
+    id: 'sb_product',
+    label: 'SB Product',
+    folder: 'sb_product',
+    marketplace: 'zepto',
+    hint: 'Sponsored Brand product (SKU) report',
+  },
+  {
+    id: 'sd_product',
+    label: 'SD Product',
+    folder: 'sd_product',
+    marketplace: 'zepto',
+    hint: 'Sponsored Display product (SKU) report',
   },
   {
     id: 'inventory',
     label: 'Inventory',
     folder: 'inventory',
     marketplace: 'zepto',
-    hint: 'Daily stock-on-hand export from Zepto',
+    hint: 'City × SKU stock snapshot',
   },
   {
     id: 'sku_mapper',
     label: 'SKU Mapper',
     folder: 'sku_mapper',
     marketplace: 'zepto',
-    hint: 'Maps Zepto Item ID → SKU, Category, Price',
+    hint: 'Maps SKU ID (PVID) → canonical Category',
+  },
+  {
+    id: 'campaign_mapper',
+    label: 'Campaign Mapper',
+    folder: 'campaign_mapper',
+    marketplace: 'zepto',
+    hint: 'Maps Campaign Name → Category',
   },
 ];
 
@@ -347,7 +404,7 @@ export interface DetectResult {
   /** Set when the file is a recognised report with no warehouse folder yet. */
   note?: string;
   /** Marketplace the columns belong to (absent = Amazon). */
-  marketplace?: 'amazon' | 'swiggy_instamart';
+  marketplace?: 'amazon' | 'swiggy_instamart' | 'zepto';
 }
 
 /** Swiggy Instamart exports are recognised by their own columns (sales / ads / SKU mapper). */
@@ -357,6 +414,32 @@ const IM_FOLDER: Record<string, string> = {
   im_inventory: 'inventory',
   im_sku_mapper: 'sku_mapper',
 };
+
+/** Zepto report kinds with no channel in their columns → their warehouse folder. */
+const ZP_FOLDER: Record<string, string> = {
+  zp_sales: 'sales',
+  zp_inventory: 'inventory',
+  zp_sku_mapper: 'sku_mapper',
+  zp_campaign_mapper: 'campaign_mapper',
+};
+/** SP/SB/SD from the file name (…sp…/sb…/sd…/pda→sd). */
+function zpChannelFromName(filename: string): 'sp' | 'sb' | 'sd' | null {
+  const n = ` ${normKey(filename)} `;
+  if (/ sd /.test(n) || / pda /.test(n)) return 'sd';
+  if (/ sb /.test(n)) return 'sb';
+  if (/ sp /.test(n)) return 'sp';
+  return null;
+}
+/** SP/SB/SD from a campaign report's CampaignType value. */
+function zpChannelFromType(ct: string): 'sp' | 'sb' | 'sd' | null {
+  const k = normKey(ct);
+  if (!k) return null;
+  if (k.includes('banner') || k.includes('display')) return 'sd';
+  if (k === 'pca' || k.includes('brand')) return 'sb';
+  if (k.includes('auction') || k.includes('auto') || k.includes('product') || k.includes('up sell'))
+    return 'sp';
+  return null;
+}
 
 /**
  * Inspect a file's columns and decide which warehouse report type it is.
@@ -387,6 +470,37 @@ export function detectIngestType(buffer: Buffer, filename: string): DetectResult
         detectedBy: 'headers',
         marketplace: 'swiggy_instamart',
       };
+
+    // Zepto exports — recognised by their own columns.
+    const zpHeaders = sheet.headers.map((h) => normKey(h));
+    const zp = detectZepto({ fileName: filename, sheetName: sheet.sheetName, headers: zpHeaders, rows: [] });
+    if (zp !== 'unknown') {
+      let folder: string | null = ZP_FOLDER[zp] ?? null;
+      if (!folder) {
+        // Ad report (campaign/keyword/product) — resolve the channel for the folder.
+        let ch = zpChannelFromName(filename);
+        if (!ch && zp === 'zp_campaign') {
+          const i = zpHeaders.indexOf('campaigntype');
+          if (i >= 0)
+            for (const r of sheet.rows) {
+              ch = zpChannelFromType(String(r[i] ?? ''));
+              if (ch) break;
+            }
+        }
+        const kind = zp === 'zp_campaign' ? 'campaign' : zp === 'zp_keyword' ? 'keyword' : 'product';
+        folder = ch ? `${ch}_${kind}` : null;
+        if (!folder)
+          return {
+            filename,
+            reportType: null,
+            fineType: null,
+            detectedBy: 'headers',
+            marketplace: 'zepto',
+            note: `Zepto ${kind} report — pick its SP / SB / SD channel above (not in the file name).`,
+          };
+      }
+      return { filename, reportType: folder, fineType: null, detectedBy: 'headers', marketplace: 'zepto' };
+    }
     // Inventory / PO / Shipment files are recognised by their own signatures and
     // take priority over the ads detector (Vendor Central sales excepted).
     const ops = detectOpsFile(sheet.headers, sheet.preamble);
