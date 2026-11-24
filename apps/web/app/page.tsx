@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ErrorBox } from '@/components/notes';
 import { BlinkitDashboard } from '@/components/blinkit/blinkit-dashboard';
+import { ZeptoDashboard } from '@/components/zepto/zepto-dashboard';
 import { ReportsDashboard } from '@/components/reports-dashboard';
 import { MarketplaceLogo } from '@/components/shell/marketplace-logo';
 import { Select } from '@/components/views/shared';
@@ -416,10 +417,31 @@ export default function GcsPage() {
       )}
 
       {current && marketplace === 'zepto' && (
-        <div className="rounded-box border border-line bg-surface px-4 py-6 text-sm text-muted">
-          Zepto files can be uploaded and synced, but there is no Zepto dashboard yet — share a sample of each
-          Zepto export to add one.
-        </div>
+        <ZeptoDashboard
+          key={`zp:${current.profileId}:${version}`}
+          profileId={current.profileId}
+          title={current.brand}
+          subtitle={`Zepto data from GCS · last synced ${fmtWhen(current.lastSyncedAt)}`}
+          emptyState={
+            running ? (
+              <>
+                Pulling {current.brand}&apos;s Zepto files from GCS — the reports appear as soon as the sync
+                finishes.
+              </>
+            ) : (
+              <>
+                No Zepto data synced for {current.brand} yet — expected under{' '}
+                <code className="font-mono text-xs">
+                  gs://{info?.bucket}/{current.folder}/{info?.marketplace}/
+                </code>{' '}
+                (total sales, SP/SB/SD campaign·keyword·product, inventory, SKU &amp; campaign mappers).{' '}
+                <button onClick={() => void sync(false)} className="font-medium text-accent underline">
+                  Sync now
+                </button>
+              </>
+            )
+          }
+        />
       )}
 
       {current && marketplace === 'amazon' && (
