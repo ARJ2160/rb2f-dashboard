@@ -9,7 +9,12 @@
   "exports": {
     ".": "./src/index.ts",
     "./blinkit": "./src/blinkit/index.ts",
-    "./zepto": "./src/zepto/index.ts"
+    "./zepto": "./src/zepto/index.ts",
+    "./flipkart": "./src/flipkart/index.ts",
+    "./myntra": "./src/myntra/index.ts",
+    "./nykaa": "./src/nykaa/index.ts",
+    "./firstcry": "./src/firstcry/index.ts",
+    "./meesho": "./src/meesho/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

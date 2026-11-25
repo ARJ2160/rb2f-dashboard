@@ -1,0 +1,18 @@
+import { Router } from 'express';
+import { z } from 'zod';
+import { profileIdSchema, rangeQuerySchema } from '../lib/params';
+import { invalidateFcDims } from './reports/dims';
+import { asinLevel, categoryAdvertised, daily, dur, groups, keywords, meta } from './reports';
+export const firstcryRouter = Router();
+const optText = z.string().trim().max(200).optional().transform((v) => (v ? v : undefined));
+const range = (qry: unknown) => { const r = rangeQuerySchema.parse(qry); const { category } = z.object({ category: optText }).parse(qry); return { ...r, category }; };
+const profile = (qry: unknown) => z.object({ profileId: profileIdSchema }).parse(qry).profileId;
+const limit = (qry: unknown, def: number) => z.object({ limit: z.coerce.number().int().min(1).max(5000).default(def) }).parse(qry).limit;
+firstcryRouter.get('/meta', async (req, res) => { res.json(await meta(profile(req.query))); });
+firstcryRouter.get('/summary', async (req, res) => { const { groupBy } = z.object({ groupBy: z.enum(['category', 'sku']).default('category') }).parse(req.query); res.json(await groups(range(req.query), groupBy)); });
+firstcryRouter.get('/dsr', async (req, res) => { res.json(await daily(range(req.query))); });
+firstcryRouter.get('/dur', async (req, res) => { const { metric } = z.object({ metric: z.enum(['units', 'rev']).default('units') }).parse(req.query); res.json(await dur(range(req.query), metric)); });
+firstcryRouter.get('/asin', async (req, res) => { res.json(await asinLevel({ ...range(req.query), limit: limit(req.query, 2000) })); });
+firstcryRouter.get('/category-advertised', async (req, res) => { res.json(await categoryAdvertised(range(req.query))); });
+firstcryRouter.get('/keywords', async (req, res) => { res.json(await keywords({ ...range(req.query), limit: limit(req.query, 1000) })); });
+firstcryRouter.post('/rebuild-dims', async (req, res) => { invalidateFcDims(profile(req.query)); res.json({ ok: true }); });
