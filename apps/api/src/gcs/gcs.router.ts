@@ -5,19 +5,31 @@ import { z } from 'zod';
 import { env } from '../config/env';
 import { HttpError } from '../middleware/error-handler';
 import { requestUser } from '../middleware/rate-limit';
+import { log } from '../lib/logger';
 import { cleanFilename, looksLikeSpreadsheet } from '../lib/upload-files';
 import { GcsError } from './gcs-client';
-import { gcsConfigError, getBrands, listSyncedFiles, startSync, SyncRefusedError } from './gcs-sync.service';
+import {
+  deleteBrand,
+  gcsConfigError,
+  getBrands,
+  invalidateBrandCache,
+  listBrandFolders,
+  listSyncedFiles,
+  startSync,
+  SyncRefusedError,
+} from './gcs-sync.service';
 import type { BulkIngestItem } from './gcs-ingest';
 import {
   ALL_REPORT_TYPES,
   buildFilename,
+  createBrandInGcs,
   findReportType,
   isValidDate,
+  resolveBlinkitAdReportType,
   uploadBulkToGcs,
   uploadFilesToGcs,
 } from './gcs-ingest';
-import { MARKETPLACES } from './paths';
+import { brandSlug, MARKETPLACES, profileIdForBrand } from './paths';
 
 /**
  * Read-only GCS warehouse endpoints. Reports for a synced brand use the normal
@@ -55,6 +67,49 @@ gcsRouter.get('/brands', async (req, res) => {
   const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
   const marketplace = marketplaceSchema.parse(req.query.marketplace || undefined);
   res.json(await getBrands(refresh, marketplace));
+});
+
+/**
+ * POST /api/gcs/brands  { brand } — create an (empty) brand folder in the bucket.
+ * Writes the brand's marker object so it appears in the picker before any report
+ * files are uploaded. Operator action (same tier as /ingest); rate-limited in app.ts.
+ */
+gcsRouter.post('/brands', async (req, res) => {
+  const raw = z.object({ brand: brandSchema }).parse(req.body ?? {});
+  const brand = brandSlug(raw.brand);
+  // brandSlug can strip a name down to something the brand list would ignore.
+  if (!brand || brand.startsWith('_') || brand.startsWith('.')) {
+    throw new HttpError(
+      400,
+      'Brand name must contain a letter or digit and cannot start with "_" or ".".'
+    );
+  }
+
+  // Refuse duplicates (case/space variants collapse to the same slug).
+  const existing = (await guard(() => listBrandFolders(true), res)).find((b) => b.brand === brand);
+  if (existing) throw new HttpError(409, `Brand "${brand}" already exists.`);
+
+  await guard(() => createBrandInGcs(brand), res);
+  invalidateBrandCache();
+  log.info('GCS brand created', { user: requestUser(req), brand });
+  res.status(201).json({ brand, profileId: profileIdForBrand(brand), created: true });
+});
+
+/**
+ * DELETE /api/gcs/brands/:brand — delete a brand: remove every file under its
+ * folder in the bucket and every row stored under its profile. Destructive; the
+ * UI asks the user to type the brand name to confirm. Operator action.
+ */
+gcsRouter.delete('/brands/:brand', async (req, res) => {
+  const brand = brandSlug(brandSchema.parse(req.params.brand ?? ''));
+  if (!brand) throw new HttpError(400, 'Invalid brand.');
+  const result = await guard(() => deleteBrand(brand), res);
+  log.info('GCS brand deleted', {
+    user: requestUser(req),
+    brand: result.brand,
+    filesDeleted: result.filesDeleted,
+  });
+  res.json({ ...result, deleted: true });
 });
 
 /** POST /api/gcs/sync  { brand, force?, marketplace? } — starts a background sync, returns the job. */
@@ -151,20 +206,21 @@ gcsRouter.post('/ingest', ingestUpload, async (req, res) => {
     .map((f) => ({ original: f.originalname, buffer: f.buffer }))
     .filter((f) => looksLikeSpreadsheet(f.buffer) || /\.csv$/i.test(f.original));
 
-  const ingestFiles = validFiles.map((f, i) => ({
-    // Add "_2", "_3" … suffix when multiple files share the same date range.
-    name: buildFilename(
-      brand,
-      reportTypeId,
-      startDate,
-      endDate,
-      f.original,
-      validFiles.length > 1 ? `_${i + 1}` : ''
-    ),
-    buffer: f.buffer,
-  }));
+  const ingestFiles = validFiles.map((f, i) => {
+    // A generic Blinkit "ads" upload is filed into its exact ads_sales/<sub>/ folder.
+    const rtId =
+      marketplace === 'blinkit' && reportTypeId === 'ads'
+        ? (resolveBlinkitAdReportType(f.original, f.buffer) ?? reportTypeId)
+        : reportTypeId;
+    return {
+      reportType: findReportType(marketplace, rtId) ?? reportType,
+      // Add "_2", "_3" … suffix when multiple files share the same date range.
+      name: buildFilename(brand, rtId, startDate, endDate, f.original, validFiles.length > 1 ? `_${i + 1}` : ''),
+      buffer: f.buffer,
+    };
+  });
 
-  const uploadResults = await guard(() => uploadFilesToGcs(brand, reportType, ingestFiles), res);
+  const uploadResults = await guard(() => uploadFilesToGcs(brand, ingestFiles), res);
 
   // Kick off a background sync so the uploaded files are ingested into the
   // dashboard immediately. We don't wait for it — just return the job id.

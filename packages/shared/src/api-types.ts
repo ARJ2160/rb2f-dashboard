@@ -514,6 +514,26 @@ export interface GcsBrandsResponse {
   limits?: { syncCooldownSec: number; reingestCooldownMin: number };
 }
 
+/** Result of creating a brand folder in the warehouse bucket (POST /api/gcs/brands). */
+export interface GcsCreateBrandResponse {
+  /** URL-safe brand id ("eatopia"). */
+  brand: string;
+  /** Profile the brand's data is stored under (`gcs_<brand>`). */
+  profileId: string;
+  /** true when a new folder was created (false reserved for idempotent re-creates). */
+  created: boolean;
+}
+
+/** Result of deleting a brand (DELETE /api/gcs/brands/:brand). */
+export interface GcsDeleteBrandResponse {
+  brand: string;
+  folder: string;
+  profileId: string;
+  /** Number of objects removed from the bucket. */
+  filesDeleted: number;
+  deleted: boolean;
+}
+
 /** A synced object as recorded in the ledger. */
 export interface GcsFileEntry {
   file: string;

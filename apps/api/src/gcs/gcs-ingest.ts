@@ -11,7 +11,10 @@
  */
 
 import { env } from '../config/env';
+import { detectReport } from '../blinkit/ingestion/detect-report';
+import { readBlinkitWorkbook } from '../blinkit/ingestion/sheet-reader';
 import { GcsClient, READ_WRITE_SCOPE } from './gcs-client';
+import { toUtf8Csv } from './warehouse';
 
 // ── Report type registry ──────────────────────────────────────────────────────
 
@@ -394,6 +397,46 @@ export function isValidDate(s: string): boolean {
   return !isNaN(d.getTime());
 }
 
+// ── Blinkit ad sub-type routing ───────────────────────────────────────────────
+
+/** Blinkit detectReport() result → the report-type id with the native `ads_sales/<sub>/` folder. */
+const BK_AD_REPORT_FOR: Record<string, string> = {
+  bk_ads_product_listing: 'product_listing',
+  bk_ads_product_reco: 'product_recommendation',
+  bk_ads_banner_listing: 'banner_listing',
+};
+
+/**
+ * A generic Blinkit "ads" upload → the specific ad report type, so the file is
+ * stored under its native folder `<brand>/blinkit/ads_sales/<sub>/` (and named
+ * `<brand>_<sub>_…`), matching how the warehouse is organised. Decided by a
+ * report-type token in the original file name first, then by the ad sheet(s)
+ * detected from the columns. Returns null when the file is not a single ad
+ * subtype (e.g. a combined workbook holding PL + PR + BL), so the caller keeps
+ * the generic `ads` type and the sync still classifies each sheet by its columns.
+ */
+export function resolveBlinkitAdReportType(originalName: string, buffer: Buffer): string | null {
+  const n = originalName.toLowerCase();
+  if (n.includes('product_recommendation') || n.includes('product recommendation'))
+    return 'product_recommendation';
+  if (n.includes('banner_listing') || n.includes('banner listing') || n.includes('banner'))
+    return 'banner_listing';
+  if (n.includes('product_listing') || n.includes('product listing')) return 'product_listing';
+
+  try {
+    const { sheets } = readBlinkitWorkbook(toUtf8Csv(buffer), originalName);
+    const found = new Set<string>();
+    for (const s of sheets) {
+      const id = BK_AD_REPORT_FOR[detectReport(s)];
+      if (id) found.add(id);
+    }
+    if (found.size === 1) return [...found][0]!;
+  } catch {
+    /* unreadable here — let the sync detect it by columns after upload */
+  }
+  return null;
+}
+
 // ── Upload service ────────────────────────────────────────────────────────────
 
 export interface IngestFileResult {
@@ -409,11 +452,10 @@ export function objectName(brand: string, reportType: ReportType, filename: stri
   return `${brand}/${reportType.marketplace}/${reportType.folder}/${filename}`;
 }
 
-/** Upload an array of in-memory files to the warehouse bucket. */
+/** Upload an array of in-memory files (each already routed to its report type) to the warehouse bucket. */
 export async function uploadFilesToGcs(
   brand: string,
-  reportType: ReportType,
-  files: Array<{ name: string; buffer: Buffer }>
+  files: Array<{ reportType: ReportType; name: string; buffer: Buffer }>
 ): Promise<IngestFileResult[]> {
   const credFile = env.gcsCredentialsFile ?? null;
   const bucket = env.GCS_BUCKET;
@@ -429,7 +471,7 @@ export async function uploadFilesToGcs(
 
   const results: IngestFileResult[] = [];
   for (const file of files) {
-    const name = objectName(brand, reportType, file.name);
+    const name = objectName(brand, file.reportType, file.name);
     try {
       const uploaded = await client.upload(name, file.buffer, mimeForFilename(file.name));
       results.push({ filename: file.name, objectName: name, size: uploaded.size, status: 'uploaded' });
@@ -480,15 +522,24 @@ export async function uploadBulkToGcs(
       ? GcsClient.fromKeyFile(bucket, credFile, READ_WRITE_SCOPE)
       : GcsClient.fromMetadataServer(bucket);
 
+  // A generic Blinkit "ads" upload is filed into its exact native subfolder
+  // (ads_sales/product_listing | product_recommendation | banner_listing) and
+  // named to match, so uploads mirror how the warehouse bucket is organised.
+  const resolvedItems: BulkIngestItem[] = items.map((it) =>
+    it.marketplace === 'blinkit' && it.reportTypeId === 'ads'
+      ? { ...it, reportTypeId: resolveBlinkitAdReportType(it.original, it.buffer) ?? it.reportTypeId }
+      : it
+  );
+
   // Count per (reportType) so we can add a suffix only when a type repeats.
   const typeCounts = new Map<string, number>();
-  for (const it of items) typeCounts.set(it.reportTypeId, (typeCounts.get(it.reportTypeId) ?? 0) + 1);
+  for (const it of resolvedItems) typeCounts.set(it.reportTypeId, (typeCounts.get(it.reportTypeId) ?? 0) + 1);
   const typeSeen = new Map<string, number>();
 
   const results: IngestFileResult[] = [];
   const marketplaces = new Set<'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto'>();
 
-  for (const it of items) {
+  for (const it of resolvedItems) {
     const reportType = findReportType(it.marketplace, it.reportTypeId);
     if (!reportType) {
       results.push({
@@ -520,4 +571,62 @@ export async function uploadBulkToGcs(
     }
   }
   return { results, marketplaces: [...marketplaces] };
+}
+
+// ── Brand creation (empty brand folder) ──────────────────────────────────────
+
+/**
+ * Marker object written at a brand's root so the (otherwise empty) brand folder
+ * exists in the bucket and shows up in the brand picker before any report files
+ * are uploaded. It sits at `<brand>/.keep`, NOT under a marketplace folder, so
+ * the sync never lists or ingests it.
+ */
+export const BRAND_MARKER_OBJECT = '.keep';
+
+/** GCS object name for a brand's marker: `<brand>/.keep`. */
+export const brandMarkerObject = (brand: string): string => `${brand}/${BRAND_MARKER_OBJECT}`;
+
+/**
+ * Create a brand in the warehouse bucket by writing its marker object. Makes the
+ * brand selectable in the app immediately; report files are uploaded into
+ * `<brand>/<marketplace>/<folder>/` afterwards (see uploadFilesToGcs / uploadBulkToGcs).
+ */
+export async function createBrandInGcs(brand: string): Promise<{ brand: string; objectName: string }> {
+  const credFile = env.gcsCredentialsFile ?? null;
+  const bucket = env.GCS_BUCKET;
+  const client =
+    credFile !== null
+      ? GcsClient.fromKeyFile(bucket, credFile, READ_WRITE_SCOPE)
+      : GcsClient.fromMetadataServer(bucket);
+
+  const name = brandMarkerObject(brand);
+  const body = Buffer.from(
+    `Brand folder for "${brand}", created from the dashboard.\n` +
+      `Upload reports into ${brand}/<marketplace>/<report folder>/.\n`,
+    'utf8'
+  );
+  await client.upload(name, body, 'text/plain; charset=utf-8');
+  return { brand, objectName: name };
+}
+
+/**
+ * Delete every object under a brand's folder `<folder>/` in the warehouse
+ * bucket (the marker and all report files, every marketplace). Returns the
+ * count removed. Needs Storage Object Admin where the SA writes the bucket.
+ */
+export async function deleteBrandFiles(folder: string): Promise<number> {
+  const credFile = env.gcsCredentialsFile ?? null;
+  const bucket = env.GCS_BUCKET;
+  const client =
+    credFile !== null
+      ? GcsClient.fromKeyFile(bucket, credFile, READ_WRITE_SCOPE)
+      : GcsClient.fromMetadataServer(bucket);
+
+  const objects = await client.listObjects(`${folder}/`);
+  let deleted = 0;
+  for (const o of objects) {
+    await client.deleteObject(o.name);
+    deleted++;
+  }
+  return deleted;
 }

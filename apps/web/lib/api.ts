@@ -5,6 +5,8 @@ import type {
   DurMetric,
   DurResponse,
   GcsBrandsResponse,
+  GcsCreateBrandResponse,
+  GcsDeleteBrandResponse,
   GcsFileEntry,
   GcsSyncJob,
   AdsResponse,
@@ -261,6 +263,22 @@ export async function getGcsBrands(
       cache: 'no-store',
     })
   );
+}
+
+/** Create an (empty) brand folder in the warehouse bucket so it appears in the picker. */
+export async function createGcsBrand(brand: string): Promise<GcsCreateBrandResponse> {
+  return json(
+    await fetch(`${API_URL}/api/gcs/brands`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ brand }),
+    })
+  );
+}
+
+/** Delete a brand: remove its folder + all files from GCS and its stored data. */
+export async function deleteGcsBrand(brand: string): Promise<GcsDeleteBrandResponse> {
+  return json(await fetch(`${API_URL}/api/gcs/brands/${encodeURIComponent(brand)}`, { method: 'DELETE' }));
 }
 
 export async function startGcsSync(

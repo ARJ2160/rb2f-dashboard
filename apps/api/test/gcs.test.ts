@@ -174,3 +174,153 @@ test('GcsClient: token exchange, paginated listing, generation-pinned download',
     server.close();
   }
 });
+
+test('brand marker object name: <brand>/.keep', async () => {
+  const { brandMarkerObject, BRAND_MARKER_OBJECT } = await import('../src/gcs/gcs-ingest');
+  assert.equal(BRAND_MARKER_OBJECT, '.keep');
+  assert.equal(brandMarkerObject('eatopia'), 'eatopia/.keep');
+});
+
+test('a created brand marker surfaces the brand folder in the picker', () => {
+  // createBrandInGcs writes `acme/.keep`, so listPrefixes('') returns `acme/`.
+  const brands = brandFoldersFromPrefixes(['acme/']);
+  assert.deepEqual(
+    brands.map((b) => [b.brand, b.folder, b.profileId]),
+    [['acme', 'acme', 'gcs_acme']]
+  );
+});
+
+test('GcsClient.upload: POSTs bytes to the upload endpoint and returns the new generation', async () => {
+  const { createServer } = await import('node:http');
+  const { GcsClient } = await import('../src/gcs/gcs-client');
+  const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  let received: { name: string | null; method: string; body: string } | null = null;
+  const server = createServer((req, res) => {
+    const url = new URL(req.url!, 'http://x');
+    res.setHeader('content-type', 'application/json');
+    if (url.pathname === '/token') {
+      res.end(JSON.stringify({ access_token: 'tok', expires_in: 3600 }));
+      return;
+    }
+    if (req.headers.authorization !== 'Bearer tok') {
+      res.statusCode = 401;
+      res.end('{}');
+      return;
+    }
+    if (req.method === 'POST' && url.pathname === '/upload/storage/v1/b/bkt/o') {
+      const chunks: Buffer[] = [];
+      req.on('data', (c) => chunks.push(c as Buffer));
+      req.on('end', () => {
+        const body = Buffer.concat(chunks);
+        received = { name: url.searchParams.get('name'), method: req.method!, body: body.toString() };
+        res.end(JSON.stringify({ name: url.searchParams.get('name'), generation: '99', size: String(body.length) }));
+      });
+      return;
+    }
+    res.statusCode = 404;
+    res.end('{}');
+  });
+  await new Promise<void>((r) => server.listen(0, r));
+  const port = (server.address() as { port: number }).port;
+  try {
+    const key = {
+      client_email: 'sa@x.iam.gserviceaccount.com',
+      private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+      token_uri: `http://127.0.0.1:${port}/token`,
+    };
+    const c = new GcsClient('bkt', key, `http://127.0.0.1:${port}/storage/v1`);
+    const out = await c.upload('acme/.keep', Buffer.from('hi'), 'text/plain');
+    assert.equal(out.generation, '99');
+    assert.equal(out.name, 'acme/.keep');
+    const got = received as { name: string | null; method: string; body: string } | null;
+    assert.ok(got, 'server received the upload');
+    assert.equal(got.method, 'POST');
+    assert.equal(got.name, 'acme/.keep');
+    assert.equal(got.body, 'hi');
+  } finally {
+    server.close();
+  }
+});
+
+test('blinkit ads upload resolves to its native ads_sales subtype', async () => {
+  const { resolveBlinkitAdReportType } = await import('../src/gcs/gcs-ingest');
+
+  // By file-name token (native exports: <brand>_<sub>_<dates>.csv).
+  assert.equal(
+    resolveBlinkitAdReportType('eatopia_product_listing_20260201_20260228.csv', Buffer.from('')),
+    'product_listing'
+  );
+  assert.equal(resolveBlinkitAdReportType('eatopia_banner_listing_x.csv', Buffer.from('')), 'banner_listing');
+  assert.equal(
+    resolveBlinkitAdReportType('x_product_recommendation_y.csv', Buffer.from('')),
+    'product_recommendation'
+  );
+
+  // By columns when the name carries no token.
+  const banner = [
+    'Date,Campaign ID,Campaign Name,Impressions,Estimated Budget Consumed,Reach,Unique Clicks',
+    '01-02-2026,123,Brand BL,1000,500,800,40',
+  ].join('\n');
+  assert.equal(resolveBlinkitAdReportType('ads_export.csv', Buffer.from(banner)), 'banner_listing');
+
+  const pl = [
+    'Date,Campaign ID,Campaign Name,Targeting Value,Impressions,Estimated Budget Consumed',
+    '01-02-2026,123,Brand PL,protein,1000,500',
+  ].join('\n');
+  assert.equal(resolveBlinkitAdReportType('ads_export.csv', Buffer.from(pl)), 'product_listing');
+
+  // Not a recognisable single ad subtype → null (caller keeps the generic type).
+  assert.equal(resolveBlinkitAdReportType('ads_export.csv', Buffer.from('foo,bar\n1,2')), null);
+});
+
+test('GcsClient.deleteObject: DELETEs the object; 404 is treated as already gone', async () => {
+  const { createServer } = await import('node:http');
+  const { GcsClient } = await import('../src/gcs/gcs-client');
+  const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const seen: string[] = [];
+  const keepPath = `/storage/v1/b/bkt/o/${encodeURIComponent('acme/.keep')}`;
+  const gonePath = `/storage/v1/b/bkt/o/${encodeURIComponent('acme/gone.csv')}`;
+  const server = createServer((req, res) => {
+    const url = new URL(req.url!, 'http://x');
+    if (url.pathname === '/token') {
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ access_token: 'tok', expires_in: 3600 }));
+      return;
+    }
+    if (req.headers.authorization !== 'Bearer tok') {
+      res.statusCode = 401;
+      res.end('{}');
+      return;
+    }
+    seen.push(`${req.method} ${url.pathname}`);
+    if (req.method === 'DELETE' && url.pathname === keepPath) {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
+    if (req.method === 'DELETE' && url.pathname === gonePath) {
+      res.statusCode = 404;
+      res.setHeader('content-type', 'application/json');
+      res.end(JSON.stringify({ error: { message: 'Not Found' } }));
+      return;
+    }
+    res.statusCode = 500;
+    res.end('{}');
+  });
+  await new Promise<void>((r) => server.listen(0, r));
+  const port = (server.address() as { port: number }).port;
+  try {
+    const key = {
+      client_email: 'sa@x.iam.gserviceaccount.com',
+      private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+      token_uri: `http://127.0.0.1:${port}/token`,
+    };
+    const c = new GcsClient('bkt', key, `http://127.0.0.1:${port}/storage/v1`);
+    await c.deleteObject('acme/.keep'); // 204 → ok
+    await c.deleteObject('acme/gone.csv'); // 404 → treated as success, no throw
+    assert.ok(seen.includes(`DELETE ${keepPath}`));
+    assert.ok(seen.includes(`DELETE ${gonePath}`));
+  } finally {
+    server.close();
+  }
+});

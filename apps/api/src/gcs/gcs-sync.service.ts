@@ -19,6 +19,7 @@ import { ingestBlinkitFile } from '../blinkit/ingestion/ingest';
 import { ingestInstamartFile } from '../instamart/ingest';
 import { ingestZeptoFile } from '../zepto/ingest';
 import { GcsClient, GcsError, type GcsObject } from './gcs-client';
+import { deleteBrandFiles } from './gcs-ingest';
 import { ingestWarehouseFile } from './warehouse-ingest';
 import {
   brandFoldersFromPrefixes,
@@ -103,12 +104,46 @@ export async function listBrandFolders(refresh = false): Promise<BrandFolder[]> 
   return brands;
 }
 
+/** Drop the cached brand-folder list so a newly created brand shows up at once. */
+export function invalidateBrandCache(): void {
+  brandCache = null;
+}
+
 async function findBrand(brand: string): Promise<BrandFolder> {
   const hit =
     (await listBrandFolders()).find((b) => b.brand === brand) ??
     (await listBrandFolders(true)).find((b) => b.brand === brand);
   if (!hit) throw new GcsError(`No brand folder "${brand}" in gs://${env.GCS_BUCKET}.`, 404);
   return hit;
+}
+
+/** Remove every row stored under a warehouse profile across all marketplace tables. */
+async function purgeProfileData(profileId: string): Promise<void> {
+  const tables = await sqlClient<{ table_name: string }[]>`
+    select table_name
+    from information_schema.columns
+    where table_schema = 'public' and column_name = 'profile_id'
+  `;
+  await sqlClient.begin(async (sql) => {
+    for (const { table_name } of tables) {
+      await sql`delete from ${sql(table_name)} where profile_id = ${profileId}`;
+    }
+  });
+}
+
+/**
+ * Delete a brand: remove every object under its bucket folder and every row
+ * stored under its profile `gcs_<brand>`, so the brand disappears from the
+ * picker. Throws GcsError(404) when the brand folder does not exist.
+ */
+export async function deleteBrand(
+  brand: string
+): Promise<{ brand: string; folder: string; profileId: string; filesDeleted: number }> {
+  const folder = await findBrand(brand);
+  const filesDeleted = await deleteBrandFiles(folder.folder);
+  invalidateBrandCache();
+  await purgeProfileData(folder.profileId);
+  return { brand: folder.brand, folder: folder.folder, profileId: folder.profileId, filesDeleted };
 }
 
 // ── Jobs (in memory; the ledger table is the durable record) ──

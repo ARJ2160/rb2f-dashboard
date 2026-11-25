@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
+  createGcsBrand,
+  deleteGcsBrand,
   gcsIngestBulk,
   getGcsBrands,
   type BulkIngestResponse,
@@ -88,7 +90,7 @@ const CATALOG: Record<Marketplace, SlotGroup[]> = {
     {
       group: 'Ads',
       slots: [
-        { key: 'ads', label: 'Ads Data', hint: 'Blinkit ads export — Product Listing / Recommendation / Banner (auto-detected)', reportType: 'ads' },
+        { key: 'ads', label: 'Ads Data', hint: 'Blinkit ads export — PL / PR / Banner; auto-filed into its ads_sales folder', reportType: 'ads' },
       ],
     },
     {
@@ -180,6 +182,13 @@ export default function IngestPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BulkIngestResponse | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newBrand, setNewBrand] = useState('');
+  const [creatingBrand, setCreatingBrand] = useState(false);
+  const [brandNotice, setBrandNotice] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deletingBrand, setDeletingBrand] = useState(false);
   const [datesTouched, setDatesTouched] = useState(false);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -278,6 +287,49 @@ export default function IngestPage() {
     }
   }, [brand, startDate, endDate, doneCount, slots, uploads, marketplace, datesTouched]);
 
+  const addBrand = useCallback(async () => {
+    const name = newBrand.trim();
+    if (!name) return setError('Enter a brand name.');
+    setCreatingBrand(true);
+    setError(null);
+    setBrandNotice(null);
+    try {
+      const created = await createGcsBrand(name);
+      const list = await getGcsBrands(true, marketplace);
+      setBrands((list.brands ?? []).map((b: { brand: string }) => b.brand));
+      setBrand(created.brand);
+      setAdding(false);
+      setNewBrand('');
+      setBrandNotice(`Brand \u201c${created.brand}\u201d created in GCS.`);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setCreatingBrand(false);
+    }
+  }, [newBrand, marketplace]);
+
+  const removeBrand = useCallback(async () => {
+    if (!brand) return;
+    setDeletingBrand(true);
+    setError(null);
+    setBrandNotice(null);
+    try {
+      const res = await deleteGcsBrand(brand);
+      const list = await getGcsBrands(true, marketplace);
+      setBrands((list.brands ?? []).map((b: { brand: string }) => b.brand));
+      setBrand('');
+      setDeleting(false);
+      setDeleteConfirmText('');
+      setBrandNotice(
+        `Deleted brand \u201c${res.brand}\u201d and ${res.filesDeleted} file${res.filesDeleted === 1 ? '' : 's'} from GCS.`
+      );
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setDeletingBrand(false);
+    }
+  }, [brand, marketplace]);
+
   const currentFile = current ? uploads[current.key] : undefined;
 
   return (
@@ -294,9 +346,92 @@ export default function IngestPage() {
       {/* ── Brand + dates + marketplace ── */}
       <section className="grid gap-4 rounded-xl border border-line bg-surface p-4 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-medium uppercase tracking-wide text-muted">Account / brand</label>
-          {brands.length > 0 ? (
-            <select className="select select-bordered w-full" value={brand} onChange={(e) => setBrand(e.target.value)}>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-medium uppercase tracking-wide text-muted">Account / brand</label>
+            {!adding && (
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="text-xs font-medium text-primary hover:underline"
+                  onClick={() => {
+                    setAdding(true);
+                    setNewBrand('');
+                    setBrandNotice(null);
+                    setError(null);
+                    setDeleting(false);
+                  }}
+                >
+                  + New brand
+                </button>
+                {brand && brands.includes(brand) && (
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-error hover:underline"
+                    onClick={() => {
+                      setDeleting((d) => !d);
+                      setDeleteConfirmText('');
+                      setBrandNotice(null);
+                      setError(null);
+                    }}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {adding ? (
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  autoFocus
+                  className="input w-full"
+                  placeholder="e.g. eatopia"
+                  value={newBrand}
+                  onChange={(e) => setNewBrand(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '-'))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void addBrand();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary whitespace-nowrap"
+                  disabled={creatingBrand || !newBrand.trim()}
+                  onClick={() => void addBrand()}
+                >
+                  {creatingBrand ? 'Creating…' : 'Create'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  disabled={creatingBrand}
+                  onClick={() => {
+                    setAdding(false);
+                    setNewBrand('');
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+              <p className="text-[11px] text-muted">
+                Creates the brand folder in the GCS warehouse bucket. Lower-case letters, digits, “-” and “_”.
+              </p>
+            </div>
+          ) : brands.length > 0 ? (
+            <select
+              className="select select-bordered w-full"
+              value={brand}
+              onChange={(e) => {
+                setBrand(e.target.value);
+                setDeleting(false);
+                setDeleteConfirmText('');
+              }}
+            >
               <option value="">— select brand —</option>
               {brands.map((b) => (
                 <option key={b} value={b}>
@@ -313,6 +448,51 @@ export default function IngestPage() {
               onChange={(e) => setBrand(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '-'))}
             />
           )}
+
+          {deleting && brand && !adding && (
+            <div className="mt-1 flex flex-col gap-2 rounded-lg border border-error/30 bg-error/5 p-3">
+              <p className="text-xs text-error">
+                This permanently deletes brand <span className="font-semibold">{brand}</span> and every file
+                under it in GCS, plus its stored dashboard data. This cannot be undone.
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  className="input input-sm w-full"
+                  placeholder={`Type "${brand}" to confirm`}
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && deleteConfirmText.trim() === brand) {
+                      e.preventDefault();
+                      void removeBrand();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-sm btn-error whitespace-nowrap"
+                  disabled={deletingBrand || deleteConfirmText.trim() !== brand}
+                  onClick={() => void removeBrand()}
+                >
+                  {deletingBrand ? 'Deleting…' : 'Delete brand'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  disabled={deletingBrand}
+                  onClick={() => {
+                    setDeleting(false);
+                    setDeleteConfirmText('');
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
+          {brandNotice && <p className="text-[11px] text-success">{brandNotice}</p>}
         </div>
 
         <div className="flex flex-col gap-1.5">

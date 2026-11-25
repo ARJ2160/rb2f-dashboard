@@ -326,4 +326,33 @@ export class GcsClient {
     const body = (await res.json()) as { name: string; generation: string; size: string };
     return { name: body.name, generation: body.generation, size: Number(body.size) };
   }
+
+  /**
+   * Delete an object. Needs storage.objects.delete (Storage Object Admin).
+   * A missing object (404) is treated as already deleted.
+   */
+  async deleteObject(name: string): Promise<void> {
+    const url = `${this.apiBase}/b/${encodeURIComponent(this.bucket)}/o/${encodeURIComponent(name)}`;
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'DELETE',
+        headers: { authorization: `Bearer ${await this.accessToken()}` },
+        signal: AbortSignal.timeout(60_000),
+      });
+    } catch (err) {
+      throw new GcsError(`GCS delete failed: ${(err as Error).message}`);
+    }
+    if (res.ok || res.status === 404) return;
+    const text = await res.text().catch(() => '');
+    let msg = text.slice(0, 300);
+    try {
+      msg = (JSON.parse(text) as { error?: { message?: string } }).error?.message ?? msg;
+    } catch {
+      /* not JSON */
+    }
+    const hint =
+      res.status === 403 ? ` — give ${this.principal} "Storage Object Admin" on gs://${this.bucket}` : '';
+    throw new GcsError(`GCS delete failed (${res.status}): ${msg}${hint}`, res.status);
+  }
 }

@@ -64,7 +64,11 @@ export function createApp() {
     rateLimit({ limit: env.RATE_LIMIT_SYNC_PER_10MIN, windowMs: 10 * MINUTE, what: 'sync requests' })
   );
   app.post(
-    ['/api/gcs/ingest', '/api/gcs/ingest-bulk'],
+    ['/api/gcs/brands', '/api/gcs/ingest', '/api/gcs/ingest-bulk'],
+    rateLimit({ limit: env.RATE_LIMIT_UPLOADS_PER_10MIN, windowMs: 10 * MINUTE, what: 'uploads' })
+  );
+  app.delete(
+    ['/api/gcs/brands/:brand'],
     rateLimit({ limit: env.RATE_LIMIT_UPLOADS_PER_10MIN, windowMs: 10 * MINUTE, what: 'uploads' })
   );
 
