@@ -64,7 +64,7 @@ export function createApp() {
     rateLimit({ limit: env.RATE_LIMIT_SYNC_PER_10MIN, windowMs: 10 * MINUTE, what: 'sync requests' })
   );
   app.post(
-    ['/api/gcs/ingest', '/api/gcs/ingest-bulk', '/api/gcs/detect'],
+    ['/api/gcs/ingest', '/api/gcs/ingest-bulk'],
     rateLimit({ limit: env.RATE_LIMIT_UPLOADS_PER_10MIN, windowMs: 10 * MINUTE, what: 'uploads' })
   );
 
