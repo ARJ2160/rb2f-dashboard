@@ -565,6 +565,21 @@ export * from '../instamart/schema';
 // ── Zepto (zp_* tables) ──
 export * from '../zepto/schema';
 
+// ── Flipkart (fk_* tables) ──
+export * from '../flipkart/schema';
+
+// ── Myntra (my_* tables) ──
+export * from '../myntra/schema';
+
+// ── Nykaa (nk_* tables) ──
+export * from '../nykaa/schema';
+
+// ── Firstcry (fc_* tables) ──
+export * from '../firstcry/schema';
+
+// ── Meesho (me_* tables) ──
+export * from '../meesho/schema';
+
 // ── Amazon Inventory / PO / Shipment (brands, dim_warehouse, vc_* / sc_*) ──
 export * from '../ops/schema';
 export * from '../ops/sc-schema';

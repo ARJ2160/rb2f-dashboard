@@ -100,8 +100,27 @@ export function syncOrder<T extends ObjectMeta>(objects: T[], prefix: string): T
 // ── Marketplaces ──────────────────────────────────────────────────────
 
 /** Marketplace folders under each brand that the sync understands. */
-export type Marketplace = 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto';
-export const MARKETPLACES: readonly Marketplace[] = ['amazon', 'blinkit', 'swiggy_instamart', 'zepto'];
+export type Marketplace =
+  | 'amazon'
+  | 'blinkit'
+  | 'swiggy_instamart'
+  | 'zepto'
+  | 'flipkart'
+  | 'myntra'
+  | 'nykaa'
+  | 'firstcry'
+  | 'meesho';
+export const MARKETPLACES: readonly Marketplace[] = [
+  'amazon',
+  'blinkit',
+  'swiggy_instamart',
+  'zepto',
+  'flipkart',
+  'myntra',
+  'nykaa',
+  'firstcry',
+  'meesho',
+];
 
 /**
  * Blinkit ingest order: mappers first (SKU / campaign → category, city), then

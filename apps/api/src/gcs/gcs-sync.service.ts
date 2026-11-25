@@ -18,6 +18,11 @@ import { markDimsStale, rebuildCampaignDims } from '../reports/dims';
 import { ingestBlinkitFile } from '../blinkit/ingestion/ingest';
 import { ingestInstamartFile } from '../instamart/ingest';
 import { ingestZeptoFile } from '../zepto/ingest';
+import { ingestFlipkartFile } from '../flipkart/ingest';
+import { ingestMyntraFile } from '../myntra/ingest';
+import { ingestNykaaFile } from '../nykaa/ingest';
+import { ingestFirstcryFile } from '../firstcry/ingest';
+import { ingestMeeshoFile } from '../meesho/ingest';
 import { GcsClient, GcsError, type GcsObject } from './gcs-client';
 import { deleteBrandFiles } from './gcs-ingest';
 import { ingestWarehouseFile } from './warehouse-ingest';
@@ -65,6 +70,11 @@ export function marketplaceFolder(m: Marketplace): string {
   if (m === 'blinkit') return env.GCS_BLINKIT_FOLDER;
   if (m === 'swiggy_instamart') return env.GCS_SWIGGY_FOLDER;
   if (m === 'zepto') return env.GCS_ZEPTO_FOLDER;
+  if (m === 'flipkart') return env.GCS_FLIPKART_FOLDER;
+  if (m === 'myntra') return env.GCS_MYNTRA_FOLDER;
+  if (m === 'nykaa') return env.GCS_NYKAA_FOLDER;
+  if (m === 'firstcry') return env.GCS_FIRSTCRY_FOLDER;
+  if (m === 'meesho') return env.GCS_MEESHO_FOLDER;
   return env.GCS_MARKETPLACE_FOLDER; // amazon
 }
 
@@ -483,7 +493,17 @@ async function ingestObject(
           ? ingestInstamartFile(profileId, file, buffer)
           : marketplace === 'zepto'
             ? ingestZeptoFile(profileId, file, buffer)
-            : ingestWarehouseFile(profileId, file, buffer) // amazon
+            : marketplace === 'flipkart'
+              ? ingestFlipkartFile(profileId, file, buffer)
+              : marketplace === 'myntra'
+                ? ingestMyntraFile(profileId, file, buffer)
+                : marketplace === 'nykaa'
+                  ? ingestNykaaFile(profileId, file, buffer)
+                  : marketplace === 'firstcry'
+                    ? ingestFirstcryFile(profileId, file, buffer)
+                    : marketplace === 'meesho'
+                      ? ingestMeeshoFile(profileId, file, buffer)
+                      : ingestWarehouseFile(profileId, file, buffer) // amazon + marketplaces without a dedicated parser yet
   );
   return summarize(file, sheets);
 }

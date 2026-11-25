@@ -5,6 +5,11 @@ import { env } from './config/env';
 import { blinkitRouter } from './blinkit/blinkit.router';
 import { instamartRouter } from './instamart/instamart.router';
 import { zeptoRouter } from './zepto/zepto.router';
+import { flipkartRouter } from './flipkart/flipkart.router';
+import { myntraRouter } from './myntra/myntra.router';
+import { nykaaRouter } from './nykaa/nykaa.router';
+import { firstcryRouter } from './firstcry/firstcry.router';
+import { meeshoRouter } from './meesho/meesho.router';
 import { opsRouter } from './ops/ops.router';
 import { productsRouter } from './products/products.router';
 import { scRouter } from './ops/sc/sc.router';
@@ -60,6 +65,11 @@ export function createApp() {
       '/api/reports/rebuild-dims',
       '/api/blinkit/rebuild-dims',
       '/api/instamart/rebuild-dims',
+      '/api/flipkart/rebuild-dims',
+      '/api/myntra/rebuild-dims',
+      '/api/nykaa/rebuild-dims',
+      '/api/firstcry/rebuild-dims',
+      '/api/meesho/rebuild-dims',
     ],
     rateLimit({ limit: env.RATE_LIMIT_SYNC_PER_10MIN, windowMs: 10 * MINUTE, what: 'sync requests' })
   );
@@ -80,6 +90,11 @@ export function createApp() {
   app.use('/api/blinkit', blinkitRouter);
   app.use('/api/instamart', instamartRouter);
   app.use('/api/zepto', zeptoRouter);
+  app.use('/api/flipkart', flipkartRouter);
+  app.use('/api/myntra', myntraRouter);
+  app.use('/api/nykaa', nykaaRouter);
+  app.use('/api/firstcry', firstcryRouter);
+  app.use('/api/meesho', meeshoRouter);
   app.use('/api/ops/sc', scRouter);
   app.use('/api/ops', opsRouter);
   app.use('/api/products', productsRouter);

@@ -22,6 +22,11 @@ const MARKETPLACES: Array<{ id: Marketplace; label: string }> = [
   { id: 'blinkit', label: 'Blinkit' },
   { id: 'swiggy_instamart', label: 'Swiggy Instamart' },
   { id: 'zepto', label: 'Zepto' },
+  { id: 'flipkart', label: 'Flipkart' },
+  { id: 'myntra', label: 'Myntra' },
+  { id: 'nykaa', label: 'Nykaa' },
+  { id: 'firstcry', label: 'Firstcry' },
+  { id: 'meesho', label: 'Meesho' },
 ];
 
 const STATUS_STYLE: Record<string, string> = {
@@ -99,7 +104,17 @@ export default function GcsPage() {
     } catch {
       /* storage unavailable */
     }
-    const known: Marketplace[] = ['amazon', 'blinkit', 'swiggy_instamart', 'zepto'];
+    const known: Marketplace[] = [
+      'amazon',
+      'blinkit',
+      'swiggy_instamart',
+      'zepto',
+      'flipkart',
+      'myntra',
+      'nykaa',
+      'firstcry',
+      'meesho',
+    ];
     setMarketplaceState((known.includes(saved as Marketplace) ? saved : 'amazon') as Marketplace);
   }, []);
 

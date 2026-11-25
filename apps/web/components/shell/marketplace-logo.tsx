@@ -7,7 +7,16 @@ import { useEffect, useRef, useState } from 'react';
    apps/web/public/logos/amazon.svg, blinkit.svg, swiggy_instamart.svg and zepto.svg (.png also works) and they are
    picked up automatically. Until then a neutral built-in mark is shown. */
 
-export type LogoMarketplace = 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto';
+export type LogoMarketplace =
+  | 'amazon'
+  | 'blinkit'
+  | 'swiggy_instamart'
+  | 'zepto'
+  | 'flipkart'
+  | 'myntra'
+  | 'nykaa'
+  | 'firstcry'
+  | 'meesho';
 
 const SOURCES = (id: LogoMarketplace) => [`/logos/${id}.svg`, `/logos/${id}.png`];
 
@@ -43,6 +52,16 @@ const FALLBACK: Record<LogoMarketplace, { bg: string; fg: string; path: string; 
     path: 'M5 5h14L5 19h14',
     label: 'Zepto',
   },
+  // cart — Flipkart
+  flipkart: { bg: '#2874f0', fg: '#ffffff', path: 'M4 5h2l2 9h9l2-6H7M10 20a1 1 0 100-2 1 1 0 000 2zM17 20a1 1 0 100-2 1 1 0 000 2z', label: 'Flipkart' },
+  // M-mark — Myntra
+  myntra: { bg: '#ff3f6c', fg: '#ffffff', path: 'M5 19V6l5 7 5-7v13', label: 'Myntra' },
+  // N-mark — Nykaa
+  nykaa: { bg: '#e80071', fg: '#ffffff', path: 'M6 19V5l12 14V5', label: 'Nykaa' },
+  // F-mark — Firstcry
+  firstcry: { bg: '#f47d20', fg: '#ffffff', path: 'M7 5h10M7 5v14M7 12h7', label: 'Firstcry' },
+  // m-mark — Meesho
+  meesho: { bg: '#570d66', fg: '#ffffff', path: 'M5 18v-8M5 10q3-4 5 0 2-4 5 0v8', label: 'Meesho' },
 };
 
 export function MarketplaceLogo({

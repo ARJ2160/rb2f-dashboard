@@ -134,6 +134,20 @@
       "when": 1795434534962,
       "tag": "0018_aspiring_joshua_kane",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795615825361,
+      "tag": "0019_good_arclight",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1795618043728,
+      "tag": "0020_glamorous_deathbird",
+      "breakpoints": true
     }
   ]
 }

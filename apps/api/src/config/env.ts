@@ -47,6 +47,16 @@ const EnvSchema = z.object({
   GCS_SWIGGY_FOLDER: z.string().trim().default('instamart'),
   /** Zepto folder under each brand (`<brand>/zepto/…`). */
   GCS_ZEPTO_FOLDER: z.string().trim().default('zepto'),
+  /** Flipkart folder under each brand (`<brand>/flipkart/…`). */
+  GCS_FLIPKART_FOLDER: z.string().trim().default('flipkart'),
+  /** Myntra folder under each brand (`<brand>/myntra/…`). */
+  GCS_MYNTRA_FOLDER: z.string().trim().default('myntra'),
+  /** Nykaa folder under each brand (`<brand>/nykaa/…`). */
+  GCS_NYKAA_FOLDER: z.string().trim().default('nykaa'),
+  /** Firstcry folder under each brand (`<brand>/firstcry/…`). */
+  GCS_FIRSTCRY_FOLDER: z.string().trim().default('firstcry'),
+  /** Meesho folder under each brand (`<brand>/meesho/…`). */
+  GCS_MEESHO_FOLDER: z.string().trim().default('meesho'),
   /** Re-sync every brand every N minutes (0 = only when "Sync" is clicked). */
   GCS_SYNC_INTERVAL_MIN: z.coerce.number().min(0).default(0),
   /** Files larger than this are skipped. */

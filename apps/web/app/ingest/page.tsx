@@ -19,6 +19,11 @@ const MARKETPLACES: Array<{ id: Marketplace; label: string }> = [
   { id: 'blinkit', label: 'Blinkit' },
   { id: 'swiggy_instamart', label: 'Swiggy Instamart' },
   { id: 'zepto', label: 'Zepto' },
+  { id: 'flipkart', label: 'Flipkart' },
+  { id: 'myntra', label: 'Myntra' },
+  { id: 'nykaa', label: 'Nykaa' },
+  { id: 'firstcry', label: 'Firstcry' },
+  { id: 'meesho', label: 'Meesho' },
 ];
 
 /** Shared with the GCS page so the toggle remembers the same marketplace. */
@@ -144,6 +149,122 @@ const CATALOG: Record<Marketplace, SlotGroup[]> = {
         { key: 'inventory', label: 'Inventory Report', hint: 'City × SKU stock snapshot', reportType: 'inventory' },
         { key: 'sku_mapper', label: 'ASIN / SKU Mapper', hint: 'SKU ID (PVID) → canonical Category', reportType: 'sku_mapper' },
         { key: 'campaign_mapper', label: 'Campaign Mapper', hint: 'Campaign Name → Category', reportType: 'campaign_mapper' },
+      ],
+    },
+  ],
+  flipkart: [
+    {
+      group: 'Sales',
+      slots: [
+        { key: 'traffic', label: 'Traffic / Total Sales', hint: 'FSN × day: gross revenue, units, ads+organic impressions & clicks', reportType: 'traffic' },
+        { key: 'earn_more', label: 'Earn More', hint: 'Returns, cancellations, net revenue & units', reportType: 'earn_more' },
+      ],
+    },
+    {
+      group: 'Ads',
+      slots: [
+        { key: 'campaign', label: 'Campaign', hint: 'Campaign-level ad metrics (summary)', reportType: 'campaign', needsRange: true },
+        { key: 'consolidated_fsn', label: 'Consolidated FSN', hint: 'Advertised FSN (ASIN-level)', reportType: 'consolidated_fsn', needsRange: true },
+        { key: 'placement', label: 'Placement', hint: 'Placement performance', reportType: 'placement', needsRange: true },
+        { key: 'search_term', label: 'Search Term', hint: 'Customer search terms', reportType: 'search_term', needsRange: true },
+        { key: 'keyword', label: 'Keyword', hint: 'Keyword report', reportType: 'keyword', needsRange: true },
+      ],
+    },
+    {
+      group: 'Mappers',
+      slots: [
+        { key: 'fsn_mapper', label: 'FSN Mapper', hint: 'FSN → Category, Title, Selling Price', reportType: 'fsn_mapper' },
+        { key: 'campaign_mapper', label: 'Campaign Mapper', hint: 'Campaign → Category', reportType: 'campaign_mapper' },
+      ],
+    },
+  ],
+  myntra: [
+    {
+      group: 'Sales',
+      slots: [
+        { key: 'total_sales', label: 'Total Sales', hint: 'Style × day × state sales', reportType: 'total_sales' },
+      ],
+    },
+    {
+      group: 'Ads',
+      slots: [
+        { key: 'campaign', label: 'Campaign', hint: 'Campaign-level ad metrics', reportType: 'campaign', needsRange: true },
+        { key: 'product', label: 'Product', hint: 'Advertised Style (ASIN-level)', reportType: 'product', needsRange: true },
+        { key: 'placement', label: 'Placement', hint: 'Placement report', reportType: 'placement', needsRange: true },
+        { key: 'search_term', label: 'Search Term', hint: 'Keyword-targeting search terms', reportType: 'search_term', needsRange: true },
+        { key: 'targeting', label: 'Targeting', hint: 'Product + keyword targeting (merged)', reportType: 'targeting', needsRange: true },
+        { key: 'top_search_terms', label: 'Top Search Terms', hint: 'Platform demand / SOV', reportType: 'top_search_terms', needsRange: true },
+      ],
+    },
+    {
+      group: 'Mappers',
+      slots: [
+        { key: 'style_mapper', label: 'Style Mapper', hint: 'Style → Category, Title, Price', reportType: 'style_mapper' },
+        { key: 'campaign_mapper', label: 'Campaign Mapper', hint: 'Campaign → Category', reportType: 'campaign_mapper' },
+      ],
+    },
+  ],
+  nykaa: [
+    {
+      group: 'Sales',
+      slots: [
+        { key: 'mis', label: 'MIS (Fashion)', hint: 'Sales from Nykaa Fashion MIS', reportType: 'mis' },
+        { key: 'sales_report', label: 'Sales Report (Seller)', hint: 'Sales from the Seller Portal', reportType: 'sales_report' },
+      ],
+    },
+    {
+      group: 'Ads',
+      slots: [
+        { key: 'ad_report', label: 'Ad Report', hint: 'Campaign-level ad metrics', reportType: 'ad_report', needsRange: true },
+        { key: 'sku_report', label: 'SKU Report', hint: 'Advertised SKU (ASIN-level)', reportType: 'sku_report', needsRange: true },
+        { key: 'placement', label: 'Placement', hint: 'Placement report', reportType: 'placement', needsRange: true },
+        { key: 'search_term', label: 'Search Term', hint: 'Search terms, if present in the Ad Report', reportType: 'search_term', needsRange: true },
+        { key: 'sku_sov', label: 'SKU SOV', hint: 'Share of voice per SKU', reportType: 'sku_sov', needsRange: true },
+      ],
+    },
+    {
+      group: 'Mappers',
+      slots: [
+        { key: 'sku_mapper', label: 'SKU Mapper', hint: 'SKU → Category, Title, Price', reportType: 'sku_mapper' },
+        { key: 'campaign_mapper', label: 'Campaign Mapper', hint: 'Campaign → Category', reportType: 'campaign_mapper' },
+      ],
+    },
+  ],
+  firstcry: [
+    {
+      group: 'Sales',
+      slots: [
+        { key: 'sales', label: 'Sales Report', hint: 'SKU × day sales', reportType: 'sales' },
+      ],
+    },
+    {
+      group: 'Ads',
+      slots: [
+        { key: 'perf_product', label: 'Performance Product', hint: 'Advertised SKU (ASIN-level)', reportType: 'perf_product', needsRange: true },
+        { key: 'perf_category', label: 'Performance Category', hint: 'Category-level ad metrics (pre-rolled)', reportType: 'perf_category', needsRange: true },
+        { key: 'perf_keyword', label: 'Performance Keyword', hint: 'Keyword ad metrics', reportType: 'perf_keyword', needsRange: true },
+      ],
+    },
+    {
+      group: 'Mappers',
+      slots: [
+        { key: 'sku_mapper', label: 'SKU Mapper', hint: 'SKU → Category, Title, Price', reportType: 'sku_mapper' },
+        { key: 'campaign_mapper', label: 'Campaign Mapper', hint: 'Campaign → Category', reportType: 'campaign_mapper' },
+      ],
+    },
+  ],
+  meesho: [
+    {
+      group: 'Sales',
+      slots: [
+        { key: 'br', label: 'Business Report', hint: 'SKU × day gross sales (+ state)', reportType: 'br' },
+        { key: 'orders', label: 'Orders Report', hint: 'Order status → net (delivered / returned / RTO / cancelled)', reportType: 'orders' },
+      ],
+    },
+    {
+      group: 'Mappers',
+      slots: [
+        { key: 'sku_mapper', label: 'SKU Mapper', hint: 'SKU → Category, Title, Price', reportType: 'sku_mapper' },
       ],
     },
   ],

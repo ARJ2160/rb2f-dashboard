@@ -15,6 +15,7 @@ import { detectReport } from '../blinkit/ingestion/detect-report';
 import { readBlinkitWorkbook } from '../blinkit/ingestion/sheet-reader';
 import { GcsClient, READ_WRITE_SCOPE } from './gcs-client';
 import { toUtf8Csv } from './warehouse';
+import type { Marketplace } from './paths';
 
 // ── Report type registry ──────────────────────────────────────────────────────
 
@@ -23,7 +24,7 @@ export interface ReportType {
   label: string;
   /** Sub-folder under <brand>/<marketplace>/  */
   folder: string;
-  marketplace: 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto';
+  marketplace: Marketplace;
   hint?: string;
 }
 
@@ -333,24 +334,85 @@ export const ZEPTO_REPORT_TYPES: readonly ReportType[] = [
   },
 ];
 
+export const FLIPKART_REPORT_TYPES: readonly ReportType[] = [
+  { id: 'traffic', label: 'Traffic / Total Sales', folder: 'traffic', marketplace: 'flipkart', hint: 'FSN × day gross revenue, units, ads+organic impressions & clicks' },
+  { id: 'earn_more', label: 'Earn More (returns / net)', folder: 'earn_more', marketplace: 'flipkart', hint: 'Returns, cancellations, net revenue & units per FSN × day' },
+  { id: 'campaign', label: 'Campaign', folder: 'campaign', marketplace: 'flipkart', hint: 'Campaign-level ad metrics (summary window)' },
+  { id: 'consolidated_fsn', label: 'Consolidated FSN', folder: 'consolidated_fsn', marketplace: 'flipkart', hint: 'Advertised FSN (= ASIN-level) ad metrics' },
+  { id: 'placement', label: 'Placement', folder: 'placement', marketplace: 'flipkart', hint: 'Placement performance' },
+  { id: 'search_term', label: 'Search Term', folder: 'search_term', marketplace: 'flipkart', hint: 'Customer search term report' },
+  { id: 'keyword', label: 'Keyword', folder: 'keyword', marketplace: 'flipkart', hint: 'Keyword report' },
+  { id: 'fsn_mapper', label: 'FSN Mapper', folder: 'fsn_mapper', marketplace: 'flipkart', hint: 'FSN → Category, Title, Selling Price' },
+  { id: 'campaign_mapper', label: 'Campaign Mapper', folder: 'campaign_mapper', marketplace: 'flipkart', hint: 'Campaign → Category' },
+];
+
+export const MYNTRA_REPORT_TYPES: readonly ReportType[] = [
+  { id: 'total_sales', label: 'Total Sales', folder: 'total_sales', marketplace: 'myntra', hint: 'Style × day × state sales' },
+  { id: 'campaign', label: 'Campaign', folder: 'campaign', marketplace: 'myntra', hint: 'Campaign-level ad metrics' },
+  { id: 'product', label: 'Product', folder: 'product', marketplace: 'myntra', hint: 'Advertised Style (ASIN-level)' },
+  { id: 'placement', label: 'Placement', folder: 'placement', marketplace: 'myntra', hint: 'Placement report' },
+  { id: 'search_term', label: 'Search Term', folder: 'search_term', marketplace: 'myntra', hint: 'Keyword-targeting search term report' },
+  { id: 'targeting', label: 'Targeting', folder: 'targeting', marketplace: 'myntra', hint: 'Product + keyword targeting (merged)' },
+  { id: 'top_search_terms', label: 'Top Search Terms', folder: 'top_search_terms', marketplace: 'myntra', hint: 'Platform demand / SOV' },
+  { id: 'style_mapper', label: 'Style Mapper', folder: 'style_mapper', marketplace: 'myntra', hint: 'Style → Category, Title, Price' },
+  { id: 'campaign_mapper', label: 'Campaign Mapper', folder: 'campaign_mapper', marketplace: 'myntra', hint: 'Campaign → Category' },
+];
+
+export const NYKAA_REPORT_TYPES: readonly ReportType[] = [
+  { id: 'mis', label: 'MIS (Fashion)', folder: 'mis', marketplace: 'nykaa', hint: 'Sales from Nykaa Fashion MIS (source = mis)' },
+  { id: 'sales_report', label: 'Sales Report (Seller)', folder: 'sales_report', marketplace: 'nykaa', hint: 'Sales from the Seller Portal (source = seller)' },
+  { id: 'ad_report', label: 'Ad Report', folder: 'ad_report', marketplace: 'nykaa', hint: 'Campaign-level ad metrics' },
+  { id: 'sku_report', label: 'SKU Report', folder: 'sku_report', marketplace: 'nykaa', hint: 'Advertised SKU (ASIN-level)' },
+  { id: 'placement', label: 'Placement', folder: 'placement', marketplace: 'nykaa', hint: 'Placement report' },
+  { id: 'search_term', label: 'Search Term', folder: 'search_term', marketplace: 'nykaa', hint: 'Search terms, if the Ad Report carries them' },
+  { id: 'sku_sov', label: 'SKU SOV', folder: 'sku_sov', marketplace: 'nykaa', hint: 'Share of voice per SKU' },
+  { id: 'sku_mapper', label: 'SKU Mapper', folder: 'sku_mapper', marketplace: 'nykaa', hint: 'SKU → Category, Title, Price' },
+  { id: 'campaign_mapper', label: 'Campaign Mapper', folder: 'campaign_mapper', marketplace: 'nykaa', hint: 'Campaign → Category' },
+];
+
+export const FIRSTCRY_REPORT_TYPES: readonly ReportType[] = [
+  { id: 'sales', label: 'Sales Report', folder: 'sales', marketplace: 'firstcry', hint: 'SKU × day sales' },
+  { id: 'perf_product', label: 'Performance Product', folder: 'perf_product', marketplace: 'firstcry', hint: 'Advertised SKU (ASIN-level)' },
+  { id: 'perf_category', label: 'Performance Category', folder: 'perf_category', marketplace: 'firstcry', hint: 'Category-level ad metrics (pre-rolled)' },
+  { id: 'perf_keyword', label: 'Performance Keyword', folder: 'perf_keyword', marketplace: 'firstcry', hint: 'Keyword ad metrics' },
+  { id: 'sku_mapper', label: 'SKU Mapper', folder: 'sku_mapper', marketplace: 'firstcry', hint: 'SKU → Category, Title, Price' },
+  { id: 'campaign_mapper', label: 'Campaign Mapper', folder: 'campaign_mapper', marketplace: 'firstcry', hint: 'Campaign → Category' },
+];
+
+export const MEESHO_REPORT_TYPES: readonly ReportType[] = [
+  { id: 'br', label: 'Business Report', folder: 'br', marketplace: 'meesho', hint: 'SKU × day gross sales (+ state)' },
+  { id: 'orders', label: 'Orders Report', folder: 'orders', marketplace: 'meesho', hint: 'Order status → net (delivered / returned / RTO / cancelled)' },
+  { id: 'sku_mapper', label: 'SKU Mapper', folder: 'sku_mapper', marketplace: 'meesho', hint: 'SKU → Category, Title, Price' },
+];
+
 export const ALL_REPORT_TYPES: readonly ReportType[] = [
   ...AMAZON_REPORT_TYPES,
   ...BLINKIT_REPORT_TYPES,
   ...SWIGGY_INSTAMART_REPORT_TYPES,
   ...ZEPTO_REPORT_TYPES,
+  ...FLIPKART_REPORT_TYPES,
+  ...MYNTRA_REPORT_TYPES,
+  ...NYKAA_REPORT_TYPES,
+  ...FIRSTCRY_REPORT_TYPES,
+  ...MEESHO_REPORT_TYPES,
 ];
 
 export function reportTypesForMarketplace(
-  marketplace: 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto'
+  marketplace: Marketplace
 ): readonly ReportType[] {
   if (marketplace === 'blinkit') return BLINKIT_REPORT_TYPES;
   if (marketplace === 'swiggy_instamart') return SWIGGY_INSTAMART_REPORT_TYPES;
   if (marketplace === 'zepto') return ZEPTO_REPORT_TYPES;
+  if (marketplace === 'flipkart') return FLIPKART_REPORT_TYPES;
+  if (marketplace === 'myntra') return MYNTRA_REPORT_TYPES;
+  if (marketplace === 'nykaa') return NYKAA_REPORT_TYPES;
+  if (marketplace === 'firstcry') return FIRSTCRY_REPORT_TYPES;
+  if (marketplace === 'meesho') return MEESHO_REPORT_TYPES;
   return AMAZON_REPORT_TYPES;
 }
 
 export function findReportType(
-  marketplace: 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto',
+  marketplace: Marketplace,
   id: string
 ): ReportType | undefined {
   return reportTypesForMarketplace(marketplace).find((r) => r.id === id);
@@ -493,7 +555,7 @@ export async function uploadFilesToGcs(
 export interface BulkIngestItem {
   original: string;
   buffer: Buffer;
-  marketplace: 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto';
+  marketplace: Marketplace;
   reportTypeId: string;
 }
 
@@ -513,7 +575,7 @@ export async function uploadBulkToGcs(
   items: BulkIngestItem[]
 ): Promise<{
   results: IngestFileResult[];
-  marketplaces: Array<'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto'>;
+  marketplaces: Array<Marketplace>;
 }> {
   const credFile = env.gcsCredentialsFile ?? null;
   const bucket = env.GCS_BUCKET;
@@ -537,7 +599,7 @@ export async function uploadBulkToGcs(
   const typeSeen = new Map<string, number>();
 
   const results: IngestFileResult[] = [];
-  const marketplaces = new Set<'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto'>();
+  const marketplaces = new Set<Marketplace>();
 
   for (const it of resolvedItems) {
     const reportType = findReportType(it.marketplace, it.reportTypeId);

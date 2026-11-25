@@ -252,7 +252,16 @@ export async function getHarvest(profileId: string, f: Filters): Promise<Harvest
 // ── GCS warehouse (read-only) ──
 
 /** Marketplace folder synced from GCS: `<brand>/amazon/` (default) or `<brand>/blinkit/`. */
-export type Marketplace = 'amazon' | 'blinkit' | 'swiggy_instamart' | 'zepto';
+export type Marketplace =
+  | 'amazon'
+  | 'blinkit'
+  | 'swiggy_instamart'
+  | 'zepto'
+  | 'flipkart'
+  | 'myntra'
+  | 'nykaa'
+  | 'firstcry'
+  | 'meesho';
 
 export async function getGcsBrands(
   refresh = false,
