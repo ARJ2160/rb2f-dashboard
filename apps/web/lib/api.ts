@@ -329,7 +329,7 @@ export async function gcsIngest(
   return json(await fetch(`${API_URL}/api/gcs/ingest`, { method: 'POST', body: fd }));
 }
 
-// ── Bulk ingest (detect → assign → upload a mixed batch) ──────────────────────
+// ── Bulk ingest (assign → upload a mixed batch) ──────────────────────
 
 export interface FileAssignment {
   filename: string;
@@ -337,28 +337,9 @@ export interface FileAssignment {
   reportType: string;
 }
 
-export interface GcsDetection {
-  filename: string;
-  /** Coarse warehouse folder id, or null when unmapped. */
-  reportType: string | null;
-  /** Fine-grained pipeline guess, for display. */
-  fineType: string | null;
-  detectedBy: 'headers' | 'filename' | null;
-  note?: string;
-  /** Set when the columns belong to another marketplace than Amazon (e.g. Swiggy Instamart). */
-  marketplace?: Marketplace;
-}
-
 export interface BulkIngestResponse {
   files: IngestFileResult[];
   sync: GcsSyncJob[];
-}
-
-/** Guess each file's report type from its columns — no upload happens. */
-export async function gcsDetect(files: File[]): Promise<{ detections: GcsDetection[] }> {
-  const fd = new FormData();
-  for (const f of files) fd.append('files', f, f.name);
-  return json(await fetch(`${API_URL}/api/gcs/detect`, { method: 'POST', body: fd }));
 }
 
 /** Upload a mixed batch of reports in one call, then kick off a sync per marketplace touched. */

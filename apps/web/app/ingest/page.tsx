@@ -3,14 +3,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
-  gcsDetect,
   gcsIngestBulk,
   getGcsBrands,
-  getGcsReportTypes,
   type BulkIngestResponse,
   type FileAssignment,
   type Marketplace,
-  type ReportType,
 } from '@/lib/api';
 import { MarketplaceLogo } from '@/components/shell/marketplace-logo';
 
@@ -25,6 +22,131 @@ const MARKETPLACES: Array<{ id: Marketplace; label: string }> = [
 /** Shared with the GCS page so the toggle remembers the same marketplace. */
 const MARKETPLACE_KEY = 'dash.gcsMarketplace';
 
+/**
+ * A single named upload slot shown in the stepper. `reportType` is the GCS
+ * warehouse report-type id the file is assigned to (see gcs-ingest.ts
+ * ALL_REPORT_TYPES). Several slots can share one id — e.g. Amazon SP/SB/SD
+ * Campaign all map to `campaign`; the bulk upload suffixes duplicates and the
+ * sync recovers the exact channel from the file's own columns.
+ */
+interface Slot {
+  key: string;
+  label: string;
+  hint: string;
+  reportType: string;
+  /** Report has no dates of its own, so it must be dated by the page's date range. */
+  needsRange?: boolean;
+}
+interface SlotGroup {
+  group: string;
+  slots: Slot[];
+}
+
+const CATALOG: Record<Marketplace, SlotGroup[]> = {
+  amazon: [
+    {
+      group: 'Ads',
+      slots: [
+        { key: 'sp_campaign', label: 'SP Campaign', hint: 'Sponsored Products campaign report (daily or hourly)', reportType: 'campaign' },
+        { key: 'sb_campaign', label: 'SB Campaign', hint: 'Sponsored Brands campaign report', reportType: 'campaign' },
+        { key: 'sd_campaign', label: 'SD Campaign', hint: 'Sponsored Display campaign report', reportType: 'campaign' },
+        { key: 'sp_advertised', label: 'SP Advertised Product', hint: 'Per-ASIN spend & sales, Sponsored Products', reportType: 'advertised' },
+        { key: 'sd_advertised', label: 'SD Advertised Product', hint: 'Per-ASIN spend & sales, Sponsored Display', reportType: 'advertised' },
+        { key: 'sb_attributed', label: 'SB Attributed Purchases', hint: 'Attributed sales & units, Sponsored Brands', reportType: 'advertised' },
+        { key: 'sp_search_term', label: 'SP Search Term', hint: 'Customer search terms, Sponsored Products', reportType: 'str' },
+        { key: 'sb_search_term', label: 'SB Search Term', hint: 'Customer search terms, Sponsored Brands', reportType: 'str' },
+        { key: 'sd_targeting', label: 'SD Targeting', hint: 'Targeting report, Sponsored Display', reportType: 'str' },
+        { key: 'sp_placement', label: 'SP Placement', hint: 'Placement breakdown, Sponsored Products', reportType: 'placement' },
+        { key: 'sb_placement', label: 'SB Placement', hint: 'Placement breakdown, Sponsored Brands', reportType: 'placement' },
+      ],
+    },
+    {
+      group: 'Sales & Pi',
+      slots: [
+        { key: 'business_report', label: 'Business Report', hint: 'Seller Central sales by ASIN (sessions, CR%)', reportType: 'seller_central', needsRange: true },
+        { key: 'vendor_central', label: 'VC Sales', hint: 'Vendor Central ordered / shipped revenue & units', reportType: 'vendor_central', needsRange: true },
+        { key: 'pi_sales', label: 'Amazon Pi — Sales by Geography', hint: 'ASIN × day × city sales + indexed glance views', reportType: 'pi_sales' },
+        { key: 'sqp', label: 'SQP', hint: 'Brand Analytics Search Query Performance', reportType: 'sqp' },
+        { key: 'gv', label: 'Amazon Pi — Glance Views', hint: 'Daily indexed glance views per ASIN', reportType: 'gv' },
+        { key: 'search_rank', label: 'Amazon Pi — Search Rank', hint: 'Monthly organic search rank per ASIN', reportType: 'search_rank' },
+        { key: 'keyword_sov', label: 'Amazon Pi — Keyword SOV', hint: 'Keyword share of voice / CTR / CPC / ACoS', reportType: 'keyword_sov' },
+      ],
+    },
+    {
+      group: 'Mappers',
+      slots: [
+        { key: 'asin_mapper', label: 'ASIN Mapper', hint: 'ASIN → Category, Brand, Selling Price, Title', reportType: 'asin_mapper' },
+        { key: 'campaign_mapper', label: 'Campaign Mapper', hint: 'Campaign Name → Category, Type, Targeting, Branded', reportType: 'campaign_mapper' },
+      ],
+    },
+  ],
+  blinkit: [
+    {
+      group: 'Sales',
+      slots: [{ key: 'total_sales', label: 'Total Sales', hint: 'Order-level sales export (Sales Summary)', reportType: 'total_sales', needsRange: true }],
+    },
+    {
+      group: 'Ads',
+      slots: [
+        { key: 'ads', label: 'Ads Data', hint: 'Blinkit ads export — Product Listing / Recommendation / Banner (auto-detected)', reportType: 'ads' },
+      ],
+    },
+    {
+      group: 'Inventory & mappers',
+      slots: [
+        { key: 'inventory', label: 'Inventory Reports', hint: 'Daily stock-on-hand dump (InventoryData)', reportType: 'inventory' },
+        { key: 'sku_mapper', label: 'ASIN / SKU Mapper', hint: 'Blinkit Item ID → SKU, Category, Price', reportType: 'sku_mapper' },
+        { key: 'campaign_mapper', label: 'Campaign Mapper', hint: 'Campaign Name/ID → Category, SKU, City', reportType: 'campaign_mapper' },
+      ],
+    },
+  ],
+  swiggy_instamart: [
+    {
+      group: 'Sales',
+      slots: [{ key: 'sales', label: 'Total Sales', hint: 'Instamart sales export (date, city, store, item, GMV)', reportType: 'sales', needsRange: true }],
+    },
+    {
+      group: 'Ads',
+      slots: [{ key: 'ads', label: 'Ads Data', hint: 'Campaign spend & sales by keyword / city', reportType: 'ads' }],
+    },
+    {
+      group: 'Inventory & mappers',
+      slots: [
+        { key: 'inventory', label: 'Inventory Reports', hint: 'Daily stock-on-hand export', reportType: 'inventory' },
+        { key: 'sku_mapper', label: 'ASIN / SKU Mapper', hint: 'Item Code → SKU / Category', reportType: 'sku_mapper' },
+      ],
+    },
+  ],
+  zepto: [
+    {
+      group: 'Sales',
+      slots: [{ key: 'sales', label: 'Total Sales', hint: 'SALES_OVERVIEW — day × city × SKU', reportType: 'sales', needsRange: true }],
+    },
+    {
+      group: 'Ads',
+      slots: [
+        { key: 'sp_campaign', label: 'SP Campaign', hint: 'Sponsored Product campaign report', reportType: 'sp_campaign' },
+        { key: 'sb_campaign', label: 'SB Campaign', hint: 'Sponsored Brand campaign report', reportType: 'sb_campaign' },
+        { key: 'sd_campaign', label: 'SD Campaign', hint: 'Sponsored Display campaign report', reportType: 'sd_campaign' },
+        { key: 'sp_keyword', label: 'SP Keyword Report', hint: 'Sponsored Product keyword report', reportType: 'sp_keyword' },
+        { key: 'sb_keyword', label: 'SB Keyword Report', hint: 'Sponsored Brand keyword report', reportType: 'sb_keyword' },
+        { key: 'sd_keyword', label: 'SD Keyword Report', hint: 'Sponsored Display keyword report', reportType: 'sd_keyword' },
+        { key: 'sp_product', label: 'SP Product Report', hint: 'Sponsored Product SKU report', reportType: 'sp_product' },
+        { key: 'sb_product', label: 'SB Product Report', hint: 'Sponsored Brand SKU report', reportType: 'sb_product' },
+        { key: 'sd_product', label: 'SD Product Report', hint: 'Sponsored Display SKU report', reportType: 'sd_product' },
+      ],
+    },
+    {
+      group: 'Inventory & mappers',
+      slots: [
+        { key: 'inventory', label: 'Inventory Report', hint: 'City × SKU stock snapshot', reportType: 'inventory' },
+        { key: 'sku_mapper', label: 'ASIN / SKU Mapper', hint: 'SKU ID (PVID) → canonical Category', reportType: 'sku_mapper' },
+        { key: 'campaign_mapper', label: 'Campaign Mapper', hint: 'Campaign Name → Category', reportType: 'campaign_mapper' },
+      ],
+    },
+  ],
+};
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function isoDaysAgo(days: number): string {
@@ -32,33 +154,18 @@ function isoDaysAgo(days: number): string {
   d.setDate(d.getDate() - days);
   return d.toISOString().slice(0, 10);
 }
-
 const today = () => isoDaysAgo(0);
-const toYYYYMMDD = (iso: string) => iso.replace(/-/g, '');
 
-/** Mirrors the server-side buildFilename logic. */
-function previewFilename(
-  brand: string,
-  reportTypeId: string,
-  startDate: string,
-  endDate: string,
-  originalName: string,
-  suffix = ''
-): string {
-  if (!brand || !reportTypeId || !startDate || !endDate) return '';
-  const ext = originalName.includes('.') ? '.' + originalName.split('.').pop()!.toLowerCase() : '.csv';
-  return `${brand}_${reportTypeId}_${toYYYYMMDD(startDate)}_${toYYYYMMDD(endDate)}${suffix}${ext}`;
-}
-
-interface FileRow {
-  file: File;
-  marketplace: Marketplace;
-  reportType: string; // coarse id, '' if unassigned
-  detectedBy: 'headers' | 'filename' | null;
-  fineType: string | null;
-  note?: string;
-  detecting: boolean;
-}
+const CheckIcon = ({ className = '' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12l5 5L20 6" />
+  </svg>
+);
+const UploadIcon = ({ className = '' }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 16V4M6 10l6-6 6 6M4 20h16" />
+  </svg>
+);
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
@@ -66,13 +173,14 @@ export default function IngestPage() {
   const [brands, setBrands] = useState<string[]>([]);
   const [brand, setBrand] = useState('');
   const [marketplace, setMarketplace] = useState<Marketplace>('amazon');
-  const [allTypes, setAllTypes] = useState<ReportType[]>([]);
   const [startDate, setStartDate] = useState(isoDaysAgo(14));
   const [endDate, setEndDate] = useState(today());
-  const [rows, setRows] = useState<FileRow[]>([]);
+  const [step, setStep] = useState(0);
+  const [uploads, setUploads] = useState<Record<string, File>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<BulkIngestResponse | null>(null);
+  const [datesTouched, setDatesTouched] = useState(false);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -86,475 +194,334 @@ export default function IngestPage() {
     }
   }, []);
 
-  // Load brands + the full report-type catalogue once.
   useEffect(() => {
     getGcsBrands()
       .then((res) => setBrands((res.brands ?? []).map((b: { brand: string }) => b.brand)))
       .catch(() => setBrands([]));
-    getGcsReportTypes()
-      .then(setAllTypes)
-      .catch(() => setAllTypes([]));
   }, []);
 
-  const typesFor = useCallback((m: Marketplace) => allTypes.filter((t) => t.marketplace === m), [allTypes]);
+  const groups = CATALOG[marketplace];
+  const slots = useMemo(() => groups.flatMap((g) => g.slots.map((s) => ({ ...s, group: g.group }))), [groups]);
+  const total = slots.length;
+  const current = slots[Math.min(step, total - 1)];
+  const doneCount = slots.filter((s) => uploads[s.key]).length;
+  const needsRangePending = slots.some((s) => s.needsRange && uploads[s.key]) && !datesTouched;
 
-  // Add files → create rows immediately, then run auto-detect to fill them in.
-  const addFiles = useCallback(
-    async (list: FileList | null) => {
-      if (!list) return;
-      const picked = [...list].filter((f) => /\.(xlsx|xls|csv)$/i.test(f.name));
-      if (!picked.length) return;
-
-      // Skip names already queued.
-      const existing = new Set(rows.map((r) => r.file.name));
-      const fresh = picked.filter((f) => !existing.has(f.name));
-      if (!fresh.length) return;
-
-      const newRows: FileRow[] = fresh.map((file) => ({
-        file,
-        marketplace, // default to the batch marketplace; detection may override below
-        reportType: '',
-        detectedBy: null,
-        fineType: null,
-        detecting: true,
-      }));
-      setRows((prev) => [...prev, ...newRows]);
-
-      try {
-        const { detections } = await gcsDetect(fresh);
-        const byName = new Map(detections.map((d) => [d.filename, d]));
-        setRows((prev) =>
-          prev.map((r) => {
-            if (!fresh.includes(r.file)) return r;
-            const d = byName.get(r.file.name);
-            if (!d) return { ...r, detecting: false };
-            // Detection can override the batch marketplace when a file plainly
-            // carries another marketplace's own columns (e.g. a Swiggy Instamart
-            // export dropped into an Amazon batch). Otherwise the batch wins.
-            const overrode = d.marketplace != null && d.marketplace !== marketplace;
-            return {
-              ...r,
-              marketplace: d.marketplace ?? marketplace,
-              reportType: d.reportType ?? '',
-              detectedBy: d.detectedBy,
-              fineType: d.fineType,
-              note: overrode
-                ? `Detected as ${MARKETPLACES.find((m) => m.id === d.marketplace)?.label ?? d.marketplace} from its columns — routed there instead of ${MARKETPLACES.find((m) => m.id === marketplace)?.label ?? marketplace}.`
-                : d.note,
-              detecting: false,
-            };
-          })
-        );
-      } catch {
-        setRows((prev) => prev.map((r) => (fresh.includes(r.file) ? { ...r, detecting: false } : r)));
-      }
-    },
-    [rows, marketplace]
-  );
-
-  const updateRow = (name: string, patch: Partial<FileRow>) =>
-    setRows((prev) => prev.map((r) => (r.file.name === name ? { ...r, ...patch } : r)));
-
-  const removeRow = (name: string) => setRows((prev) => prev.filter((r) => r.file.name !== name));
-
-  /** Switch the whole batch to another marketplace and re-base every row to it. */
   const changeMarketplace = (m: Marketplace) => {
     setMarketplace(m);
+    setUploads({});
+    setStep(0);
+    setResult(null);
+    setError(null);
     try {
       localStorage.setItem(MARKETPLACE_KEY, m);
     } catch {
       /* ignore */
     }
-    setRows((prev) =>
-      prev.map((r) => ({
-        ...r,
-        marketplace: m,
-        reportType: '',
-        detectedBy: null,
-        fineType: null,
-        note: undefined,
-      }))
-    );
   };
 
-  // Per-report-type suffixing for the live preview (mirrors the server).
-  const previews = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const r of rows) if (r.reportType) counts.set(r.reportType, (counts.get(r.reportType) ?? 0) + 1);
-    const seen = new Map<string, number>();
-    return rows.map((r) => {
-      if (!r.reportType) return '';
-      const n = (seen.get(r.reportType) ?? 0) + 1;
-      seen.set(r.reportType, n);
-      const suffix = (counts.get(r.reportType) ?? 1) > 1 ? `_${n}` : '';
-      return previewFilename(brand, r.reportType, startDate, endDate, r.file.name, suffix);
-    });
-  }, [rows, brand, startDate, endDate]);
+  const pickFile = useCallback(
+    (slotKey: string, file: File | null | undefined) => {
+      if (!file) return;
+      const wasEmpty = !uploads[slotKey];
+      setUploads((prev) => ({ ...prev, [slotKey]: file }));
+      // First time a slot is filled, glide to the next report so the flow keeps moving.
+      if (wasEmpty) setTimeout(() => setStep((s) => Math.min(total - 1, s + 1)), 450);
+    },
+    [uploads, total]
+  );
 
-  const unassigned = rows.filter((r) => !r.reportType).length;
+  const clearFile = (slotKey: string) =>
+    setUploads((prev) => {
+      const next = { ...prev };
+      delete next[slotKey];
+      return next;
+    });
+
+  const goto = (i: number) => setStep(Math.max(0, Math.min(total - 1, i)));
 
   const submit = useCallback(async () => {
-    if (!brand.trim()) {
-      setError('Pick or enter a brand name.');
-      return;
-    }
-    if (!startDate) {
-      setError('Enter a start date.');
-      return;
-    }
-    if (!endDate) {
-      setError('Enter an end date.');
-      return;
-    }
-    if (endDate < startDate) {
-      setError('End date must be on or after start date.');
-      return;
-    }
-    if (!rows.length) {
-      setError('Add at least one file.');
-      return;
-    }
-    if (unassigned > 0) {
-      setError(`${unassigned} file(s) have no report type — pick one for each.`);
-      return;
-    }
+    if (!brand.trim()) return setError('Pick or enter a brand name.');
+    if (!startDate) return setError('Enter a start date.');
+    if (!endDate) return setError('Enter an end date.');
+    if (endDate < startDate) return setError('End date must be on or after start date.');
+    if (slots.some((s) => s.needsRange && uploads[s.key]) && !datesTouched)
+      return setError('Set the date range to the period these sales files cover — it dates any report that has no dates of its own.');
+    if (doneCount === 0) return setError('Add at least one report file.');
 
     setBusy(true);
     setError(null);
     setResult(null);
     try {
-      const assignments: FileAssignment[] = rows.map((r) => ({
-        filename: r.file.name,
-        marketplace: r.marketplace,
-        reportType: r.reportType,
-      }));
-      const res = await gcsIngestBulk(
-        brand.trim(),
-        startDate,
-        endDate,
-        assignments,
-        rows.map((r) => r.file)
-      );
+      const files: File[] = [];
+      const assignments: FileAssignment[] = [];
+      const usedNames = new Set<string>();
+      for (const s of slots) {
+        const f = uploads[s.key];
+        if (!f) continue;
+        // Keep every uploaded name unique so the server can match file → assignment.
+        let name = f.name;
+        if (usedNames.has(name)) name = `${s.key}__${f.name}`;
+        usedNames.add(name);
+        const sendFile = name === f.name ? f : new File([f], name, { type: f.type });
+        files.push(sendFile);
+        assignments.push({ filename: name, marketplace, reportType: s.reportType });
+      }
+      const res = await gcsIngestBulk(brand.trim(), startDate, endDate, assignments, files);
       setResult(res);
-      setRows([]);
+      setUploads({});
+      setStep(0);
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
-  }, [brand, startDate, endDate, rows, unassigned]);
+  }, [brand, startDate, endDate, doneCount, slots, uploads, marketplace, datesTouched]);
+
+  const currentFile = current ? uploads[current.key] : undefined;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-4xl space-y-6">
       <div>
-        <h1 className="text-lg font-semibold tracking-tight">Ingest to warehouse</h1>
+        <h1 className="text-lg font-semibold tracking-tight">Upload reports</h1>
         <p className="mt-1 text-sm text-muted">
-          Drop all your report files at once — each one&apos;s type is detected from its columns. Files are
-          renamed to the standard format and routed to the right folder before upload.
+          Go through each report in turn and drop the matching export into its slot. Every file is renamed to
+          the standard format and routed to the right warehouse folder — you tell us what each file is, so
+          nothing is guessed.
         </p>
       </div>
 
-      {/* ── Brand ── */}
-      <section className="space-y-2">
-        <label className="text-xs font-medium uppercase tracking-wide text-muted">Account / brand</label>
-        {brands.length > 0 ? (
-          <select
-            className="select select-bordered w-full"
-            value={brand}
-            onChange={(e) => setBrand(e.target.value)}
-          >
-            <option value="">— select brand —</option>
-            {brands.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <input
-            type="text"
-            className="input w-full"
-            placeholder="e.g. eatopia"
-            value={brand}
-            onChange={(e) => setBrand(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '-'))}
-          />
-        )}
-      </section>
+      {/* ── Brand + dates + marketplace ── */}
+      <section className="grid gap-4 rounded-xl border border-line bg-surface p-4 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium uppercase tracking-wide text-muted">Account / brand</label>
+          {brands.length > 0 ? (
+            <select className="select select-bordered w-full" value={brand} onChange={(e) => setBrand(e.target.value)}>
+              <option value="">— select brand —</option>
+              {brands.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              className="input w-full"
+              placeholder="e.g. eatopia"
+              value={brand}
+              onChange={(e) => setBrand(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '-'))}
+            />
+          )}
+        </div>
 
-      {/* ── Date range ── */}
-      <section className="space-y-2">
-        <label className="text-xs font-medium uppercase tracking-wide text-muted">
-          Date range covered by these files
-        </label>
-        <div className="flex items-center gap-3">
-          <div className="flex flex-1 flex-col gap-1">
-            <label className="text-xs text-muted">Start date</label>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium uppercase tracking-wide text-muted">
+            Date range covered <span className="text-error">*</span>
+          </label>
+          <div className="flex items-center gap-2">
             <input
               type="date"
               className="input w-full"
               value={startDate}
               max={endDate || today()}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setDatesTouched(true);
+              }}
             />
-          </div>
-          <span className="mt-5 text-muted">→</span>
-          <div className="flex flex-1 flex-col gap-1">
-            <label className="text-xs text-muted">End date</label>
+            <span className="text-muted">→</span>
             <input
               type="date"
               className="input w-full"
               value={endDate}
               min={startDate}
               max={today()}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setDatesTouched(true);
+              }}
             />
           </div>
+          {needsRangePending ? (
+            <p className="text-[11px] text-warning">
+              A sales report is queued — set this to the exact period the file covers. It dates any report that
+              carries no dates of its own.
+            </p>
+          ) : (
+            <p className="text-[11px] text-muted">Dates any report that has no dates of its own (e.g. the Business Report).</p>
+          )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted">
-          <button
-            type="button"
-            className="underline hover:text-base-content"
-            onClick={() => {
-              setStartDate(isoDaysAgo(14));
-              setEndDate(today());
-            }}
-          >
-            Last 14 days
-          </button>
-          <button
-            type="button"
-            className="underline hover:text-base-content"
-            onClick={() => {
-              setStartDate(today());
-              setEndDate(today());
-            }}
-          >
-            Today only
-          </button>
-          <span>Default is the last 14 days (the Amazon attribution window).</span>
-        </div>
-      </section>
 
-      {/* ── Marketplace ── */}
-      <section className="space-y-2">
-        <label className="text-xs font-medium uppercase tracking-wide text-muted">Marketplace</label>
-        <div
-          className="inline-flex flex-wrap gap-1 rounded-xl border border-line bg-side p-1"
-          role="radiogroup"
-          aria-label="Marketplace"
-        >
-          {MARKETPLACES.map((m) => {
-            const on = marketplace === m.id;
-            return (
-              <button
-                key={m.id}
-                type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => changeMarketplace(m.id)}
-                className={`flex h-9 items-center gap-2 rounded-lg pl-1.5 pr-3.5 text-sm transition-all ${
-                  on
-                    ? 'bg-surface font-semibold text-ink shadow-[0_1px_3px_rgb(20_23_28/0.12)] ring-1 ring-line'
-                    : 'text-ink/65 hover:text-ink'
-                }`}
-                title={`Route this batch to each brand's ${m.id}/ folder`}
-              >
-                <span className={on ? '' : 'opacity-60 grayscale-[35%]'}>
-                  <MarketplaceLogo id={m.id} size={24} />
-                </span>
-                {m.label}
-              </button>
-            );
-          })}
-        </div>
-        <p className="text-xs text-muted">
-          All files in this batch upload to{' '}
-          <span className="font-medium">{MARKETPLACES.find((m) => m.id === marketplace)?.label}</span>. If a
-          file&apos;s columns clearly belong to another marketplace, it&apos;s routed there automatically and
-          flagged below.
-        </p>
-      </section>
-
-      {/* ── Dropzone ── */}
-      <section className="space-y-2">
-        <label className="text-xs font-medium uppercase tracking-wide text-muted">Files</label>
-        <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            addFiles(e.dataTransfer.files);
-          }}
-          onClick={() => inputRef.current?.click()}
-          className={`flex min-h-[90px] cursor-pointer items-center justify-center rounded-lg border-2 border-dashed transition-colors ${
-            dragging ? 'border-primary bg-primary/5' : 'border-line hover:border-primary/50'
-          }`}
-        >
-          <span className="text-sm text-muted">
-            Drop all your <span className="font-medium">.xlsx / .xls / .csv</span> reports here, or click to
-            browse
-          </span>
-        </div>
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".xlsx,.xls,.csv"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            addFiles(e.target.files);
-            e.target.value = '';
-          }}
-        />
-      </section>
-
-      {/* ── Per-file assignment table ── */}
-      {rows.length > 0 && (
-        <section className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-medium uppercase tracking-wide text-muted">
-              {rows.length} file{rows.length > 1 ? 's' : ''}
-              {unassigned > 0 && <span className="ml-2 text-warning">· {unassigned} need a type</span>}
-            </label>
-            <button
-              type="button"
-              className="text-xs text-muted underline hover:text-error"
-              onClick={() => setRows([])}
-            >
-              Clear all
-            </button>
-          </div>
-
-          <div className="space-y-2 rounded-lg border border-line p-2">
-            {rows.map((r, i) => (
-              <div
-                key={r.file.name}
-                className={`rounded-md border p-2.5 ${
-                  r.reportType ? 'border-transparent bg-surface/50' : 'border-warning/40 bg-warning/5'
-                }`}
-              >
-                {/* Line 1 â filename gets the full width */}
-                <div className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate font-mono text-xs" title={r.file.name}>
-                    {r.file.name}
+        <div className="flex flex-col gap-1.5 sm:col-span-2">
+          <label className="text-xs font-medium uppercase tracking-wide text-muted">Marketplace</label>
+          <div className="inline-flex flex-wrap gap-1 rounded-xl border border-line bg-side p-1" role="radiogroup" aria-label="Marketplace">
+            {MARKETPLACES.map((m) => {
+              const on = marketplace === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => changeMarketplace(m.id)}
+                  className={`flex h-9 items-center gap-2 rounded-lg pl-1.5 pr-3.5 text-sm transition-all ${
+                    on ? 'bg-surface font-semibold text-ink shadow-[0_1px_3px_rgb(20_23_28/0.12)] ring-1 ring-line' : 'text-ink/65 hover:text-ink'
+                  }`}
+                >
+                  <span className={on ? '' : 'opacity-60 grayscale-[35%]'}>
+                    <MarketplaceLogo id={m.id} size={24} />
                   </span>
-
-                  {/* Detection badge */}
-                  {r.detecting ? (
-                    <span className="shrink-0 text-[10px] text-muted">detectingâ¦</span>
-                  ) : r.detectedBy ? (
-                    <span
-                      className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
-                        r.detectedBy === 'headers'
-                          ? 'bg-success/15 text-success'
-                          : 'bg-primary/15 text-primary'
-                      }`}
-                      title={r.fineType ? `Detected as ${r.fineType} by ${r.detectedBy}` : undefined}
-                    >
-                      {r.detectedBy === 'headers' ? 'auto ✓' : 'by name'}
-                    </span>
-                  ) : (
-                    <span className="shrink-0 rounded bg-warning/15 px-1.5 py-0.5 text-[10px] font-medium text-warning">
-                      needs type
-                    </span>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => removeRow(r.file.name)}
-                    className="shrink-0 text-base leading-none text-muted hover:text-error"
-                    aria-label="Remove file"
-                  >
-                    ×
-                  </button>
-                </div>
-
-                {/* Line 2 â controls */}
-                <div className="mt-2 flex items-center gap-2">
-                  {/* Marketplace: defaults from the batch toggle (or auto-detection),
-                      but editable per file so a wrong guess can be corrected. A value
-                      differing from the batch toggle is highlighted. */}
-                  <select
-                    className={`select select-sm select-bordered shrink-0 ${
-                      r.marketplace !== marketplace ? 'border-primary/50 text-primary' : ''
-                    }`}
-                    value={r.marketplace}
-                    onChange={(e) =>
-                      updateRow(r.file.name, {
-                        marketplace: e.target.value as Marketplace,
-                        reportType: '',
-                        detectedBy: null,
-                        fineType: null,
-                        note: undefined,
-                      })
-                    }
-                    title={
-                      r.marketplace !== marketplace
-                        ? 'Overrides the batch marketplace for this file'
-                        : undefined
-                    }
-                  >
-                    {MARKETPLACES.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.label}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    className={`select select-sm select-bordered min-w-0 flex-1 ${!r.reportType ? 'border-warning text-warning' : ''}`}
-                    value={r.reportType}
-                    onChange={(e) => updateRow(r.file.name, { reportType: e.target.value, detectedBy: null })}
-                  >
-                    <option value="">{r.detecting ? 'detecting…' : '— pick report type —'}</option>
-                    {typesFor(r.marketplace).map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Line 3 â preview / note */}
-                {previews[i] ? (
-                  <div className="mt-1.5 flex items-center gap-1.5">
-                    <span className="text-xs text-muted">→</span>
-                    <span className="truncate font-mono text-xs text-success">{previews[i]}</span>
-                  </div>
-                ) : r.note ? (
-                  <p className="mt-1.5 text-xs text-warning">{r.note}</p>
-                ) : !r.detecting ? (
-                  <p className="mt-1.5 text-xs text-muted">
-                    Couldn&apos;t detect this report — pick its type above.
-                  </p>
-                ) : null}
-              </div>
-            ))}
+                  {m.label}
+                </button>
+              );
+            })}
           </div>
-        </section>
-      )}
+        </div>
+      </section>
+
+      {/* ── Progress ── */}
+      <div className="flex items-center gap-3">
+        <span className="whitespace-nowrap text-sm font-medium">
+          <span className="font-mono text-primary">{doneCount}</span> of{' '}
+          <span className="font-mono">{total}</span> reports added
+        </span>
+        <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-line">
+          <span className="block h-full rounded-full bg-primary transition-all duration-300" style={{ width: `${total ? (doneCount / total) * 100 : 0}%` }} />
+        </span>
+        {doneCount > 0 && (
+          <button type="button" className="whitespace-nowrap text-xs text-muted underline hover:text-error" onClick={() => setUploads({})}>
+            Clear all
+          </button>
+        )}
+      </div>
+
+      {/* ── Stepper: rail + stage ── */}
+      <div className="grid gap-5 md:grid-cols-[260px_1fr]">
+        {/* Rail */}
+        <nav className="max-h-[560px] overflow-auto rounded-xl border border-line bg-surface p-2" aria-label="Report steps">
+          {groups.map((g) => (
+            <div key={g.group}>
+              <div className="px-2 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-wide text-muted/70">{g.group}</div>
+              {g.slots.map((s) => {
+                const i = slots.findIndex((x) => x.key === s.key);
+                const done = !!uploads[s.key];
+                const isCur = i === step;
+                return (
+                  <button
+                    key={s.key}
+                    type="button"
+                    onClick={() => goto(i)}
+                    aria-current={isCur}
+                    className={`flex w-full items-center gap-2.5 rounded-lg border px-2.5 py-2 text-left text-sm transition-colors ${
+                      isCur ? 'border-primary/30 bg-primary/10 font-semibold text-primary' : 'border-transparent text-muted hover:bg-stripe'
+                    }`}
+                  >
+                    <span
+                      className={`grid h-5 w-5 flex-none place-items-center rounded-full text-[10px] ${
+                        done ? 'bg-success text-white' : 'border border-line text-muted'
+                      }`}
+                      style={done ? undefined : { borderColor: 'var(--color-line)' }}
+                    >
+                      {done ? <CheckIcon className="h-3 w-3" /> : i + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate">{s.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+
+        {/* Stage */}
+        <div className="flex flex-col rounded-xl border border-line bg-surface p-6">
+          {current && (
+            <>
+              <span className="font-mono text-xs font-semibold text-primary">
+                Step {step + 1} of {total} · {current.group}
+              </span>
+              <h2 className="mt-1 text-xl font-semibold tracking-tight">{current.label}</h2>
+              <p className="mt-1 max-w-prose text-sm text-muted">
+                {current.hint}. Drop the export for this report below.
+              </p>
+
+              <label
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragging(true);
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragging(false);
+                  pickFile(current.key, e.dataTransfer.files?.[0]);
+                }}
+                className={`mt-5 flex min-h-[180px] flex-1 cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+                  currentFile
+                    ? 'border-success/45 bg-success/5'
+                    : dragging
+                      ? 'border-primary bg-primary/5'
+                      : 'border-line hover:border-primary/60 hover:bg-primary/5'
+                }`}
+              >
+                <span className={`grid h-11 w-11 place-items-center rounded-full ${currentFile ? 'bg-success text-white' : 'bg-primary/10 text-primary'}`}>
+                  {currentFile ? <CheckIcon className="h-5 w-5" /> : <UploadIcon className="h-5 w-5" />}
+                </span>
+                {currentFile ? (
+                  <>
+                    <span className="text-sm font-semibold text-success">File added</span>
+                    <span className="break-all font-mono text-xs text-muted">{currentFile.name}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-sm font-semibold text-ink">Drop file or click to browse</span>
+                    <span className="text-xs text-muted">.xlsx · .xls · .csv</span>
+                  </>
+                )}
+                <input
+                  ref={inputRef}
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  className="hidden"
+                  onChange={(e) => {
+                    pickFile(current.key, e.target.files?.[0]);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+
+              <div className="mt-5 flex items-center gap-2">
+                <button type="button" className="btn btn-sm btn-ghost" disabled={step === 0} onClick={() => goto(step - 1)}>
+                  ← Back
+                </button>
+                {currentFile && (
+                  <button type="button" className="text-xs text-muted underline hover:text-error" onClick={() => clearFile(current.key)}>
+                    Remove file
+                  </button>
+                )}
+                <span className="flex-1" />
+                {!currentFile && step < total - 1 && (
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => goto(step + 1)}>
+                    Skip for now
+                  </button>
+                )}
+                {step < total - 1 && (
+                  <button type="button" className="btn btn-sm btn-primary" onClick={() => goto(step + 1)}>
+                    Next →
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* ── Error ── */}
-      {error && (
-        <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
-          {error}
-        </div>
-      )}
+      {error && <div className="rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">{error}</div>}
 
       {/* ── Submit ── */}
-      <button
-        type="button"
-        onClick={submit}
-        disabled={busy || !rows.length || !brand || unassigned > 0}
-        className="btn btn-primary w-full"
-      >
-        {busy
-          ? 'Uploading…'
-          : `Upload ${rows.length ? `${rows.length} file${rows.length > 1 ? 's' : ''} ` : ''}to GCS`}
+      <button type="button" onClick={submit} disabled={busy || doneCount === 0 || !brand} className="btn btn-primary w-full">
+        {busy ? 'Uploading…' : `Upload ${doneCount} file${doneCount === 1 ? '' : 's'} to GCS`}
       </button>
 
       {/* ── Results ── */}
@@ -564,11 +531,7 @@ export default function IngestPage() {
           <ul className="space-y-1">
             {result.files.map((f) => (
               <li key={f.objectName} className="flex items-start gap-2 text-sm">
-                <span
-                  className={`mt-0.5 shrink-0 ${f.status === 'uploaded' ? 'text-success' : 'text-error'}`}
-                >
-                  {f.status === 'uploaded' ? '✓' : '✗'}
-                </span>
+                <span className={`mt-0.5 shrink-0 ${f.status === 'uploaded' ? 'text-success' : 'text-error'}`}>{f.status === 'uploaded' ? '✓' : '✗'}</span>
                 <span className="flex-1">
                   <span className="font-mono text-xs">{f.objectName}</span>
                   {f.message && <span className="ml-2 text-xs text-error">{f.message}</span>}

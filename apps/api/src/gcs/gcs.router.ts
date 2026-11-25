@@ -12,7 +12,6 @@ import type { BulkIngestItem } from './gcs-ingest';
 import {
   ALL_REPORT_TYPES,
   buildFilename,
-  detectIngestType,
   findReportType,
   isValidDate,
   uploadBulkToGcs,
@@ -179,22 +178,6 @@ gcsRouter.post('/ingest', ingestUpload, async (req, res) => {
   }
 
   res.json({ files: uploadResults, sync: syncJob });
-});
-
-/**
- * POST /api/gcs/detect  (multipart/form-data)
- *   files — one or more .xlsx / .xls / .csv files
- *
- * Inspects each file's columns and guesses its report type, so the bulk
- * ingest UI can pre-fill the per-file report type. No upload happens here.
- */
-gcsRouter.post('/detect', ingestUpload, (req, res) => {
-  const files = (req.files as Express.Multer.File[] | undefined) ?? [];
-  if (files.length === 0) {
-    throw new HttpError(400, 'Attach at least one .xlsx, .xls or .csv file in the "files" field.');
-  }
-  const detections = files.map((f) => detectIngestType(f.buffer, f.originalname));
-  res.json({ detections });
 });
 
 /**

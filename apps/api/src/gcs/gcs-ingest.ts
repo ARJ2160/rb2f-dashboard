@@ -10,16 +10,7 @@
  * dashboard immediately.
  */
 
-import type { ReportType as FineReportType } from '@dash/shared';
-
 import { env } from '../config/env';
-import { detectReportType } from '../ingestion/detect-report';
-import { detectOpsFile } from '../ops/detect';
-import type { OpsFileType } from '@dash/shared';
-import { detectInstamart } from '../instamart/ingest';
-import { detectZepto } from '../zepto/ingest';
-import { normKey } from '@dash/shared/blinkit';
-import { readWorkbook } from '../ingestion/sheet-reader';
 import { GcsClient, READ_WRITE_SCOPE } from './gcs-client';
 
 // ── Report type registry ──────────────────────────────────────────────────────
@@ -40,6 +31,13 @@ export const AMAZON_REPORT_TYPES: readonly ReportType[] = [
     folder: 'seller_central',
     marketplace: 'amazon',
     hint: 'Daily sales by ASIN from the Seller Central Business Report',
+  },
+  {
+    id: 'vendor_central',
+    label: 'Vendor Central Sales',
+    folder: 'vendor_central',
+    marketplace: 'amazon',
+    hint: 'Vendor Central ordered / shipped revenue & units (stored as source = vendor)',
   },
   {
     id: 'campaign',
@@ -162,6 +160,13 @@ export const BLINKIT_REPORT_TYPES: readonly ReportType[] = [
     folder: 'total_sales',
     marketplace: 'blinkit',
     hint: 'Order-level sales export (Sales Summary)',
+  },
+  {
+    id: 'ads',
+    label: 'Ads Data',
+    folder: 'ads',
+    marketplace: 'blinkit',
+    hint: 'Blinkit ads export — Product Listing / Recommendation / Banner (classified from columns on sync)',
   },
   {
     id: 'product_listing',
@@ -349,188 +354,6 @@ export function findReportType(
 }
 
 // ── Auto-detection (bulk ingest) ──────────────────────────────────────────────
-
-/**
- * Maps the pipeline's fine-grained report type (e.g. `sp_campaign`) to the
- * coarse GCS warehouse folder it belongs in (e.g. `campaign`).
- *
- * Sync re-detects the exact report from the file's own columns, so the folder
- * is organisational — but keeping it correct preserves the filename fallback
- * and a tidy bucket. Types with no warehouse folder (vendor_central,
- * order_report) are intentionally absent: they fall through to manual pick.
- */
-const FINE_TO_COARSE: Partial<Record<FineReportType, string>> = {
-  business_report: 'seller_central',
-  sp_campaign: 'campaign',
-  sb_campaign: 'campaign',
-  sd_campaign: 'campaign',
-  hourly: 'campaign',
-  sp_advertised_product: 'advertised',
-  sd_advertised_product: 'advertised',
-  sb_advertised_product: 'advertised',
-  sb_attributed_purchase: 'advertised',
-  sp_search_term: 'str',
-  sb_search_term: 'str',
-  sd_targeting: 'str',
-  sp_placement: 'placement',
-  sb_placement: 'placement',
-  asin_mapper: 'asin_mapper',
-  campaign_mapper: 'campaign_mapper',
-  search_query_performance: 'sqp',
-  pi_city_sales: 'pi_sales',
-  search_rank: 'search_rank',
-  asin_gv: 'gv',
-  keyword_sov: 'keyword_sov',
-};
-
-const OPS_TO_FOLDER: Partial<Record<OpsFileType, string>> = {
-  sc_ledger_summary: 'sc_ledger',
-  sc_ledger_detail: 'sc_ledger',
-  sc_fba_inventory: 'fba_inventory',
-  sc_shipments: 'sc_shipments',
-  sc_shipment_contents: 'sc_shipments',
-  vc_po: 'vc_po',
-  vc_inventory: 'vc_inventory',
-};
-
-export interface DetectResult {
-  filename: string;
-  /** Coarse warehouse report type id (e.g. "campaign"), or null when unrecognised / unmapped. */
-  reportType: string | null;
-  /** The pipeline's fine-grained guess, for display ("SP Campaign"). */
-  fineType: FineReportType | null;
-  /** How the guess was made — column headers beat filename. */
-  detectedBy: 'headers' | 'filename' | null;
-  /** Set when the file is a recognised report with no warehouse folder yet. */
-  note?: string;
-  /** Marketplace the columns belong to (absent = Amazon). */
-  marketplace?: 'amazon' | 'swiggy_instamart' | 'zepto';
-}
-
-/** Swiggy Instamart exports are recognised by their own columns (sales / ads / SKU mapper). */
-const IM_FOLDER: Record<string, string> = {
-  im_sales: 'sales',
-  im_ads: 'ads',
-  im_inventory: 'inventory',
-  im_sku_mapper: 'sku_mapper',
-};
-
-/** Zepto report kinds with no channel in their columns → their warehouse folder. */
-const ZP_FOLDER: Record<string, string> = {
-  zp_sales: 'sales',
-  zp_inventory: 'inventory',
-  zp_sku_mapper: 'sku_mapper',
-  zp_campaign_mapper: 'campaign_mapper',
-};
-/** SP/SB/SD from the file name (…sp…/sb…/sd…/pda→sd). */
-function zpChannelFromName(filename: string): 'sp' | 'sb' | 'sd' | null {
-  const n = ` ${normKey(filename)} `;
-  if (/ sd /.test(n) || / pda /.test(n)) return 'sd';
-  if (/ sb /.test(n)) return 'sb';
-  if (/ sp /.test(n)) return 'sp';
-  return null;
-}
-/** SP/SB/SD from a campaign report's CampaignType value. */
-function zpChannelFromType(ct: string): 'sp' | 'sb' | 'sd' | null {
-  const k = normKey(ct);
-  if (!k) return null;
-  if (k.includes('banner') || k.includes('display')) return 'sd';
-  if (k === 'pca' || k.includes('brand')) return 'sb';
-  if (k.includes('auction') || k.includes('auto') || k.includes('product') || k.includes('up sell'))
-    return 'sp';
-  return null;
-}
-
-/**
- * Inspect a file's columns and decide which warehouse report type it is.
- * Reads only the first rows (header detection) — never the whole export.
- */
-export function detectIngestType(buffer: Buffer, filename: string): DetectResult {
-  let sheets;
-  try {
-    sheets = readWorkbook(buffer, { maxRows: 25 });
-  } catch {
-    return { filename, reportType: null, fineType: null, detectedBy: null };
-  }
-
-  // Try each sheet; the first that classifies wins (combined workbooks name
-  // their tabs, so sheetName feeds the fallback).
-  for (const sheet of sheets) {
-    const im = detectInstamart({
-      fileName: filename,
-      sheetName: sheet.sheetName,
-      headers: sheet.headers.map((h) => normKey(h)),
-      rows: [],
-    });
-    if (im !== 'unknown')
-      return {
-        filename,
-        reportType: IM_FOLDER[im] ?? null,
-        fineType: null,
-        detectedBy: 'headers',
-        marketplace: 'swiggy_instamart',
-      };
-
-    // Zepto exports — recognised by their own columns.
-    const zpHeaders = sheet.headers.map((h) => normKey(h));
-    const zp = detectZepto({ fileName: filename, sheetName: sheet.sheetName, headers: zpHeaders, rows: [] });
-    if (zp !== 'unknown') {
-      let folder: string | null = ZP_FOLDER[zp] ?? null;
-      if (!folder) {
-        // Ad report (campaign/keyword/product) — resolve the channel for the folder.
-        let ch = zpChannelFromName(filename);
-        if (!ch && zp === 'zp_campaign') {
-          const i = zpHeaders.indexOf('campaigntype');
-          if (i >= 0)
-            for (const r of sheet.rows) {
-              ch = zpChannelFromType(String(r[i] ?? ''));
-              if (ch) break;
-            }
-        }
-        const kind = zp === 'zp_campaign' ? 'campaign' : zp === 'zp_keyword' ? 'keyword' : 'product';
-        folder = ch ? `${ch}_${kind}` : null;
-        if (!folder)
-          return {
-            filename,
-            reportType: null,
-            fineType: null,
-            detectedBy: 'headers',
-            marketplace: 'zepto',
-            note: `Zepto ${kind} report — pick its SP / SB / SD channel above (not in the file name).`,
-          };
-      }
-      return { filename, reportType: folder, fineType: null, detectedBy: 'headers', marketplace: 'zepto' };
-    }
-    // Inventory / PO / Shipment files are recognised by their own signatures and
-    // take priority over the ads detector (Vendor Central sales excepted).
-    const ops = detectOpsFile(sheet.headers, sheet.preamble);
-    if (ops && ops.fileType !== 'vc_sales') {
-      const folder = OPS_TO_FOLDER[ops.fileType];
-      if (folder)
-        return {
-          filename,
-          reportType: folder,
-          fineType: null,
-          detectedBy: ops.detectedBy === 'metadata' ? 'headers' : ops.detectedBy,
-        };
-    }
-    const hit = detectReportType(sheet.headers, sheet.sheetName, filename);
-    if (!hit) continue;
-    const coarse = FINE_TO_COARSE[hit.reportType];
-    if (coarse) {
-      return { filename, reportType: coarse, fineType: hit.reportType, detectedBy: hit.detectedBy };
-    }
-    // Recognised but no warehouse folder (vendor_central, order_report, …).
-    return {
-      filename,
-      reportType: null,
-      fineType: hit.reportType,
-      detectedBy: hit.detectedBy,
-      note: `Recognised as "${hit.reportType}" but it has no warehouse folder yet — pick a type manually.`,
-    };
-  }
-  return { filename, reportType: null, fineType: null, detectedBy: null };
-}
 
 // ── Content-type helper ───────────────────────────────────────────────────────
 
