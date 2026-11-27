@@ -331,9 +331,15 @@ gcsRouter.post('/ingest-bulk', ingestUpload, async (req, res) => {
 
   const { results, marketplaces } = await guard(() => uploadBulkToGcs(brand, startDate, endDate, items), res);
 
+  // The chunked client uploads the batch across several requests (so no single
+  // POST approaches Cloud Run's 32 MiB cap) and suppresses the per-chunk sync,
+  // running one sync itself after the last chunk. Any value but "false" (incl.
+  // absent) keeps the original behaviour: sync here.
+  const syncNow = req.body?.sync !== 'false';
+
   // One sync per marketplace that actually received a file.
   const syncJobs: Array<Awaited<ReturnType<typeof startSync>>> = [];
-  if (results.some((r) => r.status === 'uploaded')) {
+  if (syncNow && results.some((r) => r.status === 'uploaded')) {
     for (const m of marketplaces) {
       try {
         syncJobs.push(await startSync(brand, false, m, requestUser(req), true));

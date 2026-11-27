@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   createGcsBrand,
   deleteGcsBrand,
-  gcsIngestBulk,
+  gcsIngestChunked,
   getGcsBrands,
   type BulkIngestResponse,
   type FileAssignment,
@@ -397,7 +397,7 @@ export default function IngestPage() {
         files.push(sendFile);
         assignments.push({ filename: name, marketplace, reportType: s.reportType });
       }
-      const res = await gcsIngestBulk(brand.trim(), startDate, endDate, assignments, files);
+      const res = await gcsIngestChunked(brand.trim(), startDate, endDate, assignments, files);
       setResult(res);
       setUploads({});
       setStep(0);
