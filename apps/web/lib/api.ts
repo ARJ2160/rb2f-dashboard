@@ -27,6 +27,7 @@ import type {
   GlanceViewsResponse,
   KeywordSovResponse,
 } from '@dash/shared';
+import { packBySize } from '@dash/shared';
 
 /** Same origin: this app forwards /api/* to the API service (app/api/[...path]/route.ts). */
 export const API_URL = '';
@@ -375,13 +376,78 @@ export async function gcsIngestBulk(
   startDate: string,
   endDate: string,
   assignments: FileAssignment[],
-  files: File[]
+  files: File[],
+  opts: { sync?: boolean } = {}
 ): Promise<BulkIngestResponse> {
   const fd = new FormData();
   fd.set('brand', brand);
   fd.set('startDate', startDate);
   fd.set('endDate', endDate);
   fd.set('assignments', JSON.stringify(assignments));
+  // Suppress the server-side sync so the chunked orchestrator can run one sync
+  // after every chunk has uploaded (see gcsIngestChunked).
+  if (opts.sync === false) fd.set('sync', 'false');
   for (const f of files) fd.append('files', f, f.name);
   return json(await fetch(`${API_URL}/api/gcs/ingest-bulk`, { method: 'POST', body: fd }));
+}
+
+/**
+ * Upload a batch like {@link gcsIngestBulk}, but split across several requests so
+ * no single POST approaches Cloud Run's 32 MiB request-body cap — which rejects
+ * the whole upload with a bare 413 before it reaches the API, regardless of how
+ * small any one file is. Files are packed greedily into chunks under
+ * `maxBytesPerChunk`; each chunk is uploaded with its own sync suppressed; then
+ * one sync per marketplace is started after the chunks finish. A chunk that fails
+ * as a whole is reported as per-file errors so the rest of the batch still lands.
+ */
+export async function gcsIngestChunked(
+  brand: string,
+  startDate: string,
+  endDate: string,
+  assignments: FileAssignment[],
+  files: File[],
+  maxBytesPerChunk = 20 * 1024 * 1024
+): Promise<BulkIngestResponse> {
+  const byName = new Map(assignments.map((a) => [a.filename, a]));
+
+  // Split into chunks that stay under the byte budget so no single POST nears
+  // Cloud Run's 32 MiB cap. A lone file over the budget still goes in a chunk by
+  // itself (best effort — a file over ~31 MiB cannot pass Cloud Run regardless).
+  const chunks = packBySize(files, maxBytesPerChunk);
+
+  const touched = new Set<Marketplace>();
+  for (const a of assignments) touched.add(a.marketplace);
+
+  const allResults: IngestFileResult[] = [];
+  for (const chunk of chunks) {
+    const chunkAssignments = chunk
+      .map((f) => byName.get(f.name))
+      .filter((a): a is FileAssignment => !!a);
+    try {
+      const res = await gcsIngestBulk(brand, startDate, endDate, chunkAssignments, chunk, { sync: false });
+      allResults.push(...res.files);
+    } catch (e) {
+      // Whole-chunk failure (network, unexpected status) — mark each file in the
+      // chunk as an error and keep going so the remaining chunks still upload.
+      const message = e instanceof Error ? e.message : 'Upload failed.';
+      for (const f of chunk) {
+        allResults.push({ filename: f.name, objectName: f.name, size: f.size, status: 'error', message });
+      }
+    }
+  }
+
+  // One sync per marketplace that received a file, once something has uploaded —
+  // mirrors the server's bulk behaviour, now driven from the client.
+  const syncJobs: GcsSyncJob[] = [];
+  if (allResults.some((r) => r.status === 'uploaded')) {
+    for (const m of touched) {
+      try {
+        syncJobs.push(await startGcsSync(brand, false, m));
+      } catch {
+        // cooldown / concurrent job — non-fatal for the upload
+      }
+    }
+  }
+
+  return { files: allResults, sync: syncJobs };
 }
